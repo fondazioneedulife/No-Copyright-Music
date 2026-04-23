@@ -8,12 +8,15 @@ export function PlayerDock({
   duration,
   volume,
   setVolume,
+  playbackTarget,
+  playerNotice,
   shuffleEnabled,
   repeatMode,
   onToggle,
   onNext,
   onPrev,
   onSeek,
+  onTogglePlaybackTarget,
   onToggleShuffle,
   onToggleRepeat,
 }) {
@@ -21,6 +24,8 @@ export function PlayerDock({
   // onInput rende seek e volume immediati mentre trascini lo slider, senza aspettare il rilascio.
   const title = activeTrack?.title || "Nessuna traccia in ascolto";
   const subtitle = activeTrack?.subtitle || "Apri una traccia dal catalogo React.";
+  const targetLabel = playbackTarget === "server" ? "Pi" : "PC";
+  const stateLabel = isPlaying ? "In riproduzione" : activeTrack ? "In pausa" : "Idle";
 
   return (
     <footer className="player-dock">
@@ -35,7 +40,9 @@ export function PlayerDock({
       </div>
 
       <div className="player-center">
-        <span className="player-state">{isPlaying ? "In riproduzione" : activeTrack ? "In pausa" : "Idle"}</span>
+        <span className="player-state" title={playerNotice || `Uscita audio: ${targetLabel}`}>
+          {stateLabel} / {targetLabel}
+        </span>
         <div className="transport">
           <button
             type="button"
@@ -80,18 +87,30 @@ export function PlayerDock({
         </div>
       </div>
 
-      <label className="volume">
-        Vol
-        <input
-          aria-label="Volume player"
-          type="range"
-          min="0"
-          max="100"
-          value={Math.round(volume * 100)}
-          onInput={(event) => setVolume(Number(event.currentTarget.value) / 100)}
-        />
-        <span>{Math.round(volume * 100)}%</span>
-      </label>
+      <div className="volume-cluster">
+        <button
+          type="button"
+          className={playbackTarget === "server" ? "playback-target is-active" : "playback-target"}
+          aria-pressed={playbackTarget === "server"}
+          onClick={onTogglePlaybackTarget}
+          title={playbackTarget === "server" ? "Audio sul Raspberry" : "Audio nel browser"}
+        >
+          <PlayerIcon name="server" />
+          <span>{targetLabel}</span>
+        </button>
+        <label className="volume">
+          Vol
+          <input
+            aria-label="Volume player"
+            type="range"
+            min="0"
+            max="100"
+            value={Math.round(volume * 100)}
+            onInput={(event) => setVolume(Number(event.currentTarget.value) / 100)}
+          />
+          <span>{Math.round(volume * 100)}%</span>
+        </label>
+      </div>
     </footer>
   );
 }
@@ -146,6 +165,15 @@ function PlayerIcon({ name }) {
         <path d="M7 22l-4-4 4-4" />
         <path d="M21 13v2a3 3 0 0 1-3 3H3" />
         <path d="M12 9v6" />
+      </>
+    ),
+    server: (
+      <>
+        <rect x="5" y="3" width="14" height="18" rx="2" />
+        <path d="M8 8h8" />
+        <path d="M8 13h8" />
+        <path d="M9 17h.01" />
+        <path d="M13 17h2" />
       </>
     ),
   };

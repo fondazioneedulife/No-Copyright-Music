@@ -21,6 +21,11 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
+# Runtime audio lato Raspberry: mpv riproduce sul device del server, yt-dlp abilita stream YouTube.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates mpv yt-dlp \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY package.json ./
 COPY server.js app.js index.html styles.css ./
 COPY assets ./assets

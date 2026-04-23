@@ -15,6 +15,7 @@ Questa pagina spiega cosa contiene ogni area del progetto ClearWave e quando con
 | `.dockerignore` | Esclude dati runtime, segreti e dipendenze locali dal contesto Docker. |
 | `Dockerfile` | Build multi-stage: compila React e prepara il runtime Node del container. |
 | `docker-compose.yml` | Avvia ClearWave in Docker con volumi persistenti e variabili ambiente. |
+| `docker-compose.raspberry.yml` | Override Raspberry/Linux: collega `/dev/snd` e abilita `mpv` lato server. |
 | `.env.example` | Template per configurare Docker Compose senza esporre segreti reali. |
 | `start-local.example.ps1` | Template sicuro per creare `start-local.ps1`. |
 | `start-local.ps1` | Script locale privato con variabili ambiente. Non va condiviso e non va committato. |
@@ -32,6 +33,7 @@ Questa pagina spiega cosa contiene ogni area del progetto ClearWave e quando con
 | Storage catalogo | Legge e scrive `data/library.json`, normalizza le tracce e aggiunge campi calcolati. |
 | Copertine | Sceglie copertine locali, thumbnail provider o proxy Jamendo. |
 | Preview audio | Genera una preview WAV sintetica quando non esiste audio diretto. |
+| Player server | API `/api/server-player/...`, processo `mpv`, seek, pausa, volume e stop sul Raspberry. |
 | Import provider | Cerca e importa da Jamendo, YouTube whitelist, Audius e TheAudioDB. |
 | Import link | Interpreta URL Jamendo/YouTube e importa uno o piu' brani. |
 | Static serving | Serve `index.html`, partial, JS, CSS, asset, upload e build React. |
@@ -94,8 +96,8 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `frontend/vite.config.js` | Configurazione Vite con proxy dev verso il backend locale. |
 | `frontend/index.html` | HTML base usato da Vite. |
 | `frontend/src/main.jsx` | Monta React dentro `#root`. |
-| `frontend/src/App.jsx` | Stato globale React: auth, catalogo, utenti, filtri, coda, player, tema e routing interno. |
-| `frontend/src/api/client.js` | Wrapper unico per chiamate fetch: JSON, bearer token e gestione errori. |
+| `frontend/src/App.jsx` | Stato globale React: auth, catalogo, utenti, filtri, coda, player Pi/PC, tema e routing interno. |
+| `frontend/src/api/client.js` | Wrapper unico per chiamate fetch: JSON, bearer token, player Raspberry e gestione errori. |
 | `frontend/src/utils.js` | Helper React per classi CSS, sorgenti, ricerca, durate e YouTube embed. |
 | `frontend/src/styles/app.css` | Stile completo della UI React. |
 
@@ -111,7 +113,7 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `QueuePanel.jsx` | Visualizza e svuota la coda React. |
 | `AdminPanel.jsx` | Crea utenti, resetta password temporanea ed elimina utenti. |
 | `SettingsPanel.jsx` | Cambio password dell'utente loggato. |
-| `PlayerDock.jsx` | Player inferiore React: play, prev, next, progress, shuffle, repeat e volume. |
+| `PlayerDock.jsx` | Player inferiore React: play, prev, next, progress, shuffle, repeat, volume e uscita Pi/PC. |
 
 ## CSS e temi legacy
 

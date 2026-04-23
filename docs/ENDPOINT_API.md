@@ -118,6 +118,83 @@ Regole:
 - la password attuale deve essere valida;
 - dopo il cambio `mustChangePassword` diventa `false`.
 
+## Player Raspberry
+
+Questi endpoint richiedono login. Servono a far uscire la musica dal backend/Raspberry invece che dal browser.
+
+### `GET /api/server-player/status`
+
+Restituisce stato del player server-side.
+
+Risposta:
+
+```json
+{
+  "player": {
+    "available": true,
+    "command": "mpv",
+    "isPlaying": false,
+    "isPaused": false,
+    "position": 0,
+    "duration": 0,
+    "volume": 75
+  }
+}
+```
+
+### `POST /api/server-player/play`
+
+Avvia una traccia su `mpv` lato server.
+
+Body:
+
+```json
+{
+  "trackId": "track-id",
+  "track": {},
+  "startAt": 0,
+  "volume": 0.75
+}
+```
+
+Note:
+
+- `trackId` usa una traccia del catalogo permanente;
+- `track` serve per tracce temporanee e viene accettato solo da admin;
+- su Raspberry/Docker il comando consigliato e' `mpv` con `yt-dlp`.
+
+### `POST /api/server-player/pause`
+
+Body:
+
+```json
+{ "paused": true }
+```
+
+Con `paused: false` riprende la traccia.
+
+### `POST /api/server-player/seek`
+
+Body:
+
+```json
+{ "seconds": 42 }
+```
+
+### `POST /api/server-player/volume`
+
+Body:
+
+```json
+{ "volume": 0.6 }
+```
+
+`volume` va da `0` a `1`.
+
+### `POST /api/server-player/stop`
+
+Ferma il processo `mpv` attivo e pulisce lo stato del player server-side.
+
 ## Utenti
 
 Tutti gli endpoint di questa sezione sono solo admin.

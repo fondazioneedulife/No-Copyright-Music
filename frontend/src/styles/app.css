@@ -1513,10 +1513,38 @@ body[data-theme="light"] .pagination .is-active {
   accent-color: var(--accent);
 }
 
-.volume {
+.volume-cluster {
+  /* Uscita compatta: il selettore Pi/PC sta accanto al volume senza rubare spazio al player. */
   display: flex;
   align-items: center;
   justify-self: end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.playback-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--muted);
+}
+
+.playback-target.is-active {
+  color: var(--text);
+  border-color: rgba(255, 68, 80, 0.8);
+  background: rgba(255, 68, 80, 0.12);
+}
+
+.playback-target .player-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.volume {
+  display: flex;
+  align-items: center;
   gap: 10px;
   color: var(--muted);
   font-size: 0.78rem;
@@ -1593,8 +1621,9 @@ body[data-theme="light"] .pagination .is-active {
     right: auto;
   }
 
-  .volume {
+  .volume-cluster {
     justify-self: stretch;
+    justify-content: center;
   }
 
   .filter-rack,

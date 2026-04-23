@@ -146,6 +146,55 @@ export function importSessionLink(token, url) {
   });
 }
 
+export function fetchServerPlayerStatus(token) {
+  return apiRequest("/api/server-player/status", { token });
+}
+
+export function playServerTrack(token, { track, startAt = 0, volume = 0.75 }) {
+  // Player Raspberry: il browser invia solo comandi, l'audio viene emesso dal backend.
+  return apiRequest("/api/server-player/play", {
+    method: "POST",
+    token,
+    body: {
+      track,
+      trackId: track?.id,
+      startAt,
+      volume,
+    },
+  });
+}
+
+export function pauseServerTrack(token, paused = true) {
+  return apiRequest("/api/server-player/pause", {
+    method: "POST",
+    token,
+    body: { paused },
+  });
+}
+
+export function seekServerTrack(token, seconds) {
+  return apiRequest("/api/server-player/seek", {
+    method: "POST",
+    token,
+    body: { seconds },
+  });
+}
+
+export function setServerTrackVolume(token, volume) {
+  return apiRequest("/api/server-player/volume", {
+    method: "POST",
+    token,
+    body: { volume },
+  });
+}
+
+export function stopServerTrack(token) {
+  return apiRequest("/api/server-player/stop", {
+    method: "POST",
+    token,
+  });
+}
+
 export function createTrack(token, trackPayload) {
   return apiRequest("/api/tracks", {
     method: "POST",

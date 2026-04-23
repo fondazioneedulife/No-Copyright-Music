@@ -36,6 +36,10 @@ npm start
 | `CLEARWAVE_UPLOADS_DIR` | `server.js` | Percorso alternativo per audio/licenze caricati. |
 | `CLEARWAVE_ENABLE_DEMOS` | `server.js` | Se `1`, reinserisce demo locali. In produzione tienilo `0`. |
 | `CLEARWAVE_AUTO_EXPAND` | `server.js` | Se `1`, prova un piccolo auto-import all'avvio. |
+| `CLEARWAVE_SERVER_PLAYER` | `server.js` | Se `1`, abilita il controllo `mpv` lato server/Raspberry. |
+| `CLEARWAVE_PLAYER_COMMAND` | `server.js` | Comando usato per il player server-side, default `mpv`. |
+| `CLEARWAVE_SERVER_VOLUME` | `server.js` | Volume iniziale del player Raspberry, 0-100. |
+| `ALSA_CARD` | Docker/Raspberry | Scheda audio ALSA esposta al container tramite `/dev/snd`. |
 | `PORT` | `server.js` | Porta del server, default `3000`. |
 
 ## Dove sono nel codice
@@ -47,6 +51,7 @@ const jamendoClientId = process.env.JAMENDO_CLIENT_ID || process.env.JAMIENDO_CL
 const audioDbApiKey = process.env.THEAUDIODB_API_KEY || process.env.AUDIODB_API_KEY;
 const audiusApiKey = process.env.AUDIUS_API_KEY;
 const youtubeApiKey = process.env.YOUTUBE_API_KEY;
+const serverPlayerCommand = process.env.CLEARWAVE_PLAYER_COMMAND || "mpv";
 ```
 
 ## Provider attivi
@@ -133,6 +138,22 @@ Per lavorare senza chiamate esterne usa:
 
 ```powershell
 $env:CLEARWAVE_AUTO_EXPAND = "0"
+```
+
+### `CLEARWAVE_SERVER_PLAYER`
+
+Se vale `1`, il backend espone il player Raspberry e puo' avviare `mpv`.
+
+In Docker su Raspberry usa:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.raspberry.yml up -d --build
+```
+
+Per disattivarlo in ambienti senza audio server:
+
+```powershell
+$env:CLEARWAVE_SERVER_PLAYER = "0"
 ```
 
 ## Rotazione chiavi

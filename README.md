@@ -13,7 +13,7 @@ Il progetto contiene:
 - import da Jamendo e YouTube whitelist;
 - supporto provider Audius e TheAudioDB;
 - upload manuale audio e licenze;
-- player globale;
+- player globale browser/Raspberry, con audio server-side tramite `mpv`;
 - documentazione tecnica e operativa.
 
 ## Avvio rapido
@@ -81,6 +81,7 @@ Dopo il primo login cambia subito password da Impostazioni.
 | `npm run preview:react` | Anteprima Vite della build React. |
 | `npm run docker:build` | Costruisce l'immagine Docker locale. |
 | `npm run docker:up` | Avvia ClearWave con Docker Compose. |
+| `npm run docker:up:pi` | Avvia ClearWave con override Raspberry e audio server-side. |
 | `npm run docker:down` | Ferma il servizio Docker Compose mantenendo i volumi. |
 
 ## Struttura essenziale
@@ -99,6 +100,7 @@ Dopo il primo login cambia subito password da Impostazioni.
 | `docs/` | Documentazione completa del progetto. |
 | `Dockerfile` | Immagine Docker multi-stage con build React e runtime Node. |
 | `docker-compose.yml` | Avvio container con volumi persistenti e variabili ambiente. |
+| `docker-compose.raspberry.yml` | Override per usare l'audio ALSA del Raspberry Pi dal container. |
 
 ## Documentazione
 
@@ -138,6 +140,14 @@ docker compose up -d --build
 
 I dati runtime Docker vivono in volumi `clearwave-data` e `clearwave-uploads`, quindi non si perdono quando ricrei il container.
 
+Per usare il Raspberry come uscita audio, avvia con l'override dedicato:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.raspberry.yml up -d --build
+```
+
+Nel player React seleziona `Pi`: da quel momento il browser comanda il backend e la musica esce dal Raspberry, non dal PC.
+
 ## Backend in breve
 
 `server.js` espone:
@@ -147,6 +157,7 @@ I dati runtime Docker vivono in volumi `clearwave-data` e `clearwave-uploads`, q
 - API utenti sotto `/api/users`;
 - API catalogo sotto `/api/tracks`;
 - API discovery/import sotto `/api/discovery/...`;
+- API player Raspberry sotto `/api/server-player/...`;
 - media dinamici come preview WAV, download e proxy copertine;
 - UI React da `/` e `/react/`;
 - UI legacy di fallback da `/legacy`.
@@ -167,7 +178,7 @@ Funzioni React attuali:
 - login/logout;
 - catalogo filtrabile;
 - coda;
-- player;
+- player con uscita `Pi` server-side o `PC` browser;
 - tema dark/light;
 - gestione utenti admin;
 - import sicuro da Jamendo/YouTube whitelist;

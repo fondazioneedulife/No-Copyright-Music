@@ -14,9 +14,14 @@ import {
   importSessionLink,
   login,
   logout,
+  pauseServerTrack,
+  playServerTrack,
   readStoredToken,
   resetUserPassword,
   searchDiscovery,
+  seekServerTrack,
+  setServerTrackVolume,
+  stopServerTrack,
   storeToken,
 } from "./api/client.js";
 import { AdminPanel } from "./components/AdminPanel.jsx";
@@ -71,6 +76,10 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.75);
+  const [playbackTarget, setPlaybackTarget] = useState(
+    () => window.localStorage.getItem("clearwave-playback-target") || "server"
+  );
+  const [playerNotice, setPlayerNotice] = useState("");
   const [shuffleEnabled, setShuffleEnabled] = useState(false);
   const [repeatMode, setRepeatMode] = useState("off");
   const [embedSource, setEmbedSource] = useState("");
@@ -98,12 +107,22 @@ export default function App() {
   }, [queueIds]);
 
   useEffect(() => {
+    // Target audio salvato: sul Raspberry l'app riparte gia' in modalita' server-side.
+    window.localStorage.setItem("clearwave-playback-target", playbackTarget);
+  }, [playbackTarget]);
+
+  useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume;
     }
 
     sendEmbedVolume(volume);
-  }, [volume]);
+    if (token && playbackTarget === "server") {
+      void setServerTrackVolume(token, volume).catch((error) => {
+        setPlayerNotice(error.message || "Volume Raspberry non raggiungibile.");
+      });
+    }
+  }, [volume, playbackTarget, token]);
 
   useEffect(() => {
     // Bootstrap sessione: se il token e' ancora valido, saltiamo la schermata login.
@@ -292,12 +311,18 @@ export default function App() {
   }
 
   async function handleLogout() {
-    try {
-      if (token) {
-        await logout(token);
+    if (token) {
+      try {
+        await stopServerTrack(token);
+      } catch {
+        // Se il player Raspberry non e' attivo, il logout deve comunque proseguire.
       }
-    } catch {
-      // Anche se il backend non risponde, la sessione locale va pulita.
+
+      try {
+        await logout(token);
+      } catch {
+        // Anche se il backend non risponde, la sessione locale va pulita.
+      }
     }
 
     storeToken("");
@@ -312,6 +337,7 @@ export default function App() {
     setAdminStatus("");
     setSettingsStatus("");
     setDiscoveryResults([]);
+    setPlayerNotice("");
   }
 
   async function refreshUsers() {
@@ -564,7 +590,8 @@ export default function App() {
   }
 
   function syncEmbedClock() {
-    if (playerMode !== "embed" || !embedClockRef.current.startedAt) {
+    // Lo stesso clock ottimistico vale per YouTube embed e per il Raspberry controllato via API.
+    if ((playerMode !== "embed" && playerMode !== "server") || !embedClockRef.current.startedAt) {
       return currentTime;
     }
 
@@ -599,11 +626,22 @@ export default function App() {
       updateClock(pausedAt);
     }
 
+    if (playerMode === "server") {
+      const pausedAt = syncEmbedClock();
+      embedClockRef.current = { baseTime: pausedAt, startedAt: 0 };
+      updateClock(pausedAt);
+      if (token) {
+        void pauseServerTrack(token, true).catch((error) => {
+          setPlayerNotice(error.message || "Pausa Raspberry non riuscita.");
+        });
+      }
+    }
+
     setIsPlaying(false);
   }
 
   function playTrack(track, options = {}) {
-    // Player misto: audio diretto per Jamendo/file, iframe interno per YouTube embed.
+    // Player misto: Raspberry via backend quando selezionato, browser locale come fallback.
     const audio = audioRef.current;
     if (!audio) {
       return;
@@ -619,6 +657,43 @@ export default function App() {
     const nextDuration = durationSecondsFor(track);
     setActiveTrack(track);
     updateClock(startAt, nextDuration);
+
+    if (playbackTarget === "server") {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      stopEmbedPlayback(0);
+      setPlayerMode("server");
+      setIsPlaying(true);
+      setPlayerNotice("");
+      embedClockRef.current = { baseTime: startAt, startedAt: performance.now() };
+
+      if (!token) {
+        setIsPlaying(false);
+        setPlayerNotice("Accesso richiesto per comandare il Raspberry.");
+        return;
+      }
+
+      void playServerTrack(token, { track, startAt, volume })
+        .then((payload) => {
+          const serverDuration = Number(payload.player?.duration || nextDuration);
+          if (serverDuration > 0) {
+            updateClock(startAt, serverDuration);
+          }
+          setPlayerNotice("");
+        })
+        .catch((error) => {
+          embedClockRef.current = { baseTime: startAt, startedAt: 0 };
+          setIsPlaying(false);
+          setPlayerMode("idle");
+          setPlayerNotice(error.message || "Player Raspberry non raggiungibile.");
+        });
+      return;
+    }
+
+    if (playerMode === "server" && token) {
+      void stopServerTrack(token).catch(() => {});
+    }
 
     if (isYouTubeTrack(track)) {
       audio.pause();
@@ -708,6 +783,9 @@ export default function App() {
       pausePlayback();
       setActiveTrack(null);
       stopEmbedPlayback(0);
+      if (playerMode === "server" && token) {
+        void stopServerTrack(token).catch(() => {});
+      }
       updateClock(0, 0);
     }
   }
@@ -719,6 +797,9 @@ export default function App() {
       pausePlayback();
       setActiveTrack(null);
       stopEmbedPlayback(0);
+      if (playerMode === "server" && token) {
+        void stopServerTrack(token).catch(() => {});
+      }
       updateClock(0, 0);
     }
   }
@@ -768,10 +849,45 @@ export default function App() {
         setEmbedSource(youtubeEmbedSourceFor(activeTrack, nextTime));
       }
     }
+
+    if (playerMode === "server") {
+      updateClock(nextTime, duration);
+      embedClockRef.current = { baseTime: nextTime, startedAt: isPlaying ? performance.now() : 0 };
+      if (token) {
+        void seekServerTrack(token, nextTime).catch((error) => {
+          setPlayerNotice(error.message || "Seek Raspberry non riuscito.");
+        });
+      }
+    }
   }
 
   function toggleRepeatMode() {
     setRepeatMode((current) => (current === "off" ? "all" : current === "all" ? "one" : "off"));
+  }
+
+  function togglePlaybackTarget() {
+    // Cambio uscita: Browser resta utile in sviluppo, Raspberry e' l'uscita reale in produzione.
+    const nextTarget = playbackTarget === "server" ? "browser" : "server";
+    if (playbackTarget === "server" && playerMode === "server" && token) {
+      void stopServerTrack(token).catch(() => {});
+      setIsPlaying(false);
+      embedClockRef.current = { baseTime: currentTime, startedAt: 0 };
+    }
+
+    if (nextTarget === "server" && playerMode === "audio" && audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+
+    if (nextTarget === "server" && playerMode === "embed") {
+      const pausedAt = syncEmbedClock();
+      stopEmbedPlayback(pausedAt);
+      updateClock(pausedAt, duration);
+      setIsPlaying(false);
+    }
+
+    setPlaybackTarget(nextTarget);
+    setPlayerNotice(nextTarget === "server" ? "Uscita audio: Raspberry." : "Uscita audio: browser.");
   }
 
   function handleEnded() {
@@ -782,6 +898,9 @@ export default function App() {
     }
 
     stopEmbedPlayback(0);
+    if (playerMode === "server" && token) {
+      void stopServerTrack(token).catch(() => {});
+    }
     updateClock(0, duration);
     const moved = playAdjacent(1, { fromEnded: true });
     if (!moved) {
@@ -790,7 +909,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (playerMode !== "embed" || !isPlaying) {
+    if ((playerMode !== "embed" && playerMode !== "server") || !isPlaying) {
       return undefined;
     }
 
@@ -927,12 +1046,15 @@ export default function App() {
         duration={duration}
         volume={volume}
         setVolume={setVolume}
+        playbackTarget={playbackTarget}
+        playerNotice={playerNotice}
         shuffleEnabled={shuffleEnabled}
         repeatMode={repeatMode}
         onToggle={() => (activeTrack ? playTrack(activeTrack) : playAdjacent(1))}
         onNext={() => playAdjacent(1)}
         onPrev={() => playAdjacent(-1)}
         onSeek={handleSeek}
+        onTogglePlaybackTarget={togglePlaybackTarget}
         onToggleShuffle={() => setShuffleEnabled((current) => !current)}
         onToggleRepeat={toggleRepeatMode}
       />

@@ -1,0 +1,12 @@
+services:
+  clearwave:
+    # Override solo Raspberry/Linux: collega l'audio ALSA del Pi al container.
+    devices:
+      - /dev/snd:/dev/snd
+    group_add:
+      - audio
+    environment:
+      CLEARWAVE_SERVER_PLAYER: "${CLEARWAVE_SERVER_PLAYER:-1}"
+      CLEARWAVE_PLAYER_COMMAND: "${CLEARWAVE_PLAYER_COMMAND:-mpv}"
+      CLEARWAVE_SERVER_VOLUME: "${CLEARWAVE_SERVER_VOLUME:-75}"
+      ALSA_CARD: "${ALSA_CARD:-0}"

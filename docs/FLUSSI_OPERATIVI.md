@@ -32,6 +32,16 @@ npm start
 
 Poi apri `http://localhost:3000` oppure `http://localhost:3000/react/`.
 
+## Avvio su Raspberry Pi
+
+Per far uscire la musica dal Raspberry e non dal PC, usa Docker con l'override audio:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.raspberry.yml up -d --build
+```
+
+Apri l'app da browser con l'IP del Raspberry, poi nel player lascia selezionato `Pi`.
+
 ## Primo accesso
 
 Al primo avvio, se `data/clearwave-auth.sqlite` non esiste, il backend crea un admin.
@@ -93,13 +103,17 @@ La UI React include anche playlist automatiche, archivio, discovery/import admin
 
 ## Player
 
-ClearWave puo' riprodurre tre tipi di sorgente:
+ClearWave puo' riprodurre dal browser (`PC`) oppure dal backend/Raspberry (`Pi`).
+
+In modalita' `Pi`, React invia comandi a `/api/server-player/...`; il backend avvia `mpv` sul server e quindi l'audio esce fisicamente dal Raspberry.
+
+Sorgenti supportate:
 
 | Tipo | Come viene riprodotto |
 | --- | --- |
-| Audio locale/upload | Tag audio HTML con `audioPath`. |
-| Jamendo o provider con stream diretto | Tag audio HTML con `playbackPath` o URL compatibile. |
-| YouTube | Iframe embed interno, senza download audio. |
+| Audio locale/upload | `mpv` sul server in modalita' `Pi`, tag audio HTML in modalita' `PC`. |
+| Jamendo o provider con stream diretto | `mpv` o tag audio HTML, secondo uscita selezionata. |
+| YouTube | `mpv` + `yt-dlp` in modalita' `Pi`, iframe embed interno in modalita' `PC`. |
 | Nessuna sorgente diretta | Preview WAV generata dal backend. |
 
 Il player React gestisce play/pausa, precedente, successivo, seek, volume, shuffle e repeat.

@@ -14,6 +14,7 @@ flowchart LR
   AuthDb["data/clearwave-auth.sqlite"]
   Uploads["uploads/audio + uploads/licenses"]
   Providers["Jamendo / YouTube / Audius / TheAudioDB"]
+  Mpv["mpv sul Raspberry<br/>audio server-side"]
 
   Browser --> React
   Browser -. fallback .-> Legacy
@@ -23,6 +24,7 @@ flowchart LR
   Server --> AuthDb
   Server --> Uploads
   Server --> Providers
+  Server --> Mpv
 ```
 
 ## Backend
@@ -38,6 +40,7 @@ Il backend gestisce:
 - upload locali;
 - proxy/redirect media;
 - import da provider;
+- player server-side per Raspberry tramite `mpv`;
 - generazione preview WAV;
 - rendering HTML legacy con partial;
 - serving della build React.
@@ -113,16 +116,28 @@ Il backend espone:
 
 - `/api/tracks/:id/preview.wav`;
 - `/api/tracks/:id/download`;
+- `/api/server-player/status`;
+- `/api/server-player/play`;
+- `/api/server-player/pause`;
+- `/api/server-player/seek`;
+- `/api/server-player/volume`;
+- `/api/server-player/stop`;
 - `/api/covers/jamendo/:trackId.jpg`;
 - `/api/providers/audius/:id/stream`;
 - `/uploads/...`;
 - `/assets/...`.
 
-Il player sceglie la sorgente migliore:
+Il player React ha due uscite:
+
+1. `Pi`: il browser manda comandi API e `server.js` avvia `mpv` sul Raspberry;
+2. `PC`: fallback browser con audio tag o iframe YouTube.
+
+Il backend sceglie la sorgente migliore:
 
 1. audio locale o stream diretto;
-2. embed YouTube;
-3. preview WAV generata.
+2. URL YouTube passato a `mpv`/`yt-dlp` quando l'uscita e' `Pi`;
+3. embed YouTube quando l'uscita e' `PC`;
+4. preview WAV generata.
 
 La preview WAV e' pensata come fallback tecnico, non come sostituto di un master musicale reale.
 
@@ -201,6 +216,7 @@ Responsabilita' attuali:
 - filtri;
 - coda;
 - player con seek, volume, shuffle e repeat;
+- selettore audio `Pi/PC`, con `Pi` pensato per la produzione su Raspberry;
 - gestione utenti admin;
 - import sicuro e playlist temporanea admin;
 - upload e archivio licenze;

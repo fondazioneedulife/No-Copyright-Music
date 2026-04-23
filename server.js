@@ -1,8 +1,11 @@
 const http = require("node:http");
+const net = require("node:net");
+const os = require("node:os");
 const path = require("node:path");
 const fsSync = require("node:fs");
 const fs = require("node:fs/promises");
 const crypto = require("node:crypto");
+const { spawn } = require("node:child_process");
 const { DatabaseSync } = require("node:sqlite");
 
 // Percorsi principali dell'app: tutto resta locale e puo' essere spostato con variabili ambiente.
@@ -30,6 +33,20 @@ const audiusApiKey = process.env.AUDIUS_API_KEY;
 const youtubeApiKey = process.env.YOUTUBE_API_KEY;
 const jamendoCoverCache = new Map();
 const authSessions = new Map();
+const serverPlayerCommand = process.env.CLEARWAVE_PLAYER_COMMAND || "mpv";
+const serverPlayer = {
+  // Stato del player lato Raspberry: React diventa telecomando, l'audio esce dal server.
+  process: null,
+  socketPath: "",
+  activeTrack: null,
+  startedAt: 0,
+  pausedAt: 0,
+  duration: 0,
+  isPaused: false,
+  isStopping: false,
+  lastError: "",
+  volume: Number(process.env.CLEARWAVE_SERVER_VOLUME || 75),
+};
 
 // Canali YouTube considerati "sicuri" per import permanente. Ogni traccia va comunque verificata.
 const youtubeCuratedChannels = [
@@ -3929,6 +3946,305 @@ function localAudioPathForTrack(track) {
   return resolveUploadPath(audioPath);
 }
 
+function serverPlayerSocketPath() {
+  // mpv espone una piccola API locale: su Linux/Raspberry usiamo un socket in /tmp.
+  if (process.platform === "win32") {
+    return "\\\\.\\pipe\\clearwave-mpv";
+  }
+
+  return path.join(os.tmpdir(), "clearwave-mpv.sock");
+}
+
+function cleanupServerPlayerSocket(socketPath) {
+  if (!socketPath || process.platform === "win32") {
+    return;
+  }
+
+  try {
+    fsSync.unlinkSync(socketPath);
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      serverPlayer.lastError = error.message;
+    }
+  }
+}
+
+function currentServerPlayerPosition() {
+  if (!serverPlayer.activeTrack) {
+    return 0;
+  }
+
+  if (serverPlayer.isPaused || !serverPlayer.startedAt) {
+    return Math.max(0, serverPlayer.pausedAt || 0);
+  }
+
+  const elapsed = (Date.now() - serverPlayer.startedAt) / 1000;
+  return Math.max(0, elapsed);
+}
+
+function serverPlayerStatus() {
+  const position = currentServerPlayerPosition();
+  return {
+    available: process.env.CLEARWAVE_SERVER_PLAYER !== "0",
+    command: serverPlayerCommand,
+    activeTrack: serverPlayer.activeTrack,
+    duration: serverPlayer.duration,
+    error: serverPlayer.lastError,
+    isPlaying: Boolean(serverPlayer.activeTrack && serverPlayer.process && !serverPlayer.isPaused),
+    isPaused: Boolean(serverPlayer.activeTrack && serverPlayer.isPaused),
+    position,
+    progress:
+      serverPlayer.duration > 0 ? Math.min(100, (position / serverPlayer.duration) * 100) : 0,
+    volume: Math.max(0, Math.min(100, serverPlayer.volume)),
+  };
+}
+
+function absoluteInternalUrl(requestPath) {
+  const port = Number(process.env.PORT) || 3000;
+  return `http://127.0.0.1:${port}${requestPath}`;
+}
+
+function youtubeWatchUrl(track) {
+  const videoId = firstString(track.youtubeVideoId);
+  return videoId ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}` : "";
+}
+
+function serverPlayerSourceForTrack(track) {
+  const normalized = attachComputedFields(track);
+  const localAudioPath = localAudioPathForTrack(normalized);
+  if (localAudioPath && fsSync.existsSync(localAudioPath)) {
+    return localAudioPath;
+  }
+
+  const youtubeUrl = firstString(normalized.sourceUrl, youtubeWatchUrl(normalized));
+  if (normalized.youtubeVideoId && youtubeUrl) {
+    return youtubeUrl;
+  }
+
+  const streamPath = firstString(normalized.audioPath, normalized.playbackPath, normalized.previewPath);
+  if (!streamPath) {
+    throw httpError(400, "Questa traccia non ha una sorgente audio riproducibile dal server.");
+  }
+
+  if (/^https?:\/\//i.test(streamPath)) {
+    return streamPath;
+  }
+
+  if (streamPath.startsWith("/")) {
+    return absoluteInternalUrl(streamPath);
+  }
+
+  throw httpError(400, "Sorgente audio non valida per il player Raspberry.");
+}
+
+function stopServerPlayerProcess() {
+  if (serverPlayer.process) {
+    serverPlayer.isStopping = true;
+    try {
+      serverPlayer.process.kill("SIGTERM");
+    } catch {
+      // Se mpv e' gia' terminato, puliamo comunque lo stato sotto.
+    }
+  }
+
+  cleanupServerPlayerSocket(serverPlayer.socketPath);
+  serverPlayer.process = null;
+  serverPlayer.socketPath = "";
+  serverPlayer.activeTrack = null;
+  serverPlayer.startedAt = 0;
+  serverPlayer.pausedAt = 0;
+  serverPlayer.duration = 0;
+  serverPlayer.isPaused = false;
+  serverPlayer.isStopping = false;
+}
+
+function waitForServerPlayerReady(processRef, socketPath) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const startedAt = Date.now();
+
+    const finish = (callback, value) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearInterval(timerId);
+      processRef.off("error", onError);
+      processRef.off("exit", onExit);
+      callback(value);
+    };
+
+    const onError = (error) => finish(reject, error);
+    const onExit = (code) => finish(reject, new Error(`mpv terminato subito con codice ${code ?? "sconosciuto"}.`));
+    const timerId = setInterval(() => {
+      if (process.platform === "win32" || fsSync.existsSync(socketPath) || Date.now() - startedAt > 1800) {
+        finish(resolve);
+      }
+    }, 90);
+
+    processRef.once("error", onError);
+    processRef.once("exit", onExit);
+  });
+}
+
+function sendMpvCommand(command) {
+  return new Promise((resolve, reject) => {
+    if (!serverPlayer.process || !serverPlayer.socketPath) {
+      reject(httpError(409, "Player Raspberry non avviato."));
+      return;
+    }
+
+    const socket = net.createConnection(serverPlayer.socketPath);
+    const timeoutId = setTimeout(() => {
+      socket.destroy();
+      reject(httpError(504, "Timeout comunicazione con mpv."));
+    }, 1400);
+
+    socket.setEncoding("utf8");
+    socket.once("connect", () => {
+      socket.write(`${JSON.stringify({ command })}\n`);
+    });
+    socket.once("data", (chunk) => {
+      clearTimeout(timeoutId);
+      socket.end();
+      resolve(chunk);
+    });
+    socket.once("error", (error) => {
+      clearTimeout(timeoutId);
+      reject(error);
+    });
+  });
+}
+
+async function resolveServerPlayerTrack(req, payload) {
+  const user = requireAuthRequest(req);
+  const trackId = firstString(payload?.trackId, payload?.track?.id);
+  if (trackId) {
+    const storedTrack = await findTrackById(trackId);
+    if (storedTrack) {
+      return attachComputedFields(storedTrack);
+    }
+  }
+
+  if (payload?.track && user.role === "admin") {
+    // Le tracce temporanee non sono nel catalogo: solo admin puo' mandarle al player server.
+    return attachComputedFields(payload.track);
+  }
+
+  if (payload?.track) {
+    throw httpError(403, "Solo admin puo' riprodurre sorgenti temporanee sul Raspberry.");
+  }
+
+  throw httpError(404, "Traccia non trovata per il player Raspberry.");
+}
+
+async function playOnServerPlayer(req, payload) {
+  if (process.env.CLEARWAVE_SERVER_PLAYER === "0") {
+    throw httpError(503, "Player Raspberry disattivato da CLEARWAVE_SERVER_PLAYER=0.");
+  }
+
+  const track = await resolveServerPlayerTrack(req, payload);
+  const source = serverPlayerSourceForTrack(track);
+  const startAt = Math.max(0, Number(payload?.startAt) || 0);
+  const volume = Math.round(Math.max(0, Math.min(1, Number(payload?.volume ?? serverPlayer.volume / 100))) * 100);
+  const duration = parseDurationSeconds(track.duration || track.durationSeconds);
+  const socketPath = serverPlayerSocketPath();
+
+  stopServerPlayerProcess();
+  cleanupServerPlayerSocket(socketPath);
+
+  const args = [
+    "--no-video",
+    "--force-window=no",
+    "--idle=no",
+    "--really-quiet",
+    "--ytdl=yes",
+    `--input-ipc-server=${socketPath}`,
+    `--volume=${volume}`,
+  ];
+
+  if (startAt > 0) {
+    args.push(`--start=${startAt}`);
+  }
+
+  args.push(source);
+
+  let processRef;
+  try {
+    processRef = spawn(serverPlayerCommand, args, {
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+  } catch (error) {
+    serverPlayer.lastError = error.message;
+    throw httpError(503, `Player Raspberry non disponibile: ${error.message}`);
+  }
+
+  serverPlayer.process = processRef;
+  serverPlayer.socketPath = socketPath;
+  serverPlayer.activeTrack = track;
+  serverPlayer.startedAt = Date.now() - startAt * 1000;
+  serverPlayer.pausedAt = startAt;
+  serverPlayer.duration = duration;
+  serverPlayer.isPaused = false;
+  serverPlayer.lastError = "";
+  serverPlayer.volume = volume;
+
+  processRef.stderr.on("data", (chunk) => {
+    const message = String(chunk || "").trim();
+    if (message) {
+      serverPlayer.lastError = message.slice(0, 400);
+    }
+  });
+  processRef.once("exit", () => {
+    cleanupServerPlayerSocket(socketPath);
+    if (!serverPlayer.isStopping) {
+      serverPlayer.process = null;
+      serverPlayer.socketPath = "";
+      serverPlayer.isPaused = false;
+      serverPlayer.startedAt = 0;
+      serverPlayer.pausedAt = 0;
+    }
+  });
+
+  try {
+    await waitForServerPlayerReady(processRef, socketPath);
+  } catch (error) {
+    stopServerPlayerProcess();
+    serverPlayer.lastError = error.message;
+    throw httpError(503, `Player Raspberry non avviato: ${error.message}`);
+  }
+
+  return serverPlayerStatus();
+}
+
+async function pauseServerPlayer(payload) {
+  const paused = payload?.paused !== false;
+  const currentPosition = currentServerPlayerPosition();
+  await sendMpvCommand(["set_property", "pause", paused]);
+  serverPlayer.isPaused = paused;
+  serverPlayer.pausedAt = currentPosition;
+  serverPlayer.startedAt = paused ? 0 : Date.now() - currentPosition * 1000;
+  return serverPlayerStatus();
+}
+
+async function seekServerPlayer(payload) {
+  const seconds = Math.max(0, Number(payload?.seconds) || 0);
+  await sendMpvCommand(["seek", seconds, "absolute"]);
+  serverPlayer.pausedAt = seconds;
+  serverPlayer.startedAt = serverPlayer.isPaused ? 0 : Date.now() - seconds * 1000;
+  return serverPlayerStatus();
+}
+
+async function volumeServerPlayer(payload) {
+  const volume = Math.round(Math.max(0, Math.min(1, Number(payload?.volume ?? 0.75))) * 100);
+  serverPlayer.volume = volume;
+  if (serverPlayer.process) {
+    await sendMpvCommand(["set_property", "volume", volume]);
+  }
+  return serverPlayerStatus();
+}
+
 async function serveTrackDownload(res, track) {
   const localAudioPath = localAudioPathForTrack(track);
 
@@ -4085,6 +4401,46 @@ async function requestHandler(req, res) {
     if (req.method === "POST" && pathname === "/api/auth/change-password") {
       const payload = await readJsonBody(req);
       json(res, 200, { user: changeAuthPassword(req, payload) });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/server-player/status") {
+      requireAuthRequest(req);
+      json(res, 200, { player: serverPlayerStatus() });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/server-player/play") {
+      const payload = await readJsonBody(req);
+      json(res, 200, { player: await playOnServerPlayer(req, payload) });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/server-player/pause") {
+      requireAuthRequest(req);
+      const payload = await readJsonBody(req);
+      json(res, 200, { player: await pauseServerPlayer(payload) });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/server-player/seek") {
+      requireAuthRequest(req);
+      const payload = await readJsonBody(req);
+      json(res, 200, { player: await seekServerPlayer(payload) });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/server-player/volume") {
+      requireAuthRequest(req);
+      const payload = await readJsonBody(req);
+      json(res, 200, { player: await volumeServerPlayer(payload) });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/server-player/stop") {
+      requireAuthRequest(req);
+      stopServerPlayerProcess();
+      json(res, 200, { player: serverPlayerStatus() });
       return;
     }
 
