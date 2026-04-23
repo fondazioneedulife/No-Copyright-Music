@@ -21,6 +21,16 @@ services:
       YOUTUBE_API_KEY: "${YOUTUBE_API_KEY:-}"
       AUDIUS_API_KEY: "${AUDIUS_API_KEY:-}"
       THEAUDIODB_API_KEY: "${THEAUDIODB_API_KEY:-}"
+      # Player server-side per Raspberry Pi (audio via ALSA)
+      CLEARWAVE_SERVER_PLAYER: "${CLEARWAVE_SERVER_PLAYER:-1}"
+      CLEARWAVE_PLAYER_COMMAND: "${CLEARWAVE_PLAYER_COMMAND:-mpv}"
+      CLEARWAVE_SERVER_VOLUME: "${CLEARWAVE_SERVER_VOLUME:-75}"
+      ALSA_CARD: "${ALSA_CARD:-}"
+    # Per Raspberry: espone /dev/snd per audio hardware (commenta se non serve)
+    # devices:
+    #   - /dev/snd:/dev/snd
+    # group_add:
+    #   - audio
     volumes:
       # I volumi mantengono catalogo, SQLite, stato import e upload anche quando ricrei il container.
       - clearwave-data:/app/data
