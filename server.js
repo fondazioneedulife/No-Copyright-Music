@@ -4165,9 +4165,16 @@ async function playOnServerPlayer(req, payload) {
   ];
 
   // Configurazione scheda audio ALSA per Raspberry Pi
-  const alsaCard = Number(process.env.ALSA_CARD) || 0;
-  if (alsaCard >= 0) {
-    args.push(`--alsa-device=hw:${alsaCard}`);
+  // Se ALSA_CARD non è impostato, usa il default (nessun parametro -> ALSA default)
+  const alsaCardEnv = process.env.ALSA_CARD;
+  if (alsaCardEnv !== undefined && alsaCardEnv !== "") {
+    const alsaCard = Number(alsaCardEnv);
+    if (!Number.isNaN(alsaCard) && alsaCard >= 0) {
+      args.push(`--alsa-device=hw:${alsaCard}`);
+    }
+  } else {
+    // Usa il device di default di ALSA (più compatibile con Docker)
+    args.push("--alsa-device=default");
   }
 
   if (startAt > 0) {
@@ -4175,6 +4182,9 @@ async function playOnServerPlayer(req, payload) {
   }
 
   args.push(source);
+
+  // Log per debug: mostra il comando mpv completo
+  console.log(`[server-player] Avvio mpv: ${serverPlayerCommand} ${args.join(" ")}`);
 
   let processRef;
   try {
@@ -4200,9 +4210,11 @@ async function playOnServerPlayer(req, payload) {
     const message = String(chunk || "").trim();
     if (message) {
       serverPlayer.lastError = message.slice(0, 400);
+      console.log(`[server-player] mpv stderr: ${message}`);
     }
   });
-  processRef.once("exit", () => {
+  processRef.once("exit", (code) => {
+    console.log(`[server-player] mpv terminato con codice ${code}`);
     cleanupServerPlayerSocket(socketPath);
     if (!serverPlayer.isStopping) {
       serverPlayer.process = null;
