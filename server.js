@@ -4164,6 +4164,12 @@ async function playOnServerPlayer(req, payload) {
     `--volume=${volume}`,
   ];
 
+  // Configurazione scheda audio ALSA per Raspberry Pi
+  const alsaCard = Number(process.env.ALSA_CARD) || 0;
+  if (alsaCard >= 0) {
+    args.push(`--alsa-device=hw:${alsaCard}`);
+  }
+
   if (startAt > 0) {
     args.push(`--start=${startAt}`);
   }
