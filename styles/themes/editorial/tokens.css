@@ -1,0 +1,57 @@
+/* ClearWave rebrand 2026: warm editorial music console, not Spotify-like. */
+:root {
+  --bg: #f4eadb;
+  --bg-elevated: #fff7ea;
+  --panel: rgba(255, 248, 235, 0.92);
+  --panel-soft: #f1dfc4;
+  --panel-strong: #14213d;
+  --border: rgba(20, 33, 61, 0.14);
+  --border-strong: rgba(20, 33, 61, 0.28);
+  --text: #172033;
+  --muted: #6b6259;
+  --muted-strong: #40382f;
+  --accent: #c65f3d;
+  --accent-strong: #8f3d28;
+  --accent-soft: rgba(198, 95, 61, 0.16);
+  --sea: #2f7f83;
+  --sand: #d7b98e;
+  --ink: #14213d;
+  --cream: #fff7ea;
+  --wine: #6b2d3b;
+  --danger-soft: rgba(173, 68, 48, 0.14);
+  --warning: #b46d2b;
+  --shadow: 0 24px 70px rgba(41, 29, 18, 0.18);
+  --radius-xl: 30px;
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --player-dock-height: 108px;
+}
+
+html {
+  background: #e8d8c0;
+}
+
+body {
+  color: var(--text) !important;
+  background:
+    radial-gradient(circle at 7% 2%, rgba(198, 95, 61, 0.24), transparent 26%),
+    radial-gradient(circle at 92% 8%, rgba(47, 127, 131, 0.26), transparent 24%),
+    linear-gradient(135deg, rgba(20, 33, 61, 0.07) 25%, transparent 25%) 0 0 / 46px 46px,
+    linear-gradient(180deg, #f7eddf 0%, #ead8bd 48%, #d8bf9a 100%) !important;
+  font-family: "Aptos Display", "Trebuchet MS", "Segoe UI", sans-serif !important;
+}
+
+body::before,
+body::after {
+  opacity: 0.22 !important;
+  filter: blur(72px) !important;
+}
+
+body::before {
+  background: #c65f3d !important;
+}
+
+body::after {
+  background: #2f7f83 !important;
+}

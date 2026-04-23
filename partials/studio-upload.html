@@ -1,0 +1,154 @@
+                <aside class="upload-panel panel" id="ingest">
+                  <div class="section-heading">
+                    <p class="section-kicker">Upload</p>
+                    <h2>Upload manuale opzionale</h2>
+                  </div>
+                  <p class="panel-copy">
+                    Usalo solo se un giorno vuoi archiviare un file acquistato o scaricato
+                    legalmente fuori dalle API.
+                  </p>
+
+                  <p id="uploadStatus" class="status-banner" hidden></p>
+
+                  <form id="uploadForm" class="upload-form">
+                    <div class="form-grid">
+                      <label class="field">
+                        <span>Titolo</span>
+                        <input id="uploadTitle" name="title" type="text" required />
+                      </label>
+
+                      <label class="field">
+                        <span>Sottotitolo</span>
+                        <input id="uploadSubtitle" name="subtitle" type="text" />
+                      </label>
+
+                      <label class="field">
+                        <span>Mood</span>
+                        <select id="uploadMood" name="mood">
+                          <option value="Upbeat">Upbeat</option>
+                          <option value="Calm">Calm</option>
+                          <option value="Warm">Warm</option>
+                          <option value="Focused">Focused</option>
+                          <option value="Bright">Bright</option>
+                        </select>
+                      </label>
+
+                      <label class="field">
+                        <span>Energy</span>
+                        <select id="uploadEnergy" name="energy">
+                          <option value="Alta">Alta</option>
+                          <option value="Media" selected>Media</option>
+                          <option value="Bassa">Bassa</option>
+                        </select>
+                      </label>
+
+                      <label class="field">
+                        <span>BPM</span>
+                        <input id="uploadBpm" name="bpm" type="number" min="0" step="1" />
+                      </label>
+
+                      <label class="field">
+                        <span>Durata</span>
+                        <input id="uploadDuration" name="duration" type="text" placeholder="02:30" />
+                      </label>
+
+                      <label class="field">
+                        <span>Licenza</span>
+                        <input id="uploadLicense" name="license" type="text" required />
+                      </label>
+
+                      <label class="field">
+                        <span>Dettaglio licenza</span>
+                        <input
+                          id="uploadLicenseDetail"
+                          name="licenseDetail"
+                          type="text"
+                          placeholder="Uso commerciale, no broadcast TV"
+                        />
+                      </label>
+
+                      <label class="field">
+                        <span>Usi commerciali</span>
+                        <input
+                          id="uploadUseCases"
+                          name="useCases"
+                          type="text"
+                          placeholder="ADV digital, Social media, Retail store"
+                        />
+                      </label>
+
+                      <label class="field">
+                        <span>Formati disponibili</span>
+                        <input id="uploadFormats" name="formats" type="text" placeholder="WAV, MP3" />
+                      </label>
+
+                      <label class="field">
+                        <span>Strumento principale</span>
+                        <input id="uploadInstrument" name="instrument" type="text" />
+                      </label>
+
+                      <label class="field">
+                        <span>Stem</span>
+                        <input id="uploadStems" name="stems" type="number" min="0" step="1" />
+                      </label>
+                    </div>
+
+                    <label class="field">
+                      <span>Tag</span>
+                      <input
+                        id="uploadTags"
+                        name="tags"
+                        type="text"
+                        placeholder="fashion, promo, voiceover-safe"
+                      />
+                    </label>
+
+                    <label class="field">
+                      <span>URL sorgente o marketplace</span>
+                      <input
+                        id="uploadSourceUrl"
+                        name="sourceUrl"
+                        type="url"
+                        placeholder="https://..."
+                      />
+                    </label>
+
+                    <label class="field">
+                      <span>Descrizione</span>
+                      <textarea id="uploadDescription" name="description" rows="4"></textarea>
+                    </label>
+
+                    <label class="field">
+                      <span>Note diritti / compliance</span>
+                      <textarea id="uploadRightsNotes" name="rightsNotes" rows="3"></textarea>
+                    </label>
+
+                    <div class="field-grid field-grid-split">
+                      <label class="field">
+                        <span>File audio</span>
+                        <input id="uploadAudioFile" name="audioFile" type="file" accept="audio/*" />
+                      </label>
+
+                      <label class="field">
+                        <span>Documento licenza</span>
+                        <input
+                          id="uploadLicenseFile"
+                          name="licenseFile"
+                          type="file"
+                          accept=".pdf,.txt,.png,.jpg,.jpeg,.doc,.docx"
+                        />
+                      </label>
+                    </div>
+
+                    <label class="toggle">
+                      <input id="uploadAttributionRequired" name="attributionRequired" type="checkbox" />
+                      <span>Questa traccia richiede attribuzione finale</span>
+                    </label>
+
+                    <div class="project-actions">
+                      <button id="submitUploadButton" class="button button-primary" type="submit">
+                        Salva nel catalogo
+                      </button>
+                    </div>
+                  </form>
+                </aside>

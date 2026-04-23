@@ -1,0 +1,17 @@
+{
+  "name": "clearwave-library",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web app musicale con backend locale per catalogo commerciale, upload brani e archivio licenze.",
+  "scripts": {
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\start-local.ps1",
+    "start:plain": "node server.js",
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\start-react-local.ps1",
+    "dev:react": "npm --prefix frontend run dev",
+    "build:react": "npm --prefix frontend run build",
+    "preview:react": "npm --prefix frontend run preview",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  }
+}

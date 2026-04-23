@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Trap music artwork">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#08060d"/>
+      <stop offset="0.55" stop-color="#23113b"/>
+      <stop offset="1" stop-color="#1ed760"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="64%" cy="42%" r="48%">
+      <stop stop-color="#8a5cff" stop-opacity="0.74"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <g fill="none" stroke-linejoin="round">
+    <path d="M512 138 836 698H188z" stroke="#fff" stroke-opacity="0.22" stroke-width="18"/>
+    <path d="M512 262 728 636H296z" stroke="#1ed760" stroke-opacity="0.52" stroke-width="10"/>
+    <path d="M512 390 616 572H408z" stroke="#fff" stroke-opacity="0.28" stroke-width="7"/>
+  </g>
+</svg>

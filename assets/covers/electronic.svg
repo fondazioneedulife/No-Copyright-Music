@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Electronic music artwork">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#062b2f"/>
+      <stop offset="0.48" stop-color="#123e52"/>
+      <stop offset="1" stop-color="#08100d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="34%" r="58%">
+      <stop stop-color="#46f08a" stop-opacity="0.9"/>
+      <stop offset="0.46" stop-color="#25a7ff" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <g fill="none" stroke="#7fffb0" stroke-opacity="0.36" stroke-width="3">
+    <path d="M-40 720C176 608 308 670 512 548s336-150 552-44"/>
+    <path d="M-40 784C186 640 348 724 512 612s342-138 552-30"/>
+    <path d="M-40 848C168 700 352 790 512 690s330-120 552-6"/>
+  </g>
+  <g fill="#ffffff" opacity="0.06">
+    <circle cx="208" cy="190" r="120"/>
+    <circle cx="824" cy="774" r="180"/>
+  </g>
+  <g fill="none" stroke="#fff" stroke-opacity="0.08" stroke-width="2">
+    <path d="M136 120h752M136 240h752M136 360h752M136 480h752M136 600h752M136 720h752M136 840h752"/>
+    <path d="M184 80v864M304 80v864M424 80v864M544 80v864M664 80v864M784 80v864"/>
+  </g>
+</svg>

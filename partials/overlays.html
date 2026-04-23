@@ -1,0 +1,63 @@
+    <section id="embeddedPlayer" class="embedded-player" hidden aria-label="Player sorgente interno">
+      <div class="embedded-player-header">
+        <div>
+          <strong id="embeddedPlayerTitle">Player interno</strong>
+          <span id="embeddedPlayerMeta">Riproduzione dentro ClearWave</span>
+        </div>
+        <button id="embeddedCloseButton" class="player-stop" type="button">Chiudi</button>
+      </div>
+      <iframe
+        id="embeddedPlayerFrame"
+        title="Player interno"
+        allow="autoplay; encrypted-media; picture-in-picture"
+        allowfullscreen
+      ></iframe>
+    </section>
+
+    <section id="externalRiskModal" class="risk-modal" hidden aria-live="assertive">
+      <div class="risk-modal-card" role="dialog" aria-modal="true" aria-labelledby="externalRiskTitle">
+        <p class="section-kicker">Avviso copyright</p>
+        <h2 id="externalRiskTitle">Canzoni esterne</h2>
+        <p id="externalRiskMessage"></p>
+        <div class="risk-modal-actions">
+          <button id="externalRiskConfirmButton" class="button button-primary" type="button">
+            Ho capito, riproduci
+          </button>
+          <button id="externalRiskCancelButton" class="button button-secondary" type="button">
+            Annulla
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div id="trackContextMenu" class="track-context-menu" hidden>
+      <button id="contextQueueButton" type="button">Aggiungi alla coda</button>
+    </div>
+
+    <section id="authGate" class="auth-gate" hidden aria-live="assertive">
+      <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="authGateTitle">
+        <p class="section-kicker">Accesso ClearWave</p>
+        <h2 id="authGateTitle">Accedi alla libreria</h2>
+        <p>
+          Entra con un account utente o amministratore. L'admin iniziale e' <strong>admin</strong>
+          con password temporanea <strong>admin123</strong>, da cambiare subito nelle impostazioni.
+        </p>
+
+        <label class="field">
+          <span>Username</span>
+          <input id="loginUsername" type="text" autocomplete="username" placeholder="admin oppure nome utente" />
+        </label>
+
+        <label class="field">
+          <span>Password</span>
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password" />
+        </label>
+
+        <div class="auth-actions">
+          <button id="loginButton" class="button button-primary" type="button">Accedi</button>
+          <button id="logoutButton" class="button button-secondary" type="button">Esci</button>
+        </div>
+
+        <p id="authStatus" class="status-banner" hidden></p>
+      </div>
+    </section>

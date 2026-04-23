@@ -1,0 +1,17 @@
+node_modules/
+frontend/dist/
+.tmp-*/
+.tmp-data/
+.tmp-uploads/
+start-local.ps1
+.env
+.env.*
+!.env.example
+data/library.json
+data/youtube-import-state.json
+data/*.sqlite
+data/*.sqlite-*
+uploads/audio/*
+!uploads/audio/.gitkeep
+uploads/licenses/*
+!uploads/licenses/.gitkeep

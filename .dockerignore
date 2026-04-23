@@ -1,0 +1,26 @@
+# Dipendenze e build locali: l'immagine ricostruisce React in modo pulito.
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Runtime locale: in Docker viene montato su volumi persistenti.
+data/
+uploads/audio/*
+uploads/licenses/*
+!uploads/audio/.gitkeep
+!uploads/licenses/.gitkeep
+.tmp-*/
+.tmp-data/
+.tmp-uploads/
+
+# Segreti e configurazioni solo macchina locale.
+start-local.ps1
+.env
+.env.*
+!.env.example
+
+# Metadati non necessari nel contesto Docker.
+.git/
+.gitignore
+Dockerfile
+docker-compose.yml

@@ -1,0 +1,88 @@
+.topbar-search input,
+.field input,
+.field select,
+.field textarea,
+.session-controls input {
+  border: 1px solid rgba(20, 33, 61, 0.12) !important;
+  background: rgba(255, 253, 246, 0.78) !important;
+  color: var(--text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+.topbar-search input::placeholder,
+.field input::placeholder,
+.field textarea::placeholder,
+.session-controls input::placeholder {
+  color: rgba(64, 56, 47, 0.62) !important;
+}
+
+.topbar-search input:focus,
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.session-controls input:focus {
+  border-color: rgba(198, 95, 61, 0.56) !important;
+  background: #fffaf1 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 0 0 4px rgba(198, 95, 61, 0.14) !important;
+}
+
+select,
+.field select,
+.field select option,
+select option {
+  background-color: #263043 !important;
+  color: #fff7ea !important;
+  color-scheme: dark;
+}
+
+.field select option:checked,
+select option:checked {
+  background-color: #c65f3d !important;
+  color: #fff7ea !important;
+}
+
+.topbar-pill,
+.button-secondary,
+.button-ghost,
+.player-stop,
+.player-control,
+.player-mode-control {
+  border-color: rgba(20, 33, 61, 0.14) !important;
+  background: rgba(20, 33, 61, 0.08) !important;
+  color: var(--ink) !important;
+}
+
+.topbar-pill:hover,
+.topbar-pill:focus-visible,
+.button-secondary:hover,
+.button-secondary:focus-visible,
+.button-ghost:hover,
+.button-ghost:focus-visible,
+.player-control:hover,
+.player-control:focus-visible,
+.player-mode-control:hover,
+.player-mode-control:focus-visible {
+  background: rgba(20, 33, 61, 0.14) !important;
+  color: var(--ink) !important;
+}
+
+.button-primary,
+.player-toggle,
+.track-play {
+  background:
+    linear-gradient(135deg, #e0b15f 0%, #c65f3d 58%, #8f3d28 100%) !important;
+  color: #fff9ee !important;
+  box-shadow: 0 16px 32px rgba(198, 95, 61, 0.28) !important;
+}
+
+.button-primary:hover,
+.button-primary:focus-visible,
+.player-toggle:hover,
+.player-toggle:focus-visible,
+.track-play:hover,
+.track-play:focus-visible {
+  filter: saturate(1.05) brightness(1.02);
+  transform: translateY(-2px);
+}

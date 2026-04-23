@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Hip hop music artwork">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#21140d"/>
+      <stop offset="0.55" stop-color="#6b3c1f"/>
+      <stop offset="1" stop-color="#f0a04b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <circle cx="512" cy="512" r="320" fill="#0b0b0b" opacity="0.72"/>
+  <circle cx="512" cy="512" r="210" fill="none" stroke="#f8d29b" stroke-opacity="0.28" stroke-width="16"/>
+  <circle cx="512" cy="512" r="64" fill="#f8d29b" opacity="0.88"/>
+  <g fill="none" stroke="#fff" stroke-opacity="0.08" stroke-width="5">
+    <path d="M150 250c190 80 280-80 430 12s240 56 312-20"/>
+    <path d="M110 790c206-72 328 56 480-32s230-84 340 8"/>
+  </g>
+</svg>

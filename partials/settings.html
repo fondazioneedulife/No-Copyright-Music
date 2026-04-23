@@ -1,0 +1,70 @@
+              <section class="settings-panel panel admin-only" id="impostazioni">
+                <div class="section-heading section-heading-row">
+                  <div>
+                    <p class="section-kicker">Admin</p>
+                    <h2>Impostazioni utenti</h2>
+                  </div>
+                  <span class="tag is-success">Solo amministratore</span>
+                </div>
+
+                <p class="panel-copy">
+                  Da qui l'amministratore crea postazioni e utenti locali. Gli utenti normali
+                  possono ascoltare solo i brani gia' presenti nella libreria, mentre gli admin
+                  possono importare, rimuovere e gestire il catalogo.
+                </p>
+
+                <div class="settings-grid">
+                  <article class="settings-card">
+                    <p class="section-kicker">Nuovo accesso</p>
+                    <h3>Crea utente o postazione</h3>
+                    <div class="account-create-row settings-create-row">
+                      <input id="accountNameInput" type="text" placeholder="Nome utente o postazione" />
+                      <select id="accountRoleSelect" aria-label="Ruolo nuovo account">
+                        <option value="user">Utente normale</option>
+                        <option value="admin">Amministratore</option>
+                      </select>
+                    </div>
+                    <button id="createAccountButton" class="button button-primary" type="button">
+                      Crea utente
+                    </button>
+                    <p id="settingsStatus" class="status-banner" hidden></p>
+                  </article>
+
+                  <article class="settings-card">
+                    <p class="section-kicker">Permessi</p>
+                    <h3>Regole account</h3>
+                    <div class="permission-list">
+                      <p><strong>Admin</strong><span>Importa link, crea utenti, rimuove brani e gestisce la libreria.</span></p>
+                      <p><strong>Utente</strong><span>Ascolta catalogo, usa coda, playlist e shortlist senza modificare il sistema.</span></p>
+                      <p><strong>Sessione temporanea</strong><span>Playlist esterne non verificate spariscono al logout.</span></p>
+                    </div>
+                  </article>
+
+                  <article class="settings-card">
+                    <p class="section-kicker">Password</p>
+                    <h3>Cambia la tua password</h3>
+                    <label class="field">
+                      <span>Password attuale</span>
+                      <input id="currentPasswordInput" type="password" autocomplete="current-password" />
+                    </label>
+                    <label class="field">
+                      <span>Nuova password</span>
+                      <input id="newPasswordInput" type="password" autocomplete="new-password" />
+                    </label>
+                    <button id="changePasswordButton" class="button button-secondary" type="button">
+                      Aggiorna password
+                    </button>
+                    <p id="passwordStatus" class="status-banner" hidden></p>
+                  </article>
+                </div>
+
+                <div class="settings-card settings-users-card">
+                  <div class="section-heading section-heading-row">
+                    <div>
+                      <p class="section-kicker">Utenti registrati</p>
+                      <h3>Controllo accessi locali</h3>
+                    </div>
+                  </div>
+                  <div id="accountsList" class="accounts-list" aria-live="polite"></div>
+                </div>
+              </section>

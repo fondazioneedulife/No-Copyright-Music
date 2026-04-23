@@ -1,0 +1,53 @@
+              <section class="catalog-panel panel" id="catalogo">
+                <div class="section-heading section-heading-row">
+                  <div>
+                    <p class="section-kicker">Catalogo</p>
+                    <h2>Brani disponibili</h2>
+                  </div>
+                  <div class="section-actions">
+                    <a class="inline-link" href="#discovery">Aggiungi brani</a>
+                  </div>
+                </div>
+
+                <div class="filter-rack">
+                  <label class="field">
+                    <span>Genere</span>
+                    <select id="genreSelect"></select>
+                  </label>
+
+                  <label class="field">
+                    <span>Sorgente</span>
+                    <select id="sourceSelect">
+                      <option value="all">YouTube + Jamendo</option>
+                      <option value="youtube">Solo YouTube</option>
+                      <option value="jamendo">Solo Jamendo</option>
+                      <option value="session">Sessione temporanea</option>
+                    </select>
+                  </label>
+
+                  <label class="field field-optional">
+                    <span>Mood</span>
+                    <select id="moodSelect"></select>
+                  </label>
+
+                  <label class="field field-optional field-hidden">
+                    <span>Licenza</span>
+                    <select id="licenseSelect"></select>
+                  </label>
+
+                  <label class="field field-optional field-hidden">
+                    <span>Uso commerciale</span>
+                    <select id="useCaseSelect"></select>
+                  </label>
+
+                  <label class="toggle toggle-optional">
+                    <input id="attributionToggle" type="checkbox" />
+                    <span>Senza attribuzione</span>
+                  </label>
+                </div>
+
+                <p id="libraryStatus" class="status-banner" hidden></p>
+                <p id="resultsSummary" class="results-summary" aria-live="polite"></p>
+                <div id="trackGrid" class="track-grid" aria-live="polite"></div>
+                <div id="catalogPagination" class="catalog-pagination" aria-label="Paginazione catalogo"></div>
+              </section>

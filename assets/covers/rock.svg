@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Rock music artwork">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#100909"/>
+      <stop offset="0.52" stop-color="#55231b"/>
+      <stop offset="1" stop-color="#d4763b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g fill="none" stroke="#f5c08a" stroke-opacity="0.34" stroke-width="5">
+    <path d="M150 208h724M150 314h724M150 420h724M150 526h724M150 632h724M150 738h724"/>
+    <path d="M220 140v740M346 140v740M472 140v740M598 140v740M724 140v740"/>
+  </g>
+  <path d="M300 754 678 210l68 48-378 544z" fill="#111" opacity="0.56"/>
+  <circle cx="672" cy="252" r="72" fill="#f5c08a" opacity="0.38"/>
+</svg>

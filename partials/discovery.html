@@ -1,0 +1,95 @@
+              <section class="discovery-panel panel" id="discovery">
+                <div class="section-heading section-heading-row">
+                  <div>
+                    <p class="section-kicker">Import</p>
+                    <h2>Aggiungi brani</h2>
+                  </div>
+                </div>
+
+                <p class="panel-copy">
+                  Aggiungi piccoli lotti da Jamendo e dai canali YouTube whitelist. Se YouTube
+                  finisce quota, riprova piu' tardi: l'app continua dalla pagina salvata.
+                </p>
+
+                <div class="session-panel">
+                  <div class="session-copy">
+                    <p class="section-kicker">Sessione utente</p>
+                    <h3>Playlist YouTube temporanea</h3>
+                    <p>
+                      Per playlist, video o canali non verificati: entrano solo nella sessione
+                      attiva e spariscono al logout. I 3 canali whitelist vanno invece salvati nel
+                      catalogo sicuro.
+                    </p>
+                  </div>
+                  <div class="session-controls">
+                    <input id="sessionUserInput" type="text" placeholder="Nome utente o postazione" />
+                    <button id="sessionLoginButton" class="button button-primary" type="button">
+                      Entra
+                    </button>
+                    <button id="sessionLogoutButton" class="button button-secondary" type="button">
+                      Esci e pulisci
+                    </button>
+                  </div>
+                  <p id="sessionStatus" class="status-banner" hidden></p>
+                </div>
+
+                <div class="discovery-toolbar">
+                  <label class="field import-link-field">
+                    <span>Importa da link</span>
+                    <input
+                      id="importLinkInput"
+                      type="url"
+                      placeholder="Playlist/video/canale YouTube oppure traccia Jamendo"
+                    />
+                  </label>
+
+                  <label class="field">
+                    <span>Query esterna</span>
+                    <input
+                      id="discoverySearchInput"
+                      type="search"
+                      placeholder="Es. ambient piano, upbeat retail, cinematic"
+                    />
+                  </label>
+
+                  <label class="field field-hidden">
+                    <span>Modalita' diritti</span>
+                    <select id="discoveryRightsMode">
+                      <option value="commercial_ready">Jamendo + YouTube whitelist</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span>Sorgente</span>
+                    <select id="discoveryProviderSelect">
+                      <option value="all">YouTube + Jamendo</option>
+                    </select>
+                  </label>
+
+                  <div class="discovery-actions">
+                    <button id="importLinkButton" class="button button-primary" type="button">
+                      Salva nel catalogo sicuro
+                    </button>
+                    <button id="sessionImportButton" class="button button-secondary" type="button">
+                      Sessione temporanea
+                    </button>
+                    <button id="discoverySearchButton" class="button button-primary" type="button">
+                      Cerca online
+                    </button>
+                    <button id="bulkImportButton" class="button button-secondary" type="button">
+                      Importa lotto
+                    </button>
+                  </div>
+                </div>
+
+                <p class="import-hint">
+                  Catalogo sicuro: Jamendo e i 3 canali YouTube whitelist restano salvati con
+                  controlli licenza. Sessione temporanea: qualsiasi altro link YouTube pubblico ed
+                  embeddabile resta solo per l'utente collegato e viene eliminato al logout.
+                </p>
+
+                <div id="providerPills" class="provider-pills"></div>
+                <p id="discoveryStatus" class="status-banner" hidden></p>
+                <p id="bulkImportStatus" class="status-banner" hidden></p>
+                <div id="discoveryResults" class="discovery-results"></div>
+              </section>

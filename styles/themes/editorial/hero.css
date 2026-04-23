@@ -1,0 +1,107 @@
+.hero-banner {
+  position: relative;
+  min-height: 350px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(47, 127, 131, 0.32), transparent 27%),
+    radial-gradient(circle at 22% 72%, rgba(198, 95, 61, 0.22), transparent 25%),
+    linear-gradient(135deg, rgba(255, 247, 234, 0.96), rgba(222, 194, 151, 0.88)) !important;
+}
+
+.hero-banner::before {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  border: 1px solid rgba(20, 33, 61, 0.12);
+  border-radius: 24px;
+  pointer-events: none;
+}
+
+.hero-banner::after {
+  content: "";
+  position: absolute;
+  right: 34px;
+  top: 34px;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  border: 22px solid rgba(20, 33, 61, 0.08);
+  box-shadow:
+    -96px 150px 0 -48px rgba(198, 95, 61, 0.18),
+    -180px 70px 0 -72px rgba(47, 127, 131, 0.22);
+  pointer-events: none;
+}
+
+.hero-copy h1 {
+  max-width: 14ch;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.hero-copy::before {
+  background: radial-gradient(circle, rgba(198, 95, 61, 0.22), transparent 68%) !important;
+}
+
+.hero-text,
+.panel-copy,
+.hero-spotlight p,
+.info-card p,
+.report-header span,
+.results-summary,
+.status-banner,
+.selection-item span,
+.track-subtitle,
+.archive-note,
+.player-track-copy span,
+.playlist-card p,
+.track-description,
+.import-hint,
+.session-copy p:last-child {
+  color: var(--muted) !important;
+}
+
+.hero-spotlight,
+.hero-metrics article,
+.project-summary article,
+.archive-metrics article,
+.insight-list article,
+.playlist-focus,
+.session-panel,
+.selection-item,
+.selection-empty,
+.report-box,
+.risk-modal-card {
+  border: 1px solid rgba(20, 33, 61, 0.12) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 246, 0.72), rgba(235, 211, 178, 0.44)) !important;
+  color: var(--text) !important;
+}
+
+.hero-metrics strong,
+.project-summary strong,
+.archive-metrics strong,
+.insight-list strong {
+  color: var(--ink) !important;
+}
+
+.inline-link,
+.asset-link {
+  color: var(--wine) !important;
+}
+
+.status-banner {
+  border: 1px solid rgba(20, 33, 61, 0.1);
+  background: rgba(255, 247, 234, 0.66) !important;
+}
+
+.status-banner.is-success {
+  border-color: rgba(47, 127, 131, 0.24);
+  background: rgba(47, 127, 131, 0.13) !important;
+  color: #174f52 !important;
+}
+
+.status-banner.is-error {
+  border-color: rgba(198, 95, 61, 0.28);
+  background: rgba(198, 95, 61, 0.15) !important;
+  color: #7a2f21 !important;
+}

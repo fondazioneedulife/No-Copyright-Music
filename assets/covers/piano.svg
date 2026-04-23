@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Piano music artwork">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#070707"/>
+      <stop offset="0.52" stop-color="#1d2e34"/>
+      <stop offset="1" stop-color="#d4f5e6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g transform="translate(112 206)">
+    <rect width="800" height="500" rx="34" fill="#f7f7ee" opacity="0.88"/>
+    <g fill="#111">
+      <rect x="88" width="62" height="318" rx="0 0 14 14"/>
+      <rect x="204" width="62" height="318" rx="0 0 14 14"/>
+      <rect x="432" width="62" height="318" rx="0 0 14 14"/>
+      <rect x="546" width="62" height="318" rx="0 0 14 14"/>
+      <rect x="660" width="62" height="318" rx="0 0 14 14"/>
+    </g>
+    <g fill="none" stroke="#111" stroke-opacity="0.2" stroke-width="4">
+      <path d="M114 0v500M228 0v500M342 0v500M456 0v500M570 0v500M684 0v500"/>
+    </g>
+  </g>
+</svg>

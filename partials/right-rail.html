@@ -1,0 +1,82 @@
+            <aside class="right-rail">
+              <section class="project-panel panel" id="progetto">
+                <div class="section-heading">
+                  <p class="section-kicker">Shortlist</p>
+                  <h2>Pacchetto commerciale</h2>
+                </div>
+
+                <label class="field">
+                  <span>Nome progetto</span>
+                  <input id="projectName" type="text" placeholder="Campagna estate retail 2026" />
+                </label>
+
+                <label class="field">
+                  <span>Destinazione principale</span>
+                  <select id="projectUsage">
+                    <option value="ADV digital">ADV digital</option>
+                    <option value="Social media">Social media</option>
+                    <option value="Video branded">Video branded</option>
+                    <option value="Retail store">Retail store</option>
+                    <option value="Podcast">Podcast</option>
+                  </select>
+                </label>
+
+                <div class="project-summary">
+                  <article>
+                    <strong id="selectedCount">0</strong>
+                    <span>Tracce selezionate</span>
+                  </article>
+                  <article>
+                    <strong id="selectedAvgBpm">0</strong>
+                    <span>BPM medi</span>
+                  </article>
+                </div>
+
+                <div id="selectionList" class="selection-list"></div>
+
+                <details class="report-box">
+                  <summary>
+                    <h3>Report utilizzo</h3>
+                    <span id="reportStatus">Pronto da esportare</span>
+                  </summary>
+                  <pre id="reportOutput"></pre>
+                </details>
+
+                <div class="project-actions">
+                  <button id="copyReportButton" class="button button-primary" type="button">
+                    Copia report
+                  </button>
+                  <button id="clearSelectionButton" class="button button-secondary" type="button">
+                    Svuota selezione
+                  </button>
+                </div>
+              </section>
+
+              <section class="insight-panel panel">
+                <div class="section-heading">
+                  <p class="section-kicker">Library pulse</p>
+                  <h2>Snapshot live</h2>
+                </div>
+                <p class="panel-copy">
+                  Un colpo d'occhio sul catalogo disponibile e sul mix di tracce subito utilizzabili.
+                </p>
+                <div class="insight-list">
+                  <article>
+                    <span>Catalogo</span>
+                    <strong id="playerLibraryCount">0</strong>
+                  </article>
+                  <article>
+                    <span>Discovery</span>
+                    <strong id="playerDiscoveryCount">0</strong>
+                  </article>
+                  <article>
+                    <span>In shortlist</span>
+                    <strong id="playerSelectionCount">0</strong>
+                  </article>
+                  <article>
+                    <span>Player status</span>
+                    <strong id="playerRailState">Idle</strong>
+                  </article>
+                </div>
+              </section>
+            </aside>

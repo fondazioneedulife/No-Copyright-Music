@@ -1,0 +1,34 @@
+              <section class="playlist-panel panel" id="playlists">
+                <div class="section-heading section-heading-row">
+                  <div>
+                    <p class="section-kicker">Playlist automatiche</p>
+                    <h2>Mix pronti per uso commerciale</h2>
+                  </div>
+                </div>
+
+                <p id="playlistStatus" class="status-banner" hidden></p>
+                <div id="playlistGrid" class="playlist-grid" aria-label="Playlist disponibili"></div>
+
+                <div class="playlist-focus">
+                  <div class="playlist-focus-copy">
+                    <p class="section-kicker">In riproduzione / browse</p>
+                    <h3 id="playlistFocusTitle">Tutta la libreria</h3>
+                    <p id="playlistFocusMeta">Le tracce compatibili appariranno qui.</p>
+                  </div>
+                  <div id="playlistTrackRow" class="playlist-track-row" aria-live="polite"></div>
+                </div>
+
+                <div class="queue-panel">
+                  <div class="section-heading section-heading-row">
+                    <div>
+                      <p class="section-kicker">Coda</p>
+                      <h3>Coda di ascolto</h3>
+                    </div>
+                    <button id="clearQueueButton" class="button button-secondary" type="button">
+                      Svuota coda
+                    </button>
+                  </div>
+                  <p id="queueStatus" class="status-banner" hidden></p>
+                  <div id="queueList" class="queue-list" aria-live="polite"></div>
+                </div>
+              </section>

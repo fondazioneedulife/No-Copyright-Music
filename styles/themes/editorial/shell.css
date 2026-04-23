@@ -1,0 +1,110 @@
+.brand-copy strong,
+.hero-copy h1,
+.hero-spotlight h2,
+.section-heading h2,
+.playlist-focus h3,
+.playlist-card h3,
+.info-card h3,
+.report-header h3,
+.sidebar-card h2,
+.track-card h3,
+.archive-item h3,
+.project-panel h2 {
+  color: var(--text);
+  font-family: Georgia, "Times New Roman", serif !important;
+  letter-spacing: -0.035em;
+}
+
+.app-shell {
+  gap: 14px;
+}
+
+.main-shell {
+  min-width: 0;
+}
+
+.sidebar {
+  top: 12px;
+}
+
+.sidebar,
+.topbar,
+.panel,
+.hero-banner,
+.sidebar-card,
+.project-panel,
+.info-card,
+.archive-panel,
+.upload-panel {
+  border: 1px solid var(--border) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 235, 0.94), rgba(241, 223, 196, 0.86)),
+    var(--panel) !important;
+  box-shadow: var(--shadow) !important;
+  color: var(--text) !important;
+  backdrop-filter: blur(18px) saturate(1.08);
+}
+
+.sidebar {
+  padding: 0;
+}
+
+.brand {
+  margin: 0;
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(145deg, rgba(20, 33, 61, 0.98), rgba(20, 33, 61, 0.9)),
+    var(--ink);
+  color: var(--cream);
+  box-shadow: 0 18px 46px rgba(20, 33, 61, 0.22);
+}
+
+.brand-copy strong {
+  color: var(--cream);
+}
+
+.brand-copy span {
+  color: rgba(255, 247, 234, 0.74) !important;
+}
+
+.brand-mark {
+  background:
+    radial-gradient(circle at 30% 24%, #fff2d4, transparent 30%),
+    linear-gradient(145deg, var(--sand), var(--accent)) !important;
+  color: var(--ink) !important;
+  box-shadow: 0 14px 26px rgba(198, 95, 61, 0.26);
+}
+
+.sidebar-nav,
+.sidebar-card {
+  background: rgba(255, 247, 234, 0.62);
+  border-radius: 24px;
+}
+
+.nav-link {
+  color: var(--muted-strong) !important;
+}
+
+.nav-link:hover,
+.nav-link:focus-visible,
+.nav-link.is-active {
+  background:
+    linear-gradient(90deg, rgba(198, 95, 61, 0.16), rgba(215, 185, 142, 0.12)) !important;
+  color: var(--ink) !important;
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+.panel-label,
+.eyebrow,
+.section-kicker {
+  color: var(--accent) !important;
+  letter-spacing: 0.18em;
+}
+
+.topbar {
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  border-radius: 999px !important;
+  padding: 10px 12px;
+}

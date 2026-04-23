@@ -1,0 +1,289 @@
+/* Minimal app pass: catalog-first, fewer controls, less dashboard noise. */
+.sidebar-card,
+.hero-text,
+.hero-metrics,
+.hero-spotlight,
+.playlist-focus,
+.playlist-panel .panel-copy,
+.inline-meta,
+.field-hidden,
+.field-optional,
+.toggle-optional,
+.provider-pills,
+.discovery-results {
+  display: none !important;
+}
+
+.content-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hero-banner {
+  min-height: 0;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(30, 215, 96, 0.22), transparent 46%),
+    #111;
+}
+
+.hero-copy {
+  max-width: none;
+}
+
+.hero-copy h1 {
+  max-width: 760px;
+  margin: 4px 0 0;
+  font-size: clamp(1.6rem, 3vw, 3rem);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.hero-actions {
+  margin-top: 14px;
+}
+
+.main-grid {
+  display: block;
+}
+
+.feed-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.catalog-panel {
+  order: 1;
+}
+
+.playlist-panel {
+  order: 2;
+}
+
+.discovery-panel {
+  order: 3;
+}
+
+.catalog-panel,
+.playlist-panel,
+.discovery-panel {
+  padding: 16px;
+  border-radius: 14px;
+}
+
+.section-heading {
+  margin-bottom: 12px;
+}
+
+.section-heading h2 {
+  font-size: 1.35rem;
+}
+
+.filter-rack {
+  grid-template-columns: minmax(180px, 260px);
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.field select,
+.field input {
+  min-height: 40px;
+  background: #202020;
+}
+
+.field select {
+  color-scheme: dark;
+  color: var(--text);
+}
+
+.field select option {
+  background: #202020;
+  color: var(--text);
+}
+
+.results-summary {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.track-grid {
+  grid-template-columns: repeat(auto-fill, minmax(138px, 1fr));
+  gap: 10px;
+}
+
+.track-card {
+  padding: 8px;
+  border-radius: 10px;
+}
+
+.track-cover {
+  max-height: none;
+  border-radius: 8px;
+}
+
+.track-play {
+  right: 8px;
+  bottom: 8px;
+  width: 38px;
+  height: 38px;
+}
+
+.track-card-copy {
+  margin-top: 8px;
+}
+
+.track-card h3 {
+  min-height: 2.2em;
+  font-size: 0.88rem;
+}
+
+.track-subtitle,
+.track-card .track-meta:first-of-type {
+  font-size: 0.78rem;
+}
+
+.playlist-grid {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.playlist-card {
+  min-height: 0;
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.playlist-card h3 {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+}
+
+.playlist-card p {
+  display: none;
+}
+
+.playlist-count {
+  min-height: 22px;
+  padding: 0 8px;
+  font-size: 0.74rem;
+}
+
+.discovery-toolbar {
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.import-link-field {
+  grid-column: 1 / -1;
+}
+
+.discovery-panel .panel-copy {
+  display: block;
+  max-width: 760px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.discovery-actions {
+  justify-content: flex-start;
+}
+
+.discovery-actions .button {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.import-hint {
+  margin: 10px 0 0;
+  max-width: 960px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.session-panel {
+  position: relative;
+  z-index: 14;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: start;
+  margin: 0 0 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at top right, rgba(30, 215, 96, 0.16), transparent 42%),
+    #181818;
+}
+
+.session-copy h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.session-copy p:last-child {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 0.88rem;
+}
+
+.session-controls {
+  display: grid;
+  position: relative;
+  z-index: 15;
+  grid-template-columns: minmax(260px, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.session-controls input {
+  position: relative;
+  z-index: 16;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #242424;
+  color: var(--text);
+  outline: none;
+  pointer-events: auto;
+}
+
+.session-controls input:focus {
+  box-shadow: 0 0 0 3px rgba(30, 215, 96, 0.14);
+}
+
+.session-panel .status-banner {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.topbar-actions .topbar-pill[href="#studio"] {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .hero-banner {
+    padding: 14px;
+  }
+
+  .discovery-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .track-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .session-panel,
+  .session-controls {
+    grid-template-columns: 1fr;
+  }
+}

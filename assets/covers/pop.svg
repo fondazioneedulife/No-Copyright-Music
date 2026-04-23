@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Pop music artwork">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#154738"/>
+      <stop offset="0.45" stop-color="#1ed760"/>
+      <stop offset="1" stop-color="#ffe08a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <circle cx="250" cy="270" r="160" fill="#fff" opacity="0.24"/>
+  <circle cx="720" cy="356" r="210" fill="#ff7f50" opacity="0.22"/>
+  <circle cx="500" cy="750" r="250" fill="#07100e" opacity="0.24"/>
+  <g fill="none" stroke="#fff" stroke-opacity="0.26" stroke-width="12">
+    <path d="M160 612c120-108 242 96 352-10s232-84 360 24"/>
+    <path d="M168 704c130-94 244 74 352-20s236-80 344 14"/>
+  </g>
+</svg>

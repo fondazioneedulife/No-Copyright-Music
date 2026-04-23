@@ -1,0 +1,415 @@
+# Endpoint API locali
+
+Base URL:
+
+```text
+http://localhost:3000
+```
+
+Formato risposte:
+
+- le API JSON rispondono con `Content-Type: application/json`;
+- gli errori usano in genere `{ "error": "messaggio" }`;
+- le API protette richiedono `Authorization: Bearer <token>`;
+- le API admin richiedono un token di utente con ruolo `admin`.
+
+## Health
+
+### `GET /api/health`
+
+Controlla se il backend e' attivo.
+
+Risposta:
+
+```json
+{ "ok": true }
+```
+
+## Autenticazione
+
+### `POST /api/auth/login`
+
+Body:
+
+```json
+{
+  "username": "admin",
+  "password": "password"
+}
+```
+
+Risposta:
+
+```json
+{
+  "token": "...",
+  "user": {
+    "id": "admin",
+    "username": "admin",
+    "name": "Amministratore",
+    "role": "admin",
+    "mustChangePassword": true,
+    "createdAt": "2026-04-22T00:00:00.000Z",
+    "updatedAt": "2026-04-22T00:00:00.000Z"
+  }
+}
+```
+
+### `GET /api/auth/me`
+
+Restituisce l'utente associato al token.
+
+Header:
+
+```text
+Authorization: Bearer <token>
+```
+
+Risposta con sessione valida:
+
+```json
+{ "user": { "username": "admin", "role": "admin" } }
+```
+
+Risposta senza sessione:
+
+```json
+{ "user": null }
+```
+
+### `POST /api/auth/logout`
+
+Elimina il token dalla mappa sessioni in memoria.
+
+Header:
+
+```text
+Authorization: Bearer <token>
+```
+
+Risposta:
+
+```json
+{ "ok": true }
+```
+
+### `POST /api/auth/change-password`
+
+Cambia password dell'utente loggato.
+
+Header:
+
+```text
+Authorization: Bearer <token>
+```
+
+Body:
+
+```json
+{
+  "currentPassword": "vecchia-password",
+  "newPassword": "nuova-password"
+}
+```
+
+Regole:
+
+- `newPassword` deve avere almeno 6 caratteri;
+- la password attuale deve essere valida;
+- dopo il cambio `mustChangePassword` diventa `false`.
+
+## Utenti
+
+Tutti gli endpoint di questa sezione sono solo admin.
+
+### `GET /api/users`
+
+Lista utenti.
+
+Header:
+
+```text
+Authorization: Bearer <admin-token>
+```
+
+Risposta:
+
+```json
+{
+  "users": [
+    {
+      "username": "admin",
+      "name": "Amministratore",
+      "role": "admin",
+      "mustChangePassword": false
+    }
+  ]
+}
+```
+
+### `POST /api/users`
+
+Crea utente o admin e restituisce una password temporanea.
+
+Header:
+
+```text
+Authorization: Bearer <admin-token>
+```
+
+Body:
+
+```json
+{
+  "name": "Postazione 1",
+  "username": "postazione-1",
+  "role": "user"
+}
+```
+
+Risposta:
+
+```json
+{
+  "user": {
+    "username": "postazione-1",
+    "role": "user",
+    "mustChangePassword": true
+  },
+  "tempPassword": "CW-..."
+}
+```
+
+### `POST /api/users/:username/reset-password`
+
+Rigenera una password temporanea per un altro utente e forza il cambio al prossimo login.
+
+Non puo' essere usato sull'utente collegato.
+
+Risposta:
+
+```json
+{
+  "user": {
+    "username": "postazione-1",
+    "mustChangePassword": true
+  },
+  "tempPassword": "CW-..."
+}
+```
+
+### `DELETE /api/users/:username`
+
+Elimina un utente.
+
+Regole:
+
+- non puo' eliminare l'utente collegato;
+- non puo' eliminare l'ultimo admin rimasto;
+- invalida eventuali sessioni dell'utente eliminato.
+
+Risposta:
+
+```json
+{
+  "ok": true,
+  "user": {
+    "username": "postazione-1"
+  }
+}
+```
+
+## Catalogo
+
+### `GET /api/tracks`
+
+Restituisce tutto il catalogo normalizzato.
+
+Risposta:
+
+```json
+{
+  "tracks": [
+    {
+      "id": "track-id",
+      "title": "Titolo",
+      "creatorName": "Autore",
+      "genre": "Electronic",
+      "coverPath": "/assets/covers/electronic.svg",
+      "previewPath": "/api/tracks/track-id/preview.wav",
+      "downloadPath": "/api/tracks/track-id/download"
+    }
+  ]
+}
+```
+
+### `GET /api/tracks/:id/preview.wav`
+
+Restituisce una preview WAV generata dal backend.
+
+Uso: fallback quando una traccia non ha audio locale o stream diretto.
+
+### `GET /api/tracks/:id/download`
+
+Scarica il file audio locale, se presente, oppure una preview controllata.
+
+### `POST /api/tracks`
+
+Solo admin. Crea una traccia manuale.
+
+Body tipico:
+
+```json
+{
+  "title": "Titolo",
+  "creatorName": "Autore",
+  "genre": "Electronic",
+  "license": "Licenza",
+  "audioFile": {
+    "name": "brano.mp3",
+    "type": "audio/mpeg",
+    "base64": "..."
+  },
+  "licenseFile": {
+    "name": "licenza.pdf",
+    "type": "application/pdf",
+    "base64": "..."
+  }
+}
+```
+
+### `DELETE /api/tracks/:id`
+
+Solo admin. Rimuove una traccia dal catalogo.
+
+## Discovery e import
+
+### `GET /api/discovery/providers`
+
+Mostra provider disponibili e stato configurazione.
+
+Query opzionale:
+
+- `rights_mode`: modalita' licenza/diritti.
+
+### `GET /api/discovery/search`
+
+Solo admin. Cerca provider esterni.
+
+Query principali:
+
+| Query | Valori |
+| --- | --- |
+| `provider` | `jamendo`, `youtube_curated`, `youtube`, `audius`, `theaudiodb`, `all` |
+| `q` | testo di ricerca |
+| `limit` | numero massimo risultati |
+| `rights_mode` | modalita' licenza |
+
+Risposta:
+
+```json
+{
+  "results": [],
+  "providers": [],
+  "skipped": []
+}
+```
+
+### `POST /api/discovery/import`
+
+Solo admin. Importa un risultato discovery selezionato nel catalogo permanente.
+
+### `POST /api/discovery/bulk-import`
+
+Solo admin. Importa lotti progressivi da provider primari, evitando duplicati.
+
+Body tipico:
+
+```json
+{
+  "limit": 20,
+  "rights_mode": "commercial"
+}
+```
+
+### `POST /api/discovery/import-link`
+
+Solo admin. Importa da link esterno nel catalogo permanente, quando il link e' accettato.
+
+Body:
+
+```json
+{
+  "url": "https://...",
+  "maxTracks": 50
+}
+```
+
+Supporta:
+
+- video YouTube;
+- playlist YouTube;
+- canali YouTube whitelist;
+- tracce Jamendo.
+
+### `POST /api/session/import-link`
+
+Solo admin. Importa link YouTube temporanei nella sessione, senza salvarli nel catalogo sicuro.
+
+Uso: ascolto o prova rapida senza archiviazione permanente.
+
+## Media
+
+### `GET /api/covers/jamendo/:trackId.jpg`
+
+Proxy/redirect verso la copertina originale Jamendo.
+
+### `GET /api/providers/audius/:id/stream`
+
+Proxy stream Audius, solo se `AUDIUS_API_KEY` e' configurata.
+
+### `GET /uploads/...`
+
+Serve audio e licenze caricati localmente.
+
+Il backend controlla che il percorso richiesto resti dentro `uploads/`.
+
+### `GET /assets/...`
+
+Serve asset statici, incluse copertine locali.
+
+### `GET /styles/...`
+
+Serve CSS legacy.
+
+### `GET /src/...`
+
+Serve moduli JavaScript legacy.
+
+## React
+
+### `GET /`
+
+Serve la UI React principale buildata in `frontend/dist`.
+
+### `GET /legacy`
+
+Serve la UI legacy di fallback.
+
+### `GET /react/`
+
+Serve la stessa build React come alias compatibile se e' stata generata con:
+
+```powershell
+npm run build:react
+```
+
+### `GET /react/assets/...`
+
+Serve asset generati da Vite dentro `frontend/dist/assets/`.
+
+## Endpoint disattivati
+
+### `POST /api/covers/generate`
+
+Endpoint mantenuto solo per compatibilita'. Le copertine AI sono state rimosse.

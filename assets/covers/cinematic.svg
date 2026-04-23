@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Cinematic music artwork">
+  <defs>
+    <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+      <stop stop-color="#06070b"/>
+      <stop offset="0.5" stop-color="#1b2635"/>
+      <stop offset="1" stop-color="#c87530"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="50%" cy="64%" r="38%">
+      <stop stop-color="#ffd27a"/>
+      <stop offset="0.45" stop-color="#f57932" stop-opacity="0.44"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#sky)"/>
+  <rect width="1024" height="1024" fill="url(#sun)"/>
+  <path d="M0 730 180 560l146 120 196-260 190 260 132-116 180 168v292H0z" fill="#07080b" opacity="0.9"/>
+  <g fill="none" stroke="#ffdba0" stroke-opacity="0.22" stroke-width="5">
+    <path d="M170 760h684"/>
+    <path d="M238 820h548"/>
+    <path d="M324 880h376"/>
+  </g>
+</svg>

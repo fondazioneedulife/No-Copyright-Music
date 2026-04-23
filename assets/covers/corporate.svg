@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Corporate music artwork">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#071514"/>
+      <stop offset="0.5" stop-color="#16464d"/>
+      <stop offset="1" stop-color="#92e6b2"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g fill="none" stroke="#fff" stroke-opacity="0.22" stroke-width="3">
+    <path d="M128 800 330 176h360l206 624"/>
+    <path d="M254 800 392 250h240l138 550"/>
+    <path d="M330 348h364M292 496h440M250 650h524"/>
+  </g>
+  <circle cx="760" cy="220" r="150" fill="#1ed760" opacity="0.18"/>
+  <circle cx="254" cy="820" r="220" fill="#fff" opacity="0.08"/>
+</svg>

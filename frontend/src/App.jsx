@@ -1,0 +1,964 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  bulkImportDiscovery,
+  changePassword,
+  createTrack,
+  createUser,
+  deleteUser,
+  fetchDiscoveryProviders,
+  fetchCurrentUser,
+  fetchTracks,
+  fetchUsers,
+  importDiscoveryLink,
+  importDiscoveryTrack,
+  importSessionLink,
+  login,
+  logout,
+  readStoredToken,
+  resetUserPassword,
+  searchDiscovery,
+  storeToken,
+} from "./api/client.js";
+import { AdminPanel } from "./components/AdminPanel.jsx";
+import { AuthGate } from "./components/AuthGate.jsx";
+import { Catalog } from "./components/Catalog.jsx";
+import { DiscoveryPanel } from "./components/DiscoveryPanel.jsx";
+import { Hero } from "./components/Hero.jsx";
+import { PlayerDock } from "./components/PlayerDock.jsx";
+import { PlaylistPanel } from "./components/PlaylistPanel.jsx";
+import { SettingsPanel } from "./components/SettingsPanel.jsx";
+import { Sidebar } from "./components/Sidebar.jsx";
+import { StudioPanel } from "./components/StudioPanel.jsx";
+import { Topbar } from "./components/Topbar.jsx";
+import {
+  durationSecondsFor,
+  getGenre,
+  getSource,
+  isYouTubeTrack,
+  normalizeSearch,
+  playableSourceFor,
+  trackMatchesSearch,
+  youtubeEmbedSourceFor,
+} from "./utils.js";
+
+export default function App() {
+  // App contiene solo lo stato globale: i dettagli visivi sono nei componenti sotto components/.
+  const audioRef = useRef(null);
+  const embedFrameRef = useRef(null);
+  const embedClockRef = useRef({ baseTime: 0, startedAt: 0 });
+  const [token, setToken] = useState(readStoredToken);
+  const [user, setUser] = useState(null);
+  const [authStatus, setAuthStatus] = useState("");
+  const [tracks, setTracks] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [activeSection, setActiveSection] = useState("catalog");
+  const [theme, setTheme] = useState(() => window.localStorage.getItem("clearwave-react-theme") || "dark");
+  const [search, setSearch] = useState("");
+  const [genre, setGenre] = useState("all");
+  const [source, setSource] = useState("all");
+  const [page, setPage] = useState(1);
+  const [queueIds, setQueueIds] = useState(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem("clearwave-react-queue") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [activeTrack, setActiveTrack] = useState(null);
+  const [playerMode, setPlayerMode] = useState("idle");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(0.75);
+  const [shuffleEnabled, setShuffleEnabled] = useState(false);
+  const [repeatMode, setRepeatMode] = useState("off");
+  const [embedSource, setEmbedSource] = useState("");
+  const [adminStatus, setAdminStatus] = useState("");
+  const [adminStatusType, setAdminStatusType] = useState("success");
+  const [settingsStatus, setSettingsStatus] = useState("");
+  const [settingsStatusType, setSettingsStatusType] = useState("success");
+  const [discoveryProviders, setDiscoveryProviders] = useState([]);
+  const [discoveryResults, setDiscoveryResults] = useState([]);
+  const [discoveryStatus, setDiscoveryStatus] = useState("");
+  const [discoveryStatusType, setDiscoveryStatusType] = useState("success");
+  const [sessionTracks, setSessionTracks] = useState([]);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [uploadStatusType, setUploadStatusType] = useState("success");
+
+  useEffect(() => {
+    // Tema salvato nel browser per mantenere dark/light mode anche dopo il refresh.
+    document.body.dataset.theme = theme;
+    window.localStorage.setItem("clearwave-react-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    // La coda resta nel browser: semplice e coerente con l'idea di sessione locale.
+    window.localStorage.setItem("clearwave-react-queue", JSON.stringify(queueIds));
+  }, [queueIds]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+
+    sendEmbedVolume(volume);
+  }, [volume]);
+
+  useEffect(() => {
+    // Bootstrap sessione: se il token e' ancora valido, saltiamo la schermata login.
+    let cancelled = false;
+
+    async function boot() {
+      if (!token) {
+        return;
+      }
+
+      try {
+        const payload = await fetchCurrentUser(token);
+        if (cancelled) {
+          return;
+        }
+
+        if (!payload.user) {
+          throw new Error("Sessione scaduta.");
+        }
+
+        setUser(payload.user);
+        setAuthStatus("");
+        nudgePasswordChange(payload.user);
+      } catch (error) {
+        if (!cancelled) {
+          storeToken("");
+          setToken("");
+          setUser(null);
+          setAuthStatus(error.message || "Sessione scaduta.");
+        }
+      }
+    }
+
+    void boot();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    // Dopo il login carichiamo il catalogo dal backend locale.
+    if (!user) {
+      return;
+    }
+
+    let cancelled = false;
+    async function loadData() {
+      try {
+        const payload = await fetchTracks();
+        if (!cancelled) {
+          setTracks(payload.tracks || []);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setAuthStatus(error.message || "Catalogo non disponibile.");
+        }
+      }
+    }
+
+    void loadData();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    let cancelled = false;
+    async function loadProviders() {
+      try {
+        const payload = await fetchDiscoveryProviders();
+        if (!cancelled) {
+          setDiscoveryProviders(payload.providers || []);
+        }
+      } catch {
+        if (!cancelled) {
+          setDiscoveryProviders([]);
+        }
+      }
+    }
+
+    void loadProviders();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    // La lista utenti viene caricata solo dagli admin.
+    if (!user || user.role !== "admin") {
+      return;
+    }
+
+    void refreshUsers();
+  }, [user, token]);
+
+  useEffect(() => {
+    if (user?.role !== "admin" && (activeSection === "admin" || activeSection === "discovery")) {
+      setActiveSection("catalog");
+    }
+  }, [user, activeSection]);
+
+  const query = normalizeSearch(search);
+  const genres = [...new Set(tracks.map(getGenre).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const filteredTracks = tracks.filter((track) => {
+    if (genre !== "all" && getGenre(track) !== genre) {
+      return false;
+    }
+
+    if (source !== "all" && getSource(track) !== source) {
+      return false;
+    }
+
+    return trackMatchesSearch(track, query);
+  });
+  const queuedTracks = queueIds.map((trackId) => tracks.find((track) => track.id === trackId)).filter(Boolean);
+  const activeTrackInSession = sessionTracks.some((track) => track.id === activeTrack?.id);
+  const noAttributionCount = tracks.filter((track) => track.attributionRequired === false).length;
+  const useCaseCount = new Set(
+    tracks.flatMap((track) => {
+      if (Array.isArray(track.useCases)) {
+        return track.useCases;
+      }
+      return String(track.useCases || "")
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+    })
+  ).size;
+
+  function sendEmbedCommand(func, args = []) {
+    // I comandi YouTube rendono play, pausa, seek e volume immediati senza ricaricare l'iframe.
+    const frameWindow = embedFrameRef.current?.contentWindow;
+    if (!frameWindow) {
+      return false;
+    }
+
+    frameWindow.postMessage(JSON.stringify({ event: "command", func, args }), "*");
+    return true;
+  }
+
+  function sendEmbedVolume(nextVolume = volume) {
+    const safeVolume = Math.round(Math.max(0, Math.min(1, nextVolume)) * 100);
+    sendEmbedCommand("setVolume", [safeVolume]);
+    sendEmbedCommand(safeVolume === 0 ? "mute" : "unMute");
+  }
+
+  function primeEmbedPlayer() {
+    // L'iframe puo' impiegare un istante a esporsi: inviamo due passate leggere e idempotenti.
+    const pushStateToEmbed = () => {
+      sendEmbedVolume(volume);
+      if (playerMode === "embed" && activeTrack) {
+        sendEmbedCommand("seekTo", [currentTime, true]);
+        sendEmbedCommand(isPlaying ? "playVideo" : "pauseVideo");
+      }
+    };
+
+    pushStateToEmbed();
+    window.setTimeout(pushStateToEmbed, 350);
+  }
+
+  function nudgePasswordChange(nextUser) {
+    if (!nextUser?.mustChangePassword) {
+      return;
+    }
+
+    setActiveSection("settings");
+    setSettingsStatusType("error");
+    setSettingsStatus("Stai usando una password temporanea: cambiala da qui.");
+  }
+
+  async function handleLogin(credentials) {
+    try {
+      const payload = await login(credentials);
+      storeToken(payload.token);
+      setToken(payload.token);
+      setUser(payload.user);
+      nudgePasswordChange(payload.user);
+      setAuthStatus("");
+    } catch (error) {
+      setAuthStatus(error.message || "Accesso non riuscito.");
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      if (token) {
+        await logout(token);
+      }
+    } catch {
+      // Anche se il backend non risponde, la sessione locale va pulita.
+    }
+
+    storeToken("");
+    setToken("");
+    setUser(null);
+    setTracks([]);
+    setQueueIds([]);
+    setSessionTracks([]);
+    setActiveTrack(null);
+    setIsPlaying(false);
+    setActiveSection("catalog");
+    setAdminStatus("");
+    setSettingsStatus("");
+    setDiscoveryResults([]);
+  }
+
+  async function refreshUsers() {
+    if (!token) {
+      return;
+    }
+
+    try {
+      const payload = await fetchUsers(token);
+      setUsers(payload.users || []);
+    } catch {
+      setUsers([]);
+    }
+  }
+
+  async function refreshTracks() {
+    const payload = await fetchTracks();
+    setTracks(payload.tracks || []);
+  }
+
+  function navigateToSection(sectionId) {
+    const targetMap = {
+      catalog: "catalogo",
+      playlists: "playlists",
+      discovery: "discovery",
+      settings: "impostazioni",
+      studio: "studio",
+    };
+    setActiveSection(sectionId);
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(targetMap[sectionId] || sectionId);
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  async function handleDiscoverySearch({ query: discoveryQuery, provider }) {
+    if (user?.role !== "admin") {
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus("Solo l'amministratore puo' cercare e importare nuove sorgenti.");
+      return;
+    }
+
+    try {
+      setDiscoveryStatus("Ricerca in corso nelle sorgenti ufficiali...");
+      setDiscoveryStatusType("success");
+      const payload = await searchDiscovery(token, { query: discoveryQuery, provider });
+      setDiscoveryResults(payload.items || []);
+      if (Array.isArray(payload.errors) && payload.errors.length > 0) {
+        setDiscoveryStatusType("error");
+        setDiscoveryStatus(
+          `Ricerca completata con avvisi. ${payload.errors
+            .map((entry) => `${entry.provider}: ${entry.message}`)
+            .join(" | ")}`
+        );
+      } else {
+        setDiscoveryStatusType("success");
+        setDiscoveryStatus(`${(payload.items || []).length} risultati trovati nelle sorgenti ufficiali.`);
+      }
+    } catch (error) {
+      setDiscoveryResults([]);
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus(error.message || "Errore nella ricerca esterna.");
+    }
+  }
+
+  async function handleDiscoveryImport(track) {
+    if (user?.role !== "admin") {
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus("Solo l'amministratore puo' importare brani.");
+      return;
+    }
+
+    try {
+      setDiscoveryStatus("Import nel catalogo locale in corso...");
+      await importDiscoveryTrack(token, track);
+      await refreshTracks();
+      setDiscoveryStatusType("success");
+      setDiscoveryStatus("Traccia importata nel catalogo locale.");
+    } catch (error) {
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus(error.message || "Errore durante l'import.");
+    }
+  }
+
+  async function handleBulkImport() {
+    if (user?.role !== "admin") {
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus("Solo l'amministratore puo' importare lotti.");
+      return;
+    }
+
+    try {
+      setDiscoveryStatus("Importo un piccolo lotto progressivo...");
+      const payload = await bulkImportDiscovery(token);
+      await refreshTracks();
+      setDiscoveryStatusType(Array.isArray(payload.errors) && payload.errors.length > 0 ? "error" : "success");
+      setDiscoveryStatus(
+        `Lotto completato: ${payload.importedCount || 0} nuove tracce su ${payload.scanned || 0} risultati letti.`
+      );
+    } catch (error) {
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus(error.message || "Errore durante l'import del lotto.");
+    }
+  }
+
+  async function handleImportLink(url) {
+    if (user?.role !== "admin") {
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus("Solo l'amministratore puo' importare link.");
+      return;
+    }
+
+    try {
+      setDiscoveryStatus("Import da link in corso...");
+      const payload = await importDiscoveryLink(token, url);
+      await refreshTracks();
+      setDiscoveryStatusType("success");
+      setDiscoveryStatus(
+        `Import completato: ${payload.importedCount || 0} nuove tracce, ${payload.skippedCount || 0} saltate.`
+      );
+    } catch (error) {
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus(error.message || "Import da link non riuscito.");
+    }
+  }
+
+  async function handleAddSessionLink(url) {
+    if (user?.role !== "admin") {
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus("Solo l'amministratore puo' usare la playlist temporanea.");
+      return false;
+    }
+
+    if (!url) {
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus("Incolla un link YouTube prima di creare la sessione temporanea.");
+      return false;
+    }
+
+    try {
+      setDiscoveryStatusType("success");
+      setDiscoveryStatus("Carico il link nella playlist temporanea...");
+      const payload = await importSessionLink(token, url);
+      const imported = Array.isArray(payload.imported) ? payload.imported : [];
+      if (imported.length === 0) {
+        throw new Error("Nessuna traccia temporanea trovata nel link.");
+      }
+
+      // La playlist temporanea vive solo nello stato React: non entra nel catalogo SQLite.
+      setSessionTracks((current) => {
+        const knownIds = new Set(current.map((track) => track.youtubeVideoId || track.id));
+        const incoming = imported
+          .filter((track) => !knownIds.has(track.youtubeVideoId || track.id))
+          .map((track) => ({
+            ...track,
+            isTemporary: true,
+            sessionOwner: user.username,
+          }));
+        return [...incoming, ...current];
+      });
+
+      const notice = payload.notice ? ` ${payload.notice}` : "";
+      const importedCount = Number(payload.importedCount || imported.length);
+      setDiscoveryStatusType("success");
+      setDiscoveryStatus(
+        `Sessione temporanea caricata: ${importedCount} tracce lette. Esci o svuota playlist per rimuoverle.${notice}`
+      );
+      return true;
+    } catch (error) {
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus(error.message || "Import sessione temporanea non riuscito.");
+      return false;
+    }
+  }
+
+  async function handleUploadTrack(payload) {
+    if (user?.role !== "admin") {
+      setUploadStatusType("error");
+      setUploadStatus("Solo l'amministratore puo' caricare brani.");
+      return false;
+    }
+
+    try {
+      await createTrack(token, payload);
+      await refreshTracks();
+      setUploadStatusType("success");
+      setUploadStatus("Traccia salvata nel catalogo.");
+      return true;
+    } catch (error) {
+      setUploadStatusType("error");
+      setUploadStatus(error.message || "Upload non riuscito.");
+      return false;
+    }
+  }
+
+  async function handleCreateUser(nextUser) {
+    try {
+      const payload = await createUser(token, nextUser);
+      setAdminStatusType("success");
+      setAdminStatus(`Utente creato: ${payload.user.username}. Password temporanea: ${payload.tempPassword}`);
+      await refreshUsers();
+      return true;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Creazione utente non riuscita.");
+      return false;
+    }
+  }
+
+  async function handleDeleteUser(username) {
+    try {
+      await deleteUser(token, username);
+      setAdminStatusType("success");
+      setAdminStatus(`Utente eliminato: ${username}.`);
+      await refreshUsers();
+      return true;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Eliminazione utente non riuscita.");
+      return false;
+    }
+  }
+
+  async function handleResetUserPassword(username) {
+    try {
+      const payload = await resetUserPassword(token, username);
+      setAdminStatusType("success");
+      setAdminStatus(`Password temporanea per ${payload.user.username}: ${payload.tempPassword}`);
+      await refreshUsers();
+      return true;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Reset password non riuscito.");
+      return false;
+    }
+  }
+
+  async function handleChangePassword(passwordPayload) {
+    try {
+      const payload = await changePassword(token, passwordPayload);
+      setUser(payload.user);
+      setSettingsStatusType("success");
+      setSettingsStatus("Password aggiornata correttamente.");
+      return true;
+    } catch (error) {
+      setSettingsStatusType("error");
+      setSettingsStatus(error.message || "Cambio password non riuscito.");
+      return false;
+    }
+  }
+
+  function syncEmbedClock() {
+    if (playerMode !== "embed" || !embedClockRef.current.startedAt) {
+      return currentTime;
+    }
+
+    const elapsed = (performance.now() - embedClockRef.current.startedAt) / 1000;
+    return embedClockRef.current.baseTime + elapsed;
+  }
+
+  function stopEmbedPlayback(nextTime = 0) {
+    embedClockRef.current = { baseTime: nextTime, startedAt: 0 };
+    sendEmbedCommand("stopVideo");
+    setEmbedSource("");
+  }
+
+  function updateClock(nextCurrentTime, nextDuration = duration) {
+    const safeDuration = Math.max(0, Number(nextDuration) || 0);
+    const safeTime = Math.max(0, Number(nextCurrentTime) || 0);
+    setCurrentTime(safeTime);
+    setDuration(safeDuration);
+    setProgress(safeDuration > 0 ? Math.min(100, (safeTime / safeDuration) * 100) : 0);
+  }
+
+  function pausePlayback() {
+    const audio = audioRef.current;
+    if (playerMode === "audio" && audio) {
+      audio.pause();
+    }
+
+    if (playerMode === "embed") {
+      const pausedAt = syncEmbedClock();
+      embedClockRef.current = { baseTime: pausedAt, startedAt: 0 };
+      sendEmbedCommand("pauseVideo");
+      updateClock(pausedAt);
+    }
+
+    setIsPlaying(false);
+  }
+
+  function playTrack(track, options = {}) {
+    // Player misto: audio diretto per Jamendo/file, iframe interno per YouTube embed.
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+
+    const sameTrack = activeTrack?.id === track.id;
+    if (sameTrack && isPlaying && !options.forceRestart) {
+      pausePlayback();
+      return;
+    }
+
+    const startAt = sameTrack && !options.forceRestart ? currentTime : Number(options.startAt || 0);
+    const nextDuration = durationSecondsFor(track);
+    setActiveTrack(track);
+    updateClock(startAt, nextDuration);
+
+    if (isYouTubeTrack(track)) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      setPlayerMode("embed");
+      embedClockRef.current = { baseTime: startAt, startedAt: performance.now() };
+      setIsPlaying(true);
+
+      if (sameTrack && embedSource && !options.forceRestart) {
+        sendEmbedCommand("seekTo", [startAt, true]);
+        sendEmbedCommand("playVideo");
+        sendEmbedVolume(volume);
+      } else {
+        setEmbedSource(youtubeEmbedSourceFor(track, startAt));
+      }
+      return;
+    }
+
+    stopEmbedPlayback(0);
+    setPlayerMode("audio");
+    if (!sameTrack || !audio.src || options.forceRestart) {
+      audio.src = playableSourceFor(track);
+    }
+    try {
+      audio.currentTime = startAt;
+    } catch {
+      // Alcune sorgenti impostano la posizione solo dopo i metadata: il play resta comunque valido.
+    }
+    audio.volume = volume;
+    void audio
+      .play()
+      .then(() => {
+        setIsPlaying(true);
+      })
+      .catch(() => {
+        setIsPlaying(false);
+      });
+  }
+
+  function playAdjacent(direction, options = {}) {
+    // Se stai ascoltando la playlist temporanea, prev/next restano in quella sessione.
+    const list = queuedTracks.length > 0 ? queuedTracks : activeTrackInSession ? sessionTracks : filteredTracks;
+    if (list.length === 0) {
+      return false;
+    }
+
+    const currentIndex = list.findIndex((track) => track.id === activeTrack?.id);
+    let nextIndex = currentIndex < 0 ? 0 : currentIndex + direction;
+
+    if (shuffleEnabled && direction > 0 && list.length > 1) {
+      do {
+        nextIndex = Math.floor(Math.random() * list.length);
+      } while (nextIndex === currentIndex);
+    }
+
+    if (nextIndex >= list.length) {
+      if (repeatMode !== "all" && options.fromEnded) {
+        setIsPlaying(false);
+        return false;
+      }
+      nextIndex = 0;
+    }
+
+    if (nextIndex < 0) {
+      nextIndex = list.length - 1;
+    }
+
+    playTrack(list[nextIndex], { forceRestart: true, startAt: 0 });
+    return true;
+  }
+
+  function toggleQueue(track) {
+    // Click destro sulla cover aggiunge/toglie il brano dalla coda.
+    setQueueIds((current) =>
+      current.includes(track.id) ? current.filter((trackId) => trackId !== track.id) : [...current, track.id]
+    );
+  }
+
+  function removeFromQueue(trackId) {
+    setQueueIds((current) => current.filter((id) => id !== trackId));
+  }
+
+  function removeSessionTrack(trackId) {
+    setSessionTracks((current) => current.filter((track) => track.id !== trackId));
+    if (activeTrack?.id === trackId) {
+      pausePlayback();
+      setActiveTrack(null);
+      stopEmbedPlayback(0);
+      updateClock(0, 0);
+    }
+  }
+
+  function clearSessionTracks() {
+    const activeWillBeCleared = sessionTracks.some((track) => track.id === activeTrack?.id);
+    setSessionTracks([]);
+    if (activeWillBeCleared) {
+      pausePlayback();
+      setActiveTrack(null);
+      stopEmbedPlayback(0);
+      updateClock(0, 0);
+    }
+  }
+
+  function handleTimeUpdate() {
+    const audio = audioRef.current;
+    if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) {
+      updateClock(0, duration);
+      return;
+    }
+
+    updateClock(audio.currentTime, audio.duration);
+  }
+
+  function handleLoadedMetadata() {
+    const audio = audioRef.current;
+    if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) {
+      return;
+    }
+
+    setDuration(audio.duration);
+  }
+
+  function handleSeek(nextPercent) {
+    if (!activeTrack || duration <= 0) {
+      return;
+    }
+
+    const nextTime = (Math.max(0, Math.min(100, nextPercent)) / 100) * duration;
+    if (playerMode === "audio" && audioRef.current) {
+      audioRef.current.currentTime = nextTime;
+      updateClock(nextTime, duration);
+      return;
+    }
+
+    if (playerMode === "embed") {
+      updateClock(nextTime, duration);
+      embedClockRef.current = { baseTime: nextTime, startedAt: isPlaying ? performance.now() : 0 };
+      const sent = sendEmbedCommand("seekTo", [nextTime, true]);
+      if (isPlaying) {
+        sendEmbedCommand("playVideo");
+      } else {
+        sendEmbedCommand("pauseVideo");
+      }
+
+      if (!sent && isPlaying) {
+        setEmbedSource(youtubeEmbedSourceFor(activeTrack, nextTime));
+      }
+    }
+  }
+
+  function toggleRepeatMode() {
+    setRepeatMode((current) => (current === "off" ? "all" : current === "all" ? "one" : "off"));
+  }
+
+  function handleEnded() {
+    // A fine brano si passa automaticamente al prossimo elemento della coda o lista filtrata.
+    if (repeatMode === "one" && activeTrack) {
+      playTrack(activeTrack, { forceRestart: true, startAt: 0 });
+      return;
+    }
+
+    stopEmbedPlayback(0);
+    updateClock(0, duration);
+    const moved = playAdjacent(1, { fromEnded: true });
+    if (!moved) {
+      setIsPlaying(false);
+    }
+  }
+
+  useEffect(() => {
+    if (playerMode !== "embed" || !isPlaying) {
+      return undefined;
+    }
+
+    const timerId = window.setInterval(() => {
+      const nextTime = syncEmbedClock();
+      updateClock(nextTime, duration);
+      if (duration > 0 && nextTime >= duration - 0.35) {
+        handleEnded();
+      }
+    }, 500);
+
+    return () => window.clearInterval(timerId);
+  }, [playerMode, isPlaying, duration, activeTrack, repeatMode, queueIds, shuffleEnabled, sessionTracks]);
+
+  if (!user) {
+    return <AuthGate onLogin={handleLogin} status={authStatus} />;
+  }
+
+  return (
+    <>
+      <div className="react-app">
+        <Sidebar activeSection={activeSection} onNavigate={navigateToSection} user={user} />
+        <main className="main-shell">
+          <Topbar
+            user={user}
+            search={search}
+            setSearch={setSearch}
+            theme={theme}
+            setTheme={setTheme}
+            onLogout={handleLogout}
+          />
+          <div className="content-shell">
+            <Hero
+              tracksCount={tracks.length}
+              queueCount={queuedTracks.length}
+              noAttributionCount={noAttributionCount}
+              useCaseCount={useCaseCount}
+              onNavigate={navigateToSection}
+              isAdmin={user.role === "admin"}
+            />
+
+            <div className="main-grid">
+              <div className="feed-column">
+                <Catalog
+                  tracks={filteredTracks}
+                  genres={genres}
+                  genre={genre}
+                  setGenre={setGenre}
+                  source={source}
+                  setSource={setSource}
+                  page={page}
+                  setPage={setPage}
+                  queueIds={queueIds}
+                  activeTrack={activeTrack}
+                  isPlaying={isPlaying}
+                  onPlay={playTrack}
+                  onToggleQueue={toggleQueue}
+                  onNavigate={navigateToSection}
+                  isAdmin={user.role === "admin"}
+                />
+
+                {user.role === "admin" ? (
+                  <DiscoveryPanel
+                    providers={discoveryProviders}
+                    results={discoveryResults}
+                    isAdmin={user.role === "admin"}
+                    sessionTracks={sessionTracks}
+                    status={discoveryStatus}
+                    statusType={discoveryStatusType}
+                    onSearch={handleDiscoverySearch}
+                    onImportTrack={handleDiscoveryImport}
+                    onBulkImport={handleBulkImport}
+                    onImportLink={handleImportLink}
+                    onAddSessionLink={handleAddSessionLink}
+                    onPlaySessionTrack={playTrack}
+                    onRemoveSessionTrack={removeSessionTrack}
+                    onClearSessionTracks={clearSessionTracks}
+                    onLogout={handleLogout}
+                  />
+                ) : null}
+
+                <PlaylistPanel
+                  tracks={tracks}
+                  queuedTracks={queuedTracks}
+                  activeGenre={genre}
+                  onSelectGenre={(nextGenre) => {
+                    setGenre(nextGenre);
+                    setPage(1);
+                    navigateToSection("catalog");
+                  }}
+                  onRemoveFromQueue={removeFromQueue}
+                  onClearQueue={() => setQueueIds([])}
+                />
+
+                <section className="settings-stack" id="impostazioni">
+                  {user.role === "admin" ? (
+                    <AdminPanel
+                      users={users}
+                      currentUser={user}
+                      onCreateUser={handleCreateUser}
+                      onDeleteUser={handleDeleteUser}
+                      onResetUserPassword={handleResetUserPassword}
+                      status={adminStatus}
+                      statusType={adminStatusType}
+                    />
+                  ) : null}
+
+                  <SettingsPanel
+                    user={user}
+                    onChangePassword={handleChangePassword}
+                    status={settingsStatus}
+                    statusType={settingsStatusType}
+                  />
+                </section>
+
+                <StudioPanel
+                  tracks={tracks}
+                  isAdmin={user.role === "admin"}
+                  uploadStatus={uploadStatus}
+                  uploadStatusType={uploadStatusType}
+                  onUploadTrack={handleUploadTrack}
+                />
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <PlayerDock
+        activeTrack={activeTrack}
+        isPlaying={isPlaying}
+        progress={progress}
+        currentTime={currentTime}
+        duration={duration}
+        volume={volume}
+        setVolume={setVolume}
+        shuffleEnabled={shuffleEnabled}
+        repeatMode={repeatMode}
+        onToggle={() => (activeTrack ? playTrack(activeTrack) : playAdjacent(1))}
+        onNext={() => playAdjacent(1)}
+        onPrev={() => playAdjacent(-1)}
+        onSeek={handleSeek}
+        onToggleShuffle={() => setShuffleEnabled((current) => !current)}
+        onToggleRepeat={toggleRepeatMode}
+      />
+
+      {embedSource ? (
+        <iframe
+          ref={embedFrameRef}
+          className="embedded-audio-frame"
+          src={embedSource}
+          title={activeTrack ? `Player ${activeTrack.title}` : "Player YouTube"}
+          allow="autoplay; encrypted-media"
+          onLoad={primeEmbedPlayer}
+        />
+      ) : null}
+
+      <audio
+        ref={audioRef}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={handleEnded}
+        onPause={() => {
+          if (playerMode === "audio") {
+            setIsPlaying(false);
+          }
+        }}
+      />
+    </>
+  );
+}

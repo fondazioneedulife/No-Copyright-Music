@@ -1,0 +1,219 @@
+/* Genre artwork pass: album-like square covers and cleaner streaming browsing. */
+.track-card {
+  border-radius: 12px;
+}
+
+.track-cover {
+  padding: 0;
+  background: #202020;
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.track-cover-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.track-cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.16), transparent 38%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.34), transparent 48%);
+  pointer-events: none;
+}
+
+.track-cover::after {
+  z-index: 1;
+}
+
+.track-cover-top {
+  position: absolute;
+  inset: 8px 8px auto 8px;
+  z-index: 2;
+}
+
+.track-cover-badge {
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(10px);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.track-play {
+  z-index: 3;
+}
+
+.track-card .track-meta:first-of-type {
+  gap: 7px;
+}
+
+.track-card .track-meta:first-of-type .pill:nth-child(2),
+.track-card .track-meta:first-of-type .pill:nth-child(3) {
+  display: inline-flex;
+  min-height: 23px;
+  padding: 0 7px;
+  border: 0;
+  background: #242424;
+  color: var(--muted);
+}
+
+.track-card .track-meta:first-of-type .pill:nth-child(3) {
+  max-width: 100%;
+  color: var(--text);
+}
+
+.playlist-card {
+  background:
+    linear-gradient(145deg, rgba(30, 215, 96, 0.1), transparent 58%),
+    #181818;
+}
+
+.playlist-card h3 {
+  font-size: 1rem;
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.section-actions .button {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.82rem;
+}
+
+.player-art {
+  background-position: center;
+  background-size: cover;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+/* Hard guard against oversized artwork breaking the browse grid. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.main-content,
+.feed-column,
+.panel,
+.catalog-panel {
+  min-width: 0;
+}
+
+.track-grid {
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+  align-items: start;
+  max-width: 100%;
+}
+
+.track-card {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  contain: paint;
+  isolation: isolate;
+}
+
+.track-card-header {
+  display: block;
+  min-width: 0;
+}
+
+.track-cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 190px;
+  aspect-ratio: 1 / 1;
+  overflow: hidden !important;
+}
+
+.track-cover-art {
+  position: absolute !important;
+  inset: 0;
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.track-cover::after {
+  inset: auto -18px -18px auto;
+  width: 120px;
+  height: 120px;
+}
+
+.track-card h3 {
+  display: -webkit-box;
+  min-height: 2.35em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.track-subtitle,
+.track-card .track-meta:first-of-type,
+.track-card .track-meta:first-of-type .pill {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.track-card .track-meta:first-of-type .pill:nth-child(3) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-source-line {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Keep native dropdowns visually aligned with the dark UI. */
+select,
+.field select,
+.field select option,
+select option {
+  background-color: #202020;
+  color: #f6f7f6;
+  color-scheme: dark;
+}
+
+.field select option:checked,
+select option:checked {
+  background-color: #303030;
+  color: #ffffff;
+}
+
+.field select option:hover,
+select option:hover {
+  background-color: #2b2b2b;
+  color: #ffffff;
+}

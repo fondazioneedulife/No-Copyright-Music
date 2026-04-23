@@ -1,0 +1,60 @@
+/* ClearWave theme option: Coastal Studio. */
+:root {
+  --bg: #edf7f9;
+  --bg-elevated: #ffffff;
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-soft: #dceff2;
+  --panel-strong: #102236;
+  --border: rgba(16, 34, 54, 0.13);
+  --border-strong: rgba(16, 34, 54, 0.26);
+  --text: #102236;
+  --muted: #5d6f78;
+  --muted-strong: #314550;
+  --accent: #ff6b4a;
+  --accent-strong: #ca432f;
+  --accent-soft: rgba(255, 107, 74, 0.15);
+  --sea: #35a7b8;
+  --sea-deep: #166b7a;
+  --sun: #f3c969;
+  --foam: #f8ffff;
+  --ink: #102236;
+  --cream: #f8ffff;
+  --wine: #9e3f33;
+  --danger-soft: rgba(202, 67, 47, 0.14);
+  --warning: #ad741d;
+  --shadow: 0 24px 70px rgba(16, 34, 54, 0.14);
+  --radius-xl: 30px;
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --player-dock-height: 110px;
+}
+
+html {
+  background: #d8eef2;
+}
+
+body {
+  color: var(--text) !important;
+  background:
+    radial-gradient(circle at 14% 8%, rgba(53, 167, 184, 0.26), transparent 24%),
+    radial-gradient(circle at 86% 4%, rgba(255, 107, 74, 0.2), transparent 23%),
+    radial-gradient(circle at 78% 74%, rgba(243, 201, 105, 0.2), transparent 27%),
+    linear-gradient(135deg, rgba(16, 34, 54, 0.045) 25%, transparent 25%) 0 0 / 42px 42px,
+    linear-gradient(180deg, #f8ffff 0%, #e8f5f7 48%, #d8edf1 100%) !important;
+  font-family: "Bahnschrift", "Aptos", "Trebuchet MS", sans-serif !important;
+}
+
+body::before,
+body::after {
+  opacity: 0.18 !important;
+  filter: blur(78px) !important;
+}
+
+body::before {
+  background: #35a7b8 !important;
+}
+
+body::after {
+  background: #ff6b4a !important;
+}

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="House music artwork">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
+      <stop stop-color="#07100e"/>
+      <stop offset="0.5" stop-color="#1f6a58"/>
+      <stop offset="1" stop-color="#e1793d"/>
+    </linearGradient>
+    <radialGradient id="disc" cx="50%" cy="50%" r="48%">
+      <stop stop-color="#fff" stop-opacity="0.36"/>
+      <stop offset="0.35" stop-color="#1ed760" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <circle cx="512" cy="520" r="340" fill="url(#disc)"/>
+  <g fill="none" stroke="#fff" stroke-opacity="0.17" stroke-width="6">
+    <circle cx="512" cy="520" r="168"/>
+    <circle cx="512" cy="520" r="250"/>
+    <circle cx="512" cy="520" r="330"/>
+  </g>
+</svg>
