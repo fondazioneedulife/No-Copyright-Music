@@ -125,6 +125,7 @@ Sono stati aggiunti anche:
 - log piu' leggibili per `mpv`;
 - gestione errori piu' chiara per ALSA e YouTube;
 - pulizia migliore dello stato quando `mpv` termina.
+- formato YouTube audio-only per evitare l'errore `Requested format is not available` sul Raspberry.
 
 ## Lavoro fatto sul player browser
 
@@ -175,6 +176,10 @@ Per Raspberry Pi la parte audio si controlla con le variabili:
 - `CLEARWAVE_AUDIO_OUTPUT`
 - `CLEARWAVE_AUDIO_DEVICE`
 - `ALSA_CARD`
+- `CLEARWAVE_YTDL_PATH`
+- `CLEARWAVE_YTDL_FORMAT`
+
+La parte YouTube usa `yt-dlp` scaricato nel Dockerfile in `/usr/local/bin/yt-dlp`, non il pacchetto Debian, per ridurre i blocchi causati da cambiamenti frequenti nei formati YouTube.
 
 ### Collaudo Docker consigliato
 

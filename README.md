@@ -151,9 +151,12 @@ Nel file `.env` del Raspberry imposta:
 CLEARWAVE_DOCKER_PRIVILEGED=true
 CLEARWAVE_AUDIO_OUTPUT=alsa
 ALSA_CARD=
+CLEARWAVE_YTDL_PATH=/usr/local/bin/yt-dlp
+CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
 ```
 
 Nel player React seleziona `Pi`: da quel momento il browser comanda il backend e la musica esce dal Raspberry, non dal PC.
+Se nei log vedi `Requested format is not available`, rebuilda l'immagine: il Dockerfile installa `yt-dlp` aggiornato e il backend forza un formato YouTube audio-only.
 
 ## Backend in breve
 

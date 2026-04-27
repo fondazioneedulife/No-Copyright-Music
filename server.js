@@ -37,6 +37,10 @@ const serverPlayerCommand = process.env.CLEARWAVE_PLAYER_COMMAND || "mpv";
 const serverPlayerAudioOutput = String(process.env.CLEARWAVE_AUDIO_OUTPUT || "alsa").trim();
 const serverPlayerAudioDevice = String(process.env.CLEARWAVE_AUDIO_DEVICE || "").trim();
 const serverPlayerAlsaCard = String(process.env.ALSA_CARD || "").trim();
+const serverPlayerYtdlPath = String(process.env.CLEARWAVE_YTDL_PATH || "/usr/local/bin/yt-dlp").trim();
+const serverPlayerYtdlFormat = String(
+  process.env.CLEARWAVE_YTDL_FORMAT || "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
+).trim();
 const serverPlayer = {
   // Stato del player lato Raspberry: React diventa telecomando, l'audio esce dal server.
   process: null,
@@ -3999,6 +4003,8 @@ function serverPlayerStatus() {
     progress:
       serverPlayer.duration > 0 ? Math.min(100, (position / serverPlayer.duration) * 100) : 0,
     volume: Math.max(0, Math.min(100, serverPlayer.volume)),
+    ytdlFormat: serverPlayerYtdlFormat,
+    ytdlPath: serverPlayerYtdlPath,
   };
 }
 
@@ -4071,6 +4077,20 @@ function serverPlayerAudioConfig() {
   return { args, env, label: namedDevice };
 }
 
+function serverPlayerYtdlConfig() {
+  // YouTube cambia spesso formati disponibili: sul Raspberry chiediamo audio-only e yt-dlp recente.
+  const args = ["--ytdl=yes"];
+  if (serverPlayerYtdlFormat) {
+    args.push(`--ytdl-format=${serverPlayerYtdlFormat}`);
+  }
+
+  if (serverPlayerYtdlPath) {
+    args.push(`--script-opts=ytdl_hook-ytdl_path=${serverPlayerYtdlPath}`);
+  }
+
+  return args;
+}
+
 function serverPlayerFriendlyError(message) {
   const text = String(message || "").trim();
   if (!text) {
@@ -4081,8 +4101,12 @@ function serverPlayerFriendlyError(message) {
     return `${text} Controlla CLEARWAVE_AUDIO_DEVICE o ALSA_CARD sul Raspberry Pi.`;
   }
 
-  if (/yt-dlp|youtube-dl|signature extraction|video unavailable|sign in/i.test(text)) {
-    return `${text} Verifica yt-dlp, rete del container e disponibilita' del video YouTube.`;
+  if (
+    /yt-dlp|youtube-dl|signature extraction|video unavailable|sign in|requested format is not available|failed to recognize file format/i.test(
+      text
+    )
+  ) {
+    return `${text} Verifica yt-dlp, rete del container e CLEARWAVE_YTDL_FORMAT per i video YouTube.`;
   }
 
   return text;
@@ -4208,6 +4232,7 @@ async function playOnServerPlayer(req, payload) {
   const duration = parseDurationSeconds(track.duration || track.durationSeconds);
   const socketPath = serverPlayerSocketPath();
   const audioConfig = serverPlayerAudioConfig();
+  const ytdlArgs = serverPlayerYtdlConfig();
 
   stopServerPlayerProcess();
   cleanupServerPlayerSocket(socketPath);
@@ -4216,7 +4241,7 @@ async function playOnServerPlayer(req, payload) {
     "--no-video",
     "--force-window=no",
     "--idle=no",
-    "--ytdl=yes",
+    ...ytdlArgs,
     "--cache=yes",
     "--msg-level=all=warn",
     `--input-ipc-server=${socketPath}`,
