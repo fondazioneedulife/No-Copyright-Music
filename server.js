@@ -34,6 +34,9 @@ const youtubeApiKey = process.env.YOUTUBE_API_KEY;
 const jamendoCoverCache = new Map();
 const authSessions = new Map();
 const serverPlayerCommand = process.env.CLEARWAVE_PLAYER_COMMAND || "mpv";
+const serverPlayerAudioOutput = String(process.env.CLEARWAVE_AUDIO_OUTPUT || "alsa").trim();
+const serverPlayerAudioDevice = String(process.env.CLEARWAVE_AUDIO_DEVICE || "").trim();
+const serverPlayerAlsaCard = String(process.env.ALSA_CARD || "").trim();
 const serverPlayer = {
   // Stato del player lato Raspberry: React diventa telecomando, l'audio esce dal server.
   process: null,
@@ -4037,6 +4040,54 @@ function serverPlayerSourceForTrack(track) {
   throw httpError(400, "Sorgente audio non valida per il player Raspberry.");
 }
 
+function serverPlayerAudioConfig() {
+  // Config robusta: default ALSA pulito, device esplicito solo se richiesto davvero.
+  const args = [];
+  const env = { ...process.env };
+
+  if (serverPlayerAudioOutput) {
+    args.push(`--ao=${serverPlayerAudioOutput}`);
+  }
+
+  if (serverPlayerAudioDevice) {
+    args.push(`--audio-device=${serverPlayerAudioDevice}`);
+    return { args, env, label: serverPlayerAudioDevice };
+  }
+
+  if (!serverPlayerAlsaCard) {
+    return { args, env, label: "alsa/default" };
+  }
+
+  if (/^\d+$/.test(serverPlayerAlsaCard)) {
+    const deviceName = `alsa/plughw:${serverPlayerAlsaCard},0`;
+    args.push(`--audio-device=${deviceName}`);
+    env.AUDIODEV = `hw:${serverPlayerAlsaCard},0`;
+    return { args, env, label: deviceName };
+  }
+
+  const namedDevice = `alsa/sysdefault:CARD=${serverPlayerAlsaCard}`;
+  args.push(`--audio-device=${namedDevice}`);
+  env.AUDIODEV = serverPlayerAlsaCard;
+  return { args, env, label: namedDevice };
+}
+
+function serverPlayerFriendlyError(message) {
+  const text = String(message || "").trim();
+  if (!text) {
+    return "";
+  }
+
+  if (/alsa|audio output|audio device|ao\/alsa/i.test(text)) {
+    return `${text} Controlla CLEARWAVE_AUDIO_DEVICE o ALSA_CARD sul Raspberry Pi.`;
+  }
+
+  if (/yt-dlp|youtube-dl|signature extraction|video unavailable|sign in/i.test(text)) {
+    return `${text} Verifica yt-dlp, rete del container e disponibilita' del video YouTube.`;
+  }
+
+  return text;
+}
+
 function stopServerPlayerProcess() {
   if (serverPlayer.process) {
     serverPlayer.isStopping = true;
@@ -4062,6 +4113,7 @@ function waitForServerPlayerReady(processRef, socketPath) {
   return new Promise((resolve, reject) => {
     let settled = false;
     const startedAt = Date.now();
+    const timeoutMs = 8000;
 
     const finish = (callback, value) => {
       if (settled) {
@@ -4078,8 +4130,13 @@ function waitForServerPlayerReady(processRef, socketPath) {
     const onError = (error) => finish(reject, error);
     const onExit = (code) => finish(reject, new Error(`mpv terminato subito con codice ${code ?? "sconosciuto"}.`));
     const timerId = setInterval(() => {
-      if (process.platform === "win32" || fsSync.existsSync(socketPath) || Date.now() - startedAt > 1800) {
+      if (process.platform === "win32" || fsSync.existsSync(socketPath)) {
         finish(resolve);
+        return;
+      }
+
+      if (Date.now() - startedAt > timeoutMs) {
+        finish(reject, new Error("Socket IPC mpv non disponibile entro 8 secondi."));
       }
     }, 90);
 
@@ -4150,6 +4207,7 @@ async function playOnServerPlayer(req, payload) {
   const volume = Math.round(Math.max(0, Math.min(1, Number(payload?.volume ?? serverPlayer.volume / 100))) * 100);
   const duration = parseDurationSeconds(track.duration || track.durationSeconds);
   const socketPath = serverPlayerSocketPath();
+  const audioConfig = serverPlayerAudioConfig();
 
   stopServerPlayerProcess();
   cleanupServerPlayerSocket(socketPath);
@@ -4158,24 +4216,13 @@ async function playOnServerPlayer(req, payload) {
     "--no-video",
     "--force-window=no",
     "--idle=no",
-    "--really-quiet",
     "--ytdl=yes",
+    "--cache=yes",
+    "--msg-level=all=warn",
     `--input-ipc-server=${socketPath}`,
     `--volume=${volume}`,
+    ...audioConfig.args,
   ];
-
-  // Configurazione scheda audio ALSA per Raspberry Pi
-  // Se ALSA_CARD non è impostato, usa il default (nessun parametro -> ALSA default)
-  const alsaCardEnv = process.env.ALSA_CARD;
-  if (alsaCardEnv !== undefined && alsaCardEnv !== "") {
-    const alsaCard = Number(alsaCardEnv);
-    if (!Number.isNaN(alsaCard) && alsaCard >= 0) {
-      args.push(`--alsa-device=hw:${alsaCard}`);
-    }
-  } else {
-    // Usa il device di default di ALSA (più compatibile con Docker)
-    args.push("--alsa-device=default");
-  }
 
   if (startAt > 0) {
     args.push(`--start=${startAt}`);
@@ -4183,13 +4230,16 @@ async function playOnServerPlayer(req, payload) {
 
   args.push(source);
 
-  // Log per debug: mostra il comando mpv completo
-  console.log(`[server-player] Avvio mpv: ${serverPlayerCommand} ${args.join(" ")}`);
+  // Log orientato al debug Raspberry: aiuta a capire subito quale output stiamo tentando.
+  console.log(
+    `[server-player] Avvio mpv (${audioConfig.label}): ${serverPlayerCommand} ${args.join(" ")}`
+  );
 
   let processRef;
   try {
     processRef = spawn(serverPlayerCommand, args, {
-      stdio: ["ignore", "ignore", "pipe"],
+      env: audioConfig.env,
+      stdio: ["ignore", "pipe", "pipe"],
     });
   } catch (error) {
     serverPlayer.lastError = error.message;
@@ -4206,17 +4256,28 @@ async function playOnServerPlayer(req, payload) {
   serverPlayer.lastError = "";
   serverPlayer.volume = volume;
 
+  processRef.stdout.on("data", (chunk) => {
+    const message = String(chunk || "").trim();
+    if (message) {
+      console.log(`[server-player] mpv stdout: ${message}`);
+    }
+  });
   processRef.stderr.on("data", (chunk) => {
     const message = String(chunk || "").trim();
     if (message) {
-      serverPlayer.lastError = message.slice(0, 400);
+      serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
       console.log(`[server-player] mpv stderr: ${message}`);
     }
   });
   processRef.once("exit", (code) => {
     console.log(`[server-player] mpv terminato con codice ${code}`);
+    if (code && !serverPlayer.lastError) {
+      serverPlayer.lastError = `mpv terminato con codice ${code}. Controlla audio device e sorgente.`;
+    }
     cleanupServerPlayerSocket(socketPath);
     if (!serverPlayer.isStopping) {
+      serverPlayer.activeTrack = null;
+      serverPlayer.duration = 0;
       serverPlayer.process = null;
       serverPlayer.socketPath = "";
       serverPlayer.isPaused = false;

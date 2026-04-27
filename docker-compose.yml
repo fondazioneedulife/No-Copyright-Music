@@ -7,6 +7,7 @@ services:
     image: clearwave-library:local
     container_name: clearwave-library
     init: true
+    privileged: ${CLEARWAVE_DOCKER_PRIVILEGED:-false}
     restart: unless-stopped
     ports:
       - "${CLEARWAVE_PORT:-3000}:3000"
@@ -25,17 +26,16 @@ services:
       CLEARWAVE_SERVER_PLAYER: "${CLEARWAVE_SERVER_PLAYER:-1}"
       CLEARWAVE_PLAYER_COMMAND: "${CLEARWAVE_PLAYER_COMMAND:-mpv}"
       CLEARWAVE_SERVER_VOLUME: "${CLEARWAVE_SERVER_VOLUME:-75}"
+      CLEARWAVE_AUDIO_OUTPUT: "${CLEARWAVE_AUDIO_OUTPUT:-alsa}"
+      CLEARWAVE_AUDIO_DEVICE: "${CLEARWAVE_AUDIO_DEVICE:-}"
       ALSA_CARD: "${ALSA_CARD:-}"
-    # Per Raspberry: espone /dev/snd per audio hardware (commenta se non serve)
+    # File Docker unico: su Raspberry prova prima con CLEARWAVE_DOCKER_PRIVILEGED=true.
+    # Se l'audio host non viene esposto, puoi ancora sbloccare il device qui sotto.
     # devices:
     #   - /dev/snd:/dev/snd
     # group_add:
     #   - audio
     volumes:
-      # I volumi mantengono catalogo, SQLite, stato import e upload anche quando ricrei il container.
-      - clearwave-data:/app/data
-      - clearwave-uploads:/app/uploads
-
-volumes:
-  clearwave-data:
-  clearwave-uploads:
+      # Bind mount: Docker usa gli stessi dati del progetto, quindi catalogo e utenti non ripartono vuoti.
+      - ./data:/app/data
+      - ./uploads:/app/uploads

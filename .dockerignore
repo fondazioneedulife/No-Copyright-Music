@@ -3,7 +3,7 @@ node_modules/
 frontend/node_modules/
 frontend/dist/
 
-# Runtime locale: in Docker viene montato su volumi persistenti.
+# Runtime locale: Docker lo monta come bind mount da docker-compose.yml.
 data/
 uploads/audio/*
 uploads/licenses/*

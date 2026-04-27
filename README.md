@@ -81,8 +81,7 @@ Dopo il primo login cambia subito password da Impostazioni.
 | `npm run preview:react` | Anteprima Vite della build React. |
 | `npm run docker:build` | Costruisce l'immagine Docker locale. |
 | `npm run docker:up` | Avvia ClearWave con Docker Compose. |
-| `npm run docker:up:pi` | Avvia ClearWave con override Raspberry e audio server-side. |
-| `npm run docker:down` | Ferma il servizio Docker Compose mantenendo i volumi. |
+| `npm run docker:down` | Ferma il servizio Docker Compose senza cancellare `data/` e `uploads/`. |
 
 ## Struttura essenziale
 
@@ -99,8 +98,7 @@ Dopo il primo login cambia subito password da Impostazioni.
 | `uploads/` | Audio e licenze caricati. |
 | `docs/` | Documentazione completa del progetto. |
 | `Dockerfile` | Immagine Docker multi-stage con build React e runtime Node. |
-| `docker-compose.yml` | Avvio container con volumi persistenti e variabili ambiente. |
-| `docker-compose.raspberry.yml` | Override per usare l'audio ALSA del Raspberry Pi dal container. |
+| `docker-compose.yml` | Unico file Compose: avvio container, variabili ambiente e opzioni Raspberry audio. |
 
 ## Documentazione
 
@@ -113,6 +111,7 @@ Leggi in questo ordine:
 5. `docs/CONFIGURAZIONE_API.md`: chiavi API, variabili ambiente e provider esterni.
 6. `docs/GUIDA_SVILUPPATORE.md`: regole pratiche per modificare codice e UI.
 7. `docs/DOCKER.md`: build e avvio del progetto in container.
+8. `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md`: riepilogo del lavoro fatto su React, player Raspberry e Docker.
 
 ## Docker
 
@@ -138,12 +137,20 @@ notepad .\.env
 docker compose up -d --build
 ```
 
-I dati runtime Docker vivono in volumi `clearwave-data` e `clearwave-uploads`, quindi non si perdono quando ricrei il container.
+Docker monta le cartelle locali `./data` e `./uploads`: il container usa lo stesso catalogo del progetto e non riparte vuoto.
 
-Per usare il Raspberry come uscita audio, avvia con l'override dedicato:
+Per usare il Raspberry come uscita audio, usa sempre lo stesso `docker-compose.yml`:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.raspberry.yml up -d --build
+docker compose up -d --build
+```
+
+Nel file `.env` del Raspberry imposta:
+
+```env
+CLEARWAVE_DOCKER_PRIVILEGED=true
+CLEARWAVE_AUDIO_OUTPUT=alsa
+ALSA_CARD=
 ```
 
 Nel player React seleziona `Pi`: da quel momento il browser comanda il backend e la musica esce dal Raspberry, non dal PC.

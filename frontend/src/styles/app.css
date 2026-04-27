@@ -257,12 +257,19 @@ body[data-theme="light"] select option {
   border-radius: 32px;
 }
 
-.auth-card h1,
-.hero-panel h1 {
+.auth-card h1 {
   margin: 0;
   max-width: 780px;
   font-size: clamp(2rem, 4.4vw, 3.9rem);
   line-height: 0.98;
+}
+
+.hero-panel h1 {
+  /* Hero piu' a "media distanza": resta forte, ma non schiaccia catalogo e controlli. */
+  margin: 0;
+  max-width: 920px;
+  font-size: clamp(2rem, 3.1vw, 3.05rem);
+  line-height: 1.06;
 }
 
 .auth-card p,
@@ -524,10 +531,10 @@ body[data-theme="light"] .brand-chip span {
 .hero-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  min-height: 210px;
-  padding: 22px;
-  border-radius: 28px;
+  gap: 14px;
+  min-height: 178px;
+  padding: 18px;
+  border-radius: 24px;
   overflow: hidden;
   position: relative;
 }
@@ -556,7 +563,7 @@ body[data-theme="light"] .hero-panel::after {
 
 .hero-copy {
   display: grid;
-  gap: 14px;
+  gap: 11px;
   align-content: center;
 }
 
@@ -569,28 +576,28 @@ body[data-theme="light"] .hero-panel::after {
 .hero-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  max-width: 720px;
+  gap: 8px;
+  max-width: 640px;
 }
 
 .hero-metrics article,
 .hero-spotlight {
   display: grid;
   align-content: center;
-  min-height: 86px;
-  padding: 14px;
+  min-height: 72px;
+  padding: 12px;
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.06);
 }
 
 .hero-metrics strong {
-  font-size: 1.7rem;
+  font-size: 1.45rem;
 }
 
 .hero-spotlight {
-  width: 220px;
-  min-height: 150px;
+  width: 200px;
+  min-height: 128px;
 }
 
 .hero-spotlight h2 {
@@ -1056,6 +1063,24 @@ body[data-theme="light"] .pagination .is-active {
   line-height: 1.45;
 }
 
+.session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.session-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
 .temporary-playlist {
   display: grid;
   gap: 10px;
@@ -1437,6 +1462,14 @@ body[data-theme="light"] .pagination .is-active {
   font-size: 0.76rem;
   font-weight: 900;
   line-height: 1;
+}
+
+.player-notice {
+  max-width: min(92vw, 560px);
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .transport button {

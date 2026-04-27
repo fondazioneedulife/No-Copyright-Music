@@ -1,6 +1,14 @@
 import { getGenre } from "../utils.js";
 
-export function PlaylistPanel({ tracks, queuedTracks, activeGenre, onSelectGenre, onRemoveFromQueue, onClearQueue }) {
+export function PlaylistPanel({
+  tracks,
+  queuedTracks,
+  activeGenre,
+  onPlay,
+  onSelectGenre,
+  onRemoveFromQueue,
+  onClearQueue,
+}) {
   const genreGroups = tracks.reduce((groups, track) => {
     const genre = getGenre(track);
     groups.set(genre, [...(groups.get(genre) || []), track]);

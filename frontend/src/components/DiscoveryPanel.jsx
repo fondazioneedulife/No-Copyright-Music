@@ -13,6 +13,7 @@ export function DiscoveryPanel({
   providers,
   results,
   isAdmin,
+  sessionOwner = "",
   sessionTracks = [],
   status,
   statusType = "success",
@@ -62,6 +63,11 @@ export function DiscoveryPanel({
           <p className="eyebrow">Sessione utente</p>
           <h3>Playlist YouTube temporanea</h3>
           <p>Link di prova non salvati nel catalogo. Esci o svuota playlist per pulire la sessione.</p>
+          <div className="session-meta">
+            <span>{isAdmin ? "Solo amministratore" : "Sessione limitata"}</span>
+            {sessionOwner ? <span>Sessione: {sessionOwner}</span> : null}
+            <span>Pulizia automatica al logout</span>
+          </div>
         </div>
         <div className="session-actions">
           <span>{sessionTracks.length} in prova</span>
@@ -152,6 +158,7 @@ export function DiscoveryPanel({
           <div>
             <p className="eyebrow">Playlist temporanea</p>
             <h3>{sessionTracks.length === 0 ? "Nessuna traccia in prova" : `${sessionTracks.length} tracce in prova`}</h3>
+            <p>Sessione locale admin: non viene salvata nel catalogo commercial-safe.</p>
           </div>
           <span>Non salvata nel catalogo</span>
         </div>

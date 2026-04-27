@@ -36,10 +36,13 @@ npm start
 | `CLEARWAVE_UPLOADS_DIR` | `server.js` | Percorso alternativo per audio/licenze caricati. |
 | `CLEARWAVE_ENABLE_DEMOS` | `server.js` | Se `1`, reinserisce demo locali. In produzione tienilo `0`. |
 | `CLEARWAVE_AUTO_EXPAND` | `server.js` | Se `1`, prova un piccolo auto-import all'avvio. |
+| `CLEARWAVE_DOCKER_PRIVILEGED` | `docker-compose.yml` | Su Raspberry conviene `true` per dare al container accesso ai device audio host. |
 | `CLEARWAVE_SERVER_PLAYER` | `server.js` | Se `1`, abilita il controllo `mpv` lato server/Raspberry. |
 | `CLEARWAVE_PLAYER_COMMAND` | `server.js` | Comando usato per il player server-side, default `mpv`. |
 | `CLEARWAVE_SERVER_VOLUME` | `server.js` | Volume iniziale del player Raspberry, 0-100. |
-| `ALSA_CARD` | Docker/Raspberry | Scheda audio ALSA esposta al container tramite `/dev/snd`. |
+| `CLEARWAVE_AUDIO_OUTPUT` | `server.js` | Output mpv, default `alsa`. |
+| `CLEARWAVE_AUDIO_DEVICE` | `server.js` | Device mpv completo, per esempio `alsa/plughw:1,0`. |
+| `ALSA_CARD` | Docker/Raspberry | Scheda audio ALSA opzionale. Se vuota usa il default ALSA del Raspberry. |
 | `PORT` | `server.js` | Porta del server, default `3000`. |
 
 ## Dove sono nel codice
@@ -144,10 +147,10 @@ $env:CLEARWAVE_AUTO_EXPAND = "0"
 
 Se vale `1`, il backend espone il player Raspberry e puo' avviare `mpv`.
 
-In Docker su Raspberry usa:
+In Docker su Raspberry usa un solo file Compose:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.raspberry.yml up -d --build
+docker compose up -d --build
 ```
 
 Per disattivarlo in ambienti senza audio server:

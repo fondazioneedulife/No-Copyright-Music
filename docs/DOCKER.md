@@ -12,15 +12,14 @@ Il container contiene:
 - asset, partial, script legacy e CSS;
 - healthcheck su `/api/health`.
 
-I dati runtime non vengono salvati nell'immagine: restano in volumi Docker.
+I dati runtime non vengono salvati nell'immagine: `docker-compose.yml` monta le cartelle locali `./data` e `./uploads`.
 
 ## File Docker
 
 | File | Ruolo |
 | --- | --- |
 | `Dockerfile` | Build multi-stage: compila React e prepara il runtime Node. |
-| `docker-compose.yml` | Avvia il servizio con porte, variabili ambiente e volumi persistenti. |
-| `docker-compose.raspberry.yml` | Override Linux/Raspberry: collega `/dev/snd` al container per l'audio server-side. |
+| `docker-compose.yml` | Unico file Compose: avvia il servizio, monta dati/upload locali e include le opzioni Raspberry audio. |
 | `.dockerignore` | Esclude segreti, dati runtime, upload e dipendenze locali dal contesto build. |
 | `.env.example` | Template per variabili Docker Compose. |
 
@@ -31,6 +30,8 @@ Se vuoi usare solo il catalogo locale senza chiavi API:
 ```powershell
 docker compose up --build
 ```
+
+Su Windows assicurati prima che Docker Desktop sia aperto. Se `docker compose ps` risponde con un errore sul pipe `dockerDesktopLinuxEngine`, significa che il daemon non e' ancora avviato.
 
 Poi apri:
 
@@ -51,13 +52,15 @@ docker compose up -d --build
 Sul Raspberry l'app React funziona come telecomando: il browser invia comandi al backend e l'audio esce dal Pi tramite `mpv`.
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.raspberry.yml up -d --build
+docker compose up -d --build
 ```
 
-Oppure:
+Nel `.env` del Raspberry imposta almeno:
 
-```powershell
-npm run docker:up:pi
+```env
+CLEARWAVE_DOCKER_PRIVILEGED=true
+CLEARWAVE_AUDIO_OUTPUT=alsa
+ALSA_CARD=
 ```
 
 Poi apri l'app da un altro dispositivo nella rete usando l'IP del Raspberry:
@@ -68,13 +71,15 @@ http://IP_DEL_RASPBERRY:3000
 
 Nel player in basso lascia selezionato `Pi`. `PC` resta solo come fallback per ascoltare dal browser durante lo sviluppo.
 
-Se il Raspberry non riproduce audio, controlla prima che ALSA veda la scheda:
+Se il Raspberry non riproduce audio, lascia prima `ALSA_CARD` vuoto e controlla che ALSA veda la scheda:
 
 ```bash
 aplay -l
 ```
 
-Poi puoi scegliere la scheda con `ALSA_CARD` nel file `.env`.
+Poi puoi scegliere la scheda con `ALSA_CARD` oppure passare direttamente `CLEARWAVE_AUDIO_DEVICE` nel file `.env`.
+
+`docker-compose.yml` contiene gia' `privileged: ${CLEARWAVE_DOCKER_PRIVILEGED:-false}`. Su Raspberry conviene metterlo a `true`; su PC puoi lasciarlo `false`.
 
 Oppure con gli script npm:
 
@@ -101,9 +106,12 @@ Variabili principali:
 | `CLEARWAVE_ADMIN_PASSWORD` | Password iniziale del primo admin se SQLite non esiste. |
 | `CLEARWAVE_ENABLE_DEMOS` | Se `1`, abilita demo al primo catalogo vuoto. |
 | `CLEARWAVE_AUTO_EXPAND` | Se `1`, prova import automatico all'avvio. |
+| `CLEARWAVE_DOCKER_PRIVILEGED` | Se `true`, il container puo' accedere ai device host audio del Raspberry. |
 | `CLEARWAVE_SERVER_PLAYER` | Se `1`, abilita il player backend per audio sul Raspberry. |
 | `CLEARWAVE_PLAYER_COMMAND` | Comando player server-side, default `mpv`. |
 | `CLEARWAVE_SERVER_VOLUME` | Volume iniziale del player server, 0-100. |
+| `CLEARWAVE_AUDIO_OUTPUT` | Output mpv, default `alsa`. |
+| `CLEARWAVE_AUDIO_DEVICE` | Device mpv completo, es. `alsa/plughw:1,0`. |
 | `ALSA_CARD` | Scheda audio ALSA usata dal container Raspberry. |
 | `JAMENDO_CLIENT_ID` | Discovery/import Jamendo. |
 | `YOUTUBE_API_KEY` | Discovery/import canali YouTube whitelist. |
@@ -112,16 +120,16 @@ Variabili principali:
 
 Non inserire chiavi reali nel `Dockerfile` o nel codice.
 
-## Volumi persistenti
+## Dati persistenti
 
-`docker-compose.yml` crea due volumi:
+`docker-compose.yml` monta due cartelle del progetto dentro al container:
 
-| Volume | Montato su | Contiene |
+| Cartella locale | Montata su | Contiene |
 | --- | --- | --- |
-| `clearwave-data` | `/app/data` | `library.json`, SQLite utenti, stato import YouTube. |
-| `clearwave-uploads` | `/app/uploads` | Audio caricati e documenti licenza. |
+| `./data` | `/app/data` | `library.json`, SQLite utenti, stato import YouTube. |
+| `./uploads` | `/app/uploads` | Audio caricati e documenti licenza. |
 
-Questo significa che puoi ricreare il container senza perdere utenti, catalogo e upload.
+Questo significa che il container usa gli stessi  dati del progetto locale: se `data/library.json` contiene il catalogo, lo vedrai subito anche in Docker.
 
 ## Comandi utili
 
@@ -149,19 +157,19 @@ Stato:
 docker compose ps
 ```
 
-Stop mantenendo i volumi:
+Stop mantenendo i dati locali:
 
 ```powershell
 docker compose down
 ```
 
-Stop cancellando anche i dati runtime Docker:
+Stop cancellando eventuali volumi Docker non piu' usati:
 
 ```powershell
 docker compose down -v
 ```
 
-Attenzione: `down -v` elimina catalogo, utenti SQLite e upload salvati nei volumi Docker.
+Con l'attuale compose a bind mount, `down -v` non elimina `./data` e `./uploads`; evita comunque di cancellare manualmente quelle cartelle se vuoi mantenere catalogo, utenti e upload.
 
 ## URL
 
@@ -178,5 +186,5 @@ Attenzione: `down -v` elimina catalogo, utenti SQLite e upload salvati nei volum
 - Il runtime installa `mpv` e `yt-dlp`: servono per riprodurre file, stream e link YouTube dal server.
 - React viene buildato in uno stage separato con `npm ci --prefix frontend`.
 - Nel runtime finale non vengono installate dipendenze frontend.
-- `CLEARWAVE_DATA_DIR` e `CLEARWAVE_UPLOADS_DIR` puntano a cartelle montate su volumi.
+- `CLEARWAVE_DATA_DIR` e `CLEARWAVE_UPLOADS_DIR` puntano alle cartelle bind mount `./data` e `./uploads`.
 - Il backend ascolta sulla porta `3000` dentro il container.

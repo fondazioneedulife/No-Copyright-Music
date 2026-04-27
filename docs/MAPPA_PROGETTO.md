@@ -14,8 +14,7 @@ Questa pagina spiega cosa contiene ogni area del progetto ClearWave e quando con
 | `.gitignore` | Esclude file runtime, database, upload, build React, dipendenze e script con segreti locali. |
 | `.dockerignore` | Esclude dati runtime, segreti e dipendenze locali dal contesto Docker. |
 | `Dockerfile` | Build multi-stage: compila React e prepara il runtime Node del container. |
-| `docker-compose.yml` | Avvia ClearWave in Docker con volumi persistenti e variabili ambiente. |
-| `docker-compose.raspberry.yml` | Override Raspberry/Linux: collega `/dev/snd` e abilita `mpv` lato server. |
+| `docker-compose.yml` | Unico file Compose: avvia ClearWave, definisce volumi, env e opzioni audio Raspberry. |
 | `.env.example` | Template per configurare Docker Compose senza esporre segreti reali. |
 | `start-local.example.ps1` | Template sicuro per creare `start-local.ps1`. |
 | `start-local.ps1` | Script locale privato con variabili ambiente. Non va condiviso e non va committato. |

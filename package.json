@@ -12,7 +12,6 @@
     "preview:react": "npm --prefix frontend run preview",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d",
-    "docker:up:pi": "docker compose -f docker-compose.yml -f docker-compose.raspberry.yml up -d --build",
     "docker:down": "docker compose down"
   }
 }

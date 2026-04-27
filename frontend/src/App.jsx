@@ -7,6 +7,7 @@ import {
   deleteUser,
   fetchDiscoveryProviders,
   fetchCurrentUser,
+  fetchServerPlayerStatus,
   fetchTracks,
   fetchUsers,
   importDiscoveryLink,
@@ -123,6 +124,73 @@ export default function App() {
       });
     }
   }, [volume, playbackTarget, token]);
+
+  useEffect(() => {
+    // Se l'uscita selezionata e' il Raspberry, teniamo la UI allineata anche dopo refresh o errori mpv.
+    if (playbackTarget !== "server" || !token) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    async function syncServerPlayer() {
+      try {
+        const payload = await fetchServerPlayerStatus(token);
+        if (cancelled) {
+          return;
+        }
+
+        const player = payload.player || {};
+        const nextDuration = Number(player.duration || durationSecondsFor(activeTrack));
+        const nextPosition = Math.max(0, Number(player.position) || 0);
+
+        if (player.error) {
+          setPlayerNotice(player.error);
+        } else if (!player.activeTrack) {
+          setPlayerNotice("");
+        }
+
+        if (!player.activeTrack) {
+          // Se non c'e' nulla sul Raspberry, azzeriamo solo una sessione server gia' attiva.
+          if (playerMode === "server") {
+            setIsPlaying(false);
+            setPlayerMode("idle");
+            setActiveTrack(null);
+            updateClock(0, 0);
+          }
+          return;
+        }
+
+        setActiveTrack((current) => (current?.id === player.activeTrack.id ? current : player.activeTrack));
+        setPlayerMode("server");
+
+        if (nextDuration > 0) {
+          updateClock(nextPosition, nextDuration);
+        }
+
+        if (player.isPlaying) {
+          embedClockRef.current = { baseTime: nextPosition, startedAt: performance.now() };
+          setIsPlaying(true);
+        } else if (player.isPaused) {
+          embedClockRef.current = { baseTime: nextPosition, startedAt: 0 };
+          setIsPlaying(false);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPlayerNotice(error.message || "Player Raspberry non raggiungibile.");
+        }
+      }
+    }
+
+    void syncServerPlayer();
+    const timerId = window.setInterval(() => {
+      void syncServerPlayer();
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timerId);
+    };
+  }, [playbackTarget, token, activeTrack]);
 
   useEffect(() => {
     // Bootstrap sessione: se il token e' ancora valido, saltiamo la schermata login.
@@ -311,6 +379,7 @@ export default function App() {
   }
 
   async function handleLogout() {
+    const audio = audioRef.current;
     if (token) {
       try {
         await stopServerTrack(token);
@@ -325,6 +394,15 @@ export default function App() {
       }
     }
 
+    // Il logout deve lasciare l'interfaccia davvero ferma: niente audio browser o iframe residui.
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    }
+    stopEmbedPlayback(0);
+    embedClockRef.current = { baseTime: 0, startedAt: 0 };
+
     storeToken("");
     setToken("");
     setUser(null);
@@ -332,7 +410,9 @@ export default function App() {
     setQueueIds([]);
     setSessionTracks([]);
     setActiveTrack(null);
+    setPlayerMode("idle");
     setIsPlaying(false);
+    updateClock(0, 0);
     setActiveSection("catalog");
     setAdminStatus("");
     setSettingsStatus("");
@@ -486,6 +566,8 @@ export default function App() {
         throw new Error("Nessuna traccia temporanea trovata nel link.");
       }
 
+      let addedCount = 0;
+      let duplicateCount = 0;
       // La playlist temporanea vive solo nello stato React: non entra nel catalogo SQLite.
       setSessionTracks((current) => {
         const knownIds = new Set(current.map((track) => track.youtubeVideoId || track.id));
@@ -496,15 +578,22 @@ export default function App() {
             isTemporary: true,
             sessionOwner: user.username,
           }));
+        addedCount = incoming.length;
+        duplicateCount = Math.max(0, imported.length - incoming.length);
         return [...incoming, ...current];
       });
 
       const notice = payload.notice ? ` ${payload.notice}` : "";
-      const importedCount = Number(payload.importedCount || imported.length);
       setDiscoveryStatusType("success");
-      setDiscoveryStatus(
-        `Sessione temporanea caricata: ${importedCount} tracce lette. Esci o svuota playlist per rimuoverle.${notice}`
-      );
+      if (addedCount === 0) {
+        setDiscoveryStatus(
+          `Sessione temporanea invariata: nessuna nuova traccia aggiunta.${duplicateCount > 0 ? ` ${duplicateCount} erano gia' presenti.` : ""}${notice}`
+        );
+      } else {
+        setDiscoveryStatus(
+          `Sessione temporanea aggiornata: ${addedCount} nuove tracce in prova.${duplicateCount > 0 ? ` ${duplicateCount} erano gia' presenti.` : ""} Esci o svuota playlist per rimuoverle.${notice}`
+        );
+      }
       return true;
     } catch (error) {
       setDiscoveryStatusType("error");
@@ -674,6 +763,28 @@ export default function App() {
         return;
       }
 
+      if (sameTrack && playerMode === "server" && !isPlaying && !options.forceRestart) {
+        // Resume vero: se il brano e' gia' caricato in mpv, togliamo solo la pausa invece di riaprirlo.
+        void pauseServerTrack(token, false)
+          .then((payload) => {
+            const serverDuration = Number(payload.player?.duration || nextDuration);
+            const serverPosition = Number(payload.player?.position ?? startAt);
+            if (serverDuration > 0) {
+              updateClock(serverPosition, serverDuration);
+            }
+            embedClockRef.current = { baseTime: serverPosition, startedAt: performance.now() };
+            setIsPlaying(true);
+            setPlayerNotice("");
+          })
+          .catch((error) => {
+            embedClockRef.current = { baseTime: startAt, startedAt: 0 };
+            setIsPlaying(false);
+            setPlayerMode("idle");
+            setPlayerNotice(error.message || "Resume Raspberry non riuscito.");
+          });
+        return;
+      }
+
       void playServerTrack(token, { track, startAt, volume })
         .then((payload) => {
           const serverDuration = Number(payload.player?.duration || nextDuration);
@@ -710,6 +821,7 @@ export default function App() {
       } else {
         setEmbedSource(youtubeEmbedSourceFor(track, startAt));
       }
+      setPlayerNotice("");
       return;
     }
 
@@ -728,9 +840,11 @@ export default function App() {
       .play()
       .then(() => {
         setIsPlaying(true);
+        setPlayerNotice("");
       })
       .catch(() => {
         setIsPlaying(false);
+        setPlayerNotice("Play browser non riuscito.");
       });
   }
 
@@ -786,7 +900,9 @@ export default function App() {
       if (playerMode === "server" && token) {
         void stopServerTrack(token).catch(() => {});
       }
+      setPlayerMode("idle");
       updateClock(0, 0);
+      setPlayerNotice("Brano temporaneo rimosso dalla sessione.");
     }
   }
 
@@ -800,8 +916,11 @@ export default function App() {
       if (playerMode === "server" && token) {
         void stopServerTrack(token).catch(() => {});
       }
+      setPlayerMode("idle");
       updateClock(0, 0);
     }
+    setDiscoveryStatusType("success");
+    setDiscoveryStatus("Playlist temporanea svuotata.");
   }
 
   function handleTimeUpdate() {
@@ -821,6 +940,44 @@ export default function App() {
     }
 
     setDuration(audio.duration);
+  }
+
+  function previewFallbackSource(track) {
+    if (!track?.id) {
+      return "";
+    }
+
+    return track.previewPath || `/api/tracks/${encodeURIComponent(track.id)}/preview.wav`;
+  }
+
+  function handleAudioError() {
+    const audio = audioRef.current;
+    if (!audio || !activeTrack) {
+      setIsPlaying(false);
+      return;
+    }
+
+    const fallbackSource = previewFallbackSource(activeTrack);
+    const currentSource = audio.getAttribute("src") || "";
+    if (fallbackSource && currentSource !== fallbackSource) {
+      audio.src = fallbackSource;
+      audio.currentTime = 0;
+      void audio
+        .play()
+        .then(() => {
+          setPlayerMode("audio");
+          setIsPlaying(true);
+          setPlayerNotice("Stream diretto non disponibile: uso preview backend.");
+        })
+        .catch(() => {
+          setIsPlaying(false);
+          setPlayerNotice("Audio browser non disponibile per questa traccia.");
+        });
+      return;
+    }
+
+    setIsPlaying(false);
+    setPlayerNotice("Audio browser non disponibile per questa traccia.");
   }
 
   function handleSeek(nextPercent) {
@@ -972,13 +1129,14 @@ export default function App() {
                 />
 
                 {user.role === "admin" ? (
-                  <DiscoveryPanel
-                    providers={discoveryProviders}
-                    results={discoveryResults}
-                    isAdmin={user.role === "admin"}
-                    sessionTracks={sessionTracks}
-                    status={discoveryStatus}
-                    statusType={discoveryStatusType}
+                <DiscoveryPanel
+                  providers={discoveryProviders}
+                  results={discoveryResults}
+                  isAdmin={user.role === "admin"}
+                  sessionOwner={user.username}
+                  sessionTracks={sessionTracks}
+                  status={discoveryStatus}
+                  statusType={discoveryStatusType}
                     onSearch={handleDiscoverySearch}
                     onImportTrack={handleDiscoveryImport}
                     onBulkImport={handleBulkImport}
@@ -995,6 +1153,7 @@ export default function App() {
                   tracks={tracks}
                   queuedTracks={queuedTracks}
                   activeGenre={genre}
+                  onPlay={playTrack}
                   onSelectGenre={(nextGenre) => {
                     setGenre(nextGenre);
                     setPage(1);
@@ -1074,6 +1233,7 @@ export default function App() {
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        onError={handleAudioError}
         onEnded={handleEnded}
         onPause={() => {
           if (playerMode === "audio") {

@@ -34,13 +34,13 @@ Poi apri `http://localhost:3000` oppure `http://localhost:3000/react/`.
 
 ## Avvio su Raspberry Pi
 
-Per far uscire la musica dal Raspberry e non dal PC, usa Docker con l'override audio:
+Per far uscire la musica dal Raspberry e non dal PC, usa il file Docker unico del progetto:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.raspberry.yml up -d --build
+docker compose up -d --build
 ```
 
-Apri l'app da browser con l'IP del Raspberry, poi nel player lascia selezionato `Pi`.
+Nel `.env` del Raspberry imposta `CLEARWAVE_DOCKER_PRIVILEGED=true`, poi apri l'app da browser con l'IP del Raspberry e nel player lascia selezionato `Pi`.
 
 ## Primo accesso
 
