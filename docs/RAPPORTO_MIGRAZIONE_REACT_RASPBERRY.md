@@ -179,7 +179,7 @@ Per Raspberry Pi la parte audio si controlla con le variabili:
 - `CLEARWAVE_YTDL_PATH`
 - `CLEARWAVE_YTDL_FORMAT`
 
-La parte YouTube usa `yt-dlp` scaricato nel Dockerfile in `/usr/local/bin/yt-dlp`, non il pacchetto Debian, per ridurre i blocchi causati da cambiamenti frequenti nei formati YouTube.
+La parte YouTube usa `yt-dlp` scaricato nel Dockerfile in `/usr/bin/yt-dlp`, non il pacchetto Debian, per ridurre i blocchi causati da cambiamenti frequenti nei formati YouTube.
 
 ### Collaudo Docker consigliato
 
@@ -261,7 +261,7 @@ La legacy resta disponibile su `/legacy` come riferimento e fallback, ma la UI d
 
 ### Docker
 
-- `Dockerfile`: costruisce React e prepara il runtime Node con `mpv` e `yt-dlp`.
+- `Dockerfile`: costruisce React e prepara il runtime Node con `mpv`, `ffmpeg` e `yt-dlp`.
 - `docker-compose.yml`: unico compose del progetto. Gestisce porta, bind mount dati/upload, variabili e opzioni audio Raspberry.
 - `.env.example`: template delle variabili da copiare in `.env`.
 

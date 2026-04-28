@@ -188,10 +188,11 @@ export function setServerTrackVolume(token, volume) {
   });
 }
 
-export function stopServerTrack(token) {
+export function stopServerTrack(token, body = null) {
   return apiRequest("/api/server-player/stop", {
     method: "POST",
     token,
+    body,
   });
 }
 

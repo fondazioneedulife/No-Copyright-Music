@@ -151,7 +151,7 @@ Nel file `.env` del Raspberry imposta:
 CLEARWAVE_DOCKER_PRIVILEGED=true
 CLEARWAVE_AUDIO_OUTPUT=alsa
 ALSA_CARD=
-CLEARWAVE_YTDL_PATH=/usr/local/bin/yt-dlp
+CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
 ```
 

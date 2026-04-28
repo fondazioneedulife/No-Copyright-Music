@@ -37,13 +37,14 @@ const serverPlayerCommand = process.env.CLEARWAVE_PLAYER_COMMAND || "mpv";
 const serverPlayerAudioOutput = String(process.env.CLEARWAVE_AUDIO_OUTPUT || "alsa").trim();
 const serverPlayerAudioDevice = String(process.env.CLEARWAVE_AUDIO_DEVICE || "").trim();
 const serverPlayerAlsaCard = String(process.env.ALSA_CARD || "").trim();
-const serverPlayerYtdlPath = String(process.env.CLEARWAVE_YTDL_PATH || "/usr/local/bin/yt-dlp").trim();
+const serverPlayerYtdlPath = String(process.env.CLEARWAVE_YTDL_PATH || "/usr/bin/yt-dlp").trim();
 const serverPlayerYtdlFormat = String(
   process.env.CLEARWAVE_YTDL_FORMAT || "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
 ).trim();
 const serverPlayer = {
   // Stato del player lato Raspberry: React diventa telecomando, l'audio esce dal server.
   process: null,
+  runId: 0,
   socketPath: "",
   activeTrack: null,
   startedAt: 0,
@@ -3953,13 +3954,14 @@ function localAudioPathForTrack(track) {
   return resolveUploadPath(audioPath);
 }
 
-function serverPlayerSocketPath() {
-  // mpv espone una piccola API locale: su Linux/Raspberry usiamo un socket in /tmp.
+function serverPlayerSocketPath(runId = serverPlayer.runId || "main") {
+  // Ogni avvio mpv ha un socket dedicato: cosi' un processo vecchio non scollega quello nuovo.
+  const safeRunId = String(runId || "main").replace(/[^a-z0-9_-]/gi, "");
   if (process.platform === "win32") {
-    return "\\\\.\\pipe\\clearwave-mpv";
+    return `\\\\.\\pipe\\clearwave-mpv-${safeRunId}`;
   }
 
-  return path.join(os.tmpdir(), "clearwave-mpv.sock");
+  return path.join(os.tmpdir(), `clearwave-mpv-${safeRunId}.sock`);
 }
 
 function cleanupServerPlayerSocket(socketPath) {
@@ -3994,6 +3996,7 @@ function serverPlayerStatus() {
   return {
     available: process.env.CLEARWAVE_SERVER_PLAYER !== "0",
     command: serverPlayerCommand,
+    runId: serverPlayer.runId,
     activeTrack: serverPlayer.activeTrack,
     duration: serverPlayer.duration,
     error: serverPlayer.lastError,
@@ -4061,7 +4064,7 @@ function serverPlayerAudioConfig() {
   }
 
   if (!serverPlayerAlsaCard) {
-    return { args, env, label: "alsa/default" };
+    return { args, env, label: serverPlayerAudioOutput ? `${serverPlayerAudioOutput}/default` : "audio/default" };
   }
 
   if (/^\d+$/.test(serverPlayerAlsaCard)) {
@@ -4113,16 +4116,19 @@ function serverPlayerFriendlyError(message) {
 }
 
 function stopServerPlayerProcess() {
-  if (serverPlayer.process) {
+  const processRef = serverPlayer.process;
+  const socketPath = serverPlayer.socketPath;
+
+  if (processRef) {
     serverPlayer.isStopping = true;
     try {
-      serverPlayer.process.kill("SIGTERM");
+      processRef.kill("SIGTERM");
     } catch {
       // Se mpv e' gia' terminato, puliamo comunque lo stato sotto.
     }
   }
 
-  cleanupServerPlayerSocket(serverPlayer.socketPath);
+  cleanupServerPlayerSocket(socketPath);
   serverPlayer.process = null;
   serverPlayer.socketPath = "";
   serverPlayer.activeTrack = null;
@@ -4131,6 +4137,23 @@ function stopServerPlayerProcess() {
   serverPlayer.duration = 0;
   serverPlayer.isPaused = false;
   serverPlayer.isStopping = false;
+}
+
+function stopServerPlayerForPayload(payload = {}) {
+  // Gli stop asincroni vecchi non devono spegnere un brano nuovo appena avviato.
+  const expectedRunId = Number(payload?.runId) || 0;
+  const expectedTrackId = firstString(payload?.trackId, payload?.expectedTrackId);
+  const activeTrackId = firstString(serverPlayer.activeTrack?.id);
+  if (expectedRunId && expectedRunId !== serverPlayer.runId) {
+    return serverPlayerStatus();
+  }
+
+  if (expectedTrackId && activeTrackId && expectedTrackId !== activeTrackId) {
+    return serverPlayerStatus();
+  }
+
+  stopServerPlayerProcess();
+  return serverPlayerStatus();
 }
 
 function waitForServerPlayerReady(processRef, socketPath) {
@@ -4230,11 +4253,13 @@ async function playOnServerPlayer(req, payload) {
   const startAt = Math.max(0, Number(payload?.startAt) || 0);
   const volume = Math.round(Math.max(0, Math.min(1, Number(payload?.volume ?? serverPlayer.volume / 100))) * 100);
   const duration = parseDurationSeconds(track.duration || track.durationSeconds);
-  const socketPath = serverPlayerSocketPath();
   const audioConfig = serverPlayerAudioConfig();
   const ytdlArgs = serverPlayerYtdlConfig();
 
   stopServerPlayerProcess();
+  const runId = serverPlayer.runId + 1;
+  const socketPath = serverPlayerSocketPath(runId);
+  serverPlayer.runId = runId;
   cleanupServerPlayerSocket(socketPath);
 
   const args = [
@@ -4272,6 +4297,7 @@ async function playOnServerPlayer(req, payload) {
   }
 
   serverPlayer.process = processRef;
+  serverPlayer.runId = runId;
   serverPlayer.socketPath = socketPath;
   serverPlayer.activeTrack = track;
   serverPlayer.startedAt = Date.now() - startAt * 1000;
@@ -4282,12 +4308,20 @@ async function playOnServerPlayer(req, payload) {
   serverPlayer.volume = volume;
 
   processRef.stdout.on("data", (chunk) => {
+    if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
+      return;
+    }
+
     const message = String(chunk || "").trim();
     if (message) {
       console.log(`[server-player] mpv stdout: ${message}`);
     }
   });
   processRef.stderr.on("data", (chunk) => {
+    if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
+      return;
+    }
+
     const message = String(chunk || "").trim();
     if (message) {
       serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
@@ -4296,10 +4330,14 @@ async function playOnServerPlayer(req, payload) {
   });
   processRef.once("exit", (code) => {
     console.log(`[server-player] mpv terminato con codice ${code}`);
+    cleanupServerPlayerSocket(socketPath);
+    if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
+      return;
+    }
+
     if (code && !serverPlayer.lastError) {
       serverPlayer.lastError = `mpv terminato con codice ${code}. Controlla audio device e sorgente.`;
     }
-    cleanupServerPlayerSocket(socketPath);
     if (!serverPlayer.isStopping) {
       serverPlayer.activeTrack = null;
       serverPlayer.duration = 0;
@@ -4543,8 +4581,8 @@ async function requestHandler(req, res) {
 
     if (req.method === "POST" && pathname === "/api/server-player/stop") {
       requireAuthRequest(req);
-      stopServerPlayerProcess();
-      json(res, 200, { player: serverPlayerStatus() });
+      const payload = await readJsonBody(req);
+      json(res, 200, { player: stopServerPlayerForPayload(payload) });
       return;
     }
 

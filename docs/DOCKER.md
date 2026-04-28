@@ -61,7 +61,7 @@ Nel `.env` del Raspberry imposta almeno:
 CLEARWAVE_DOCKER_PRIVILEGED=true
 CLEARWAVE_AUDIO_OUTPUT=alsa
 ALSA_CARD=
-CLEARWAVE_YTDL_PATH=/usr/local/bin/yt-dlp
+CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
 ```
 
@@ -81,7 +81,7 @@ aplay -l
 
 Poi puoi scegliere la scheda con `ALSA_CARD` oppure passare direttamente `CLEARWAVE_AUDIO_DEVICE` nel file `.env`.
 
-Se invece nei log compare `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato un formato riproducibile. L'immagine Docker installa `yt-dlp` aggiornato da `/usr/local/bin/yt-dlp` e il backend passa a `mpv` un formato audio-only tramite `CLEARWAVE_YTDL_FORMAT`.
+Se invece nei log compare `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato un formato riproducibile. L'immagine Docker installa `yt-dlp` aggiornato da `/usr/bin/yt-dlp` e il backend passa a `mpv` un formato audio-only tramite `CLEARWAVE_YTDL_FORMAT`.
 
 Per controllare la versione dentro il container:
 
@@ -195,7 +195,7 @@ Con l'attuale compose a bind mount, `down -v` non elimina `./data` e `./uploads`
 ## Note tecniche
 
 - L'immagine usa `node:22-bookworm-slim`, coerente con l'uso di `node:sqlite`.
-- Il runtime installa `mpv` e scarica `yt-dlp` aggiornato in `/usr/local/bin/yt-dlp`: servono per riprodurre file, stream e link YouTube dal server.
+- Il runtime installa `mpv`, `ffmpeg` e scarica `yt-dlp` aggiornato in `/usr/bin/yt-dlp`: servono per riprodurre file, stream e link YouTube dal server.
 - React viene buildato in uno stage separato con `npm ci --prefix frontend`.
 - Nel runtime finale non vengono installate dipendenze frontend.
 - `CLEARWAVE_DATA_DIR` e `CLEARWAVE_UPLOADS_DIR` puntano alle cartelle bind mount `./data` e `./uploads`.

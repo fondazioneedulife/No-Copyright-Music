@@ -52,6 +52,9 @@ export default function App() {
   const audioRef = useRef(null);
   const embedFrameRef = useRef(null);
   const embedClockRef = useRef({ baseTime: 0, startedAt: 0 });
+  const playbackRequestRef = useRef(0);
+  const serverRunIdRef = useRef(0);
+  const serverVolumeTimerRef = useRef(null);
   const [token, setToken] = useState(readStoredToken);
   const [user, setUser] = useState(null);
   const [authStatus, setAuthStatus] = useState("");
@@ -118,11 +121,20 @@ export default function App() {
     }
 
     sendEmbedVolume(volume);
-    if (token && playbackTarget === "server") {
+
+    if (!token || playbackTarget !== "server") {
+      return undefined;
+    }
+
+    window.clearTimeout(serverVolumeTimerRef.current);
+    serverVolumeTimerRef.current = window.setTimeout(() => {
+      // Lo slider resta immediato, ma il Raspberry riceve meno comandi IPC e non si intasa.
       void setServerTrackVolume(token, volume).catch((error) => {
         setPlayerNotice(error.message || "Volume Raspberry non raggiungibile.");
       });
-    }
+    }, 160);
+
+    return () => window.clearTimeout(serverVolumeTimerRef.current);
   }, [volume, playbackTarget, token]);
 
   useEffect(() => {
@@ -140,6 +152,7 @@ export default function App() {
         }
 
         const player = payload.player || {};
+        serverRunIdRef.current = Number(player.runId || 0);
         const nextDuration = Number(player.duration || durationSecondsFor(activeTrack));
         const nextPosition = Math.max(0, Number(player.position) || 0);
 
@@ -703,6 +716,7 @@ export default function App() {
   }
 
   function pausePlayback() {
+    const requestId = ++playbackRequestRef.current;
     const audio = audioRef.current;
     if (playerMode === "audio" && audio) {
       audio.pause();
@@ -721,7 +735,9 @@ export default function App() {
       updateClock(pausedAt);
       if (token) {
         void pauseServerTrack(token, true).catch((error) => {
-          setPlayerNotice(error.message || "Pausa Raspberry non riuscita.");
+          if (playbackRequestRef.current === requestId) {
+            setPlayerNotice(error.message || "Pausa Raspberry non riuscita.");
+          }
         });
       }
     }
@@ -731,6 +747,7 @@ export default function App() {
 
   function playTrack(track, options = {}) {
     // Player misto: Raspberry via backend quando selezionato, browser locale come fallback.
+    const requestId = ++playbackRequestRef.current;
     const audio = audioRef.current;
     if (!audio) {
       return;
@@ -767,16 +784,25 @@ export default function App() {
         // Resume vero: se il brano e' gia' caricato in mpv, togliamo solo la pausa invece di riaprirlo.
         void pauseServerTrack(token, false)
           .then((payload) => {
+            if (playbackRequestRef.current !== requestId) {
+              return;
+            }
+
             const serverDuration = Number(payload.player?.duration || nextDuration);
             const serverPosition = Number(payload.player?.position ?? startAt);
             if (serverDuration > 0) {
               updateClock(serverPosition, serverDuration);
             }
+            serverRunIdRef.current = Number(payload.player?.runId || serverRunIdRef.current);
             embedClockRef.current = { baseTime: serverPosition, startedAt: performance.now() };
             setIsPlaying(true);
             setPlayerNotice("");
           })
           .catch((error) => {
+            if (playbackRequestRef.current !== requestId) {
+              return;
+            }
+
             embedClockRef.current = { baseTime: startAt, startedAt: 0 };
             setIsPlaying(false);
             setPlayerMode("idle");
@@ -787,13 +813,22 @@ export default function App() {
 
       void playServerTrack(token, { track, startAt, volume })
         .then((payload) => {
+          if (playbackRequestRef.current !== requestId) {
+            return;
+          }
+
           const serverDuration = Number(payload.player?.duration || nextDuration);
           if (serverDuration > 0) {
             updateClock(startAt, serverDuration);
           }
+          serverRunIdRef.current = Number(payload.player?.runId || serverRunIdRef.current);
           setPlayerNotice("");
         })
         .catch((error) => {
+          if (playbackRequestRef.current !== requestId) {
+            return;
+          }
+
           embedClockRef.current = { baseTime: startAt, startedAt: 0 };
           setIsPlaying(false);
           setPlayerMode("idle");
@@ -803,7 +838,7 @@ export default function App() {
     }
 
     if (playerMode === "server" && token) {
-      void stopServerTrack(token).catch(() => {});
+      void stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current }).catch(() => {});
     }
 
     if (isYouTubeTrack(track)) {
@@ -839,10 +874,18 @@ export default function App() {
     void audio
       .play()
       .then(() => {
+        if (playbackRequestRef.current !== requestId) {
+          return;
+        }
+
         setIsPlaying(true);
         setPlayerNotice("");
       })
       .catch(() => {
+        if (playbackRequestRef.current !== requestId) {
+          return;
+        }
+
         setIsPlaying(false);
         setPlayerNotice("Play browser non riuscito.");
       });
@@ -898,7 +941,7 @@ export default function App() {
       setActiveTrack(null);
       stopEmbedPlayback(0);
       if (playerMode === "server" && token) {
-        void stopServerTrack(token).catch(() => {});
+        void stopServerTrack(token, { trackId, runId: serverRunIdRef.current }).catch(() => {});
       }
       setPlayerMode("idle");
       updateClock(0, 0);
@@ -914,7 +957,7 @@ export default function App() {
       setActiveTrack(null);
       stopEmbedPlayback(0);
       if (playerMode === "server" && token) {
-        void stopServerTrack(token).catch(() => {});
+        void stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current }).catch(() => {});
       }
       setPlayerMode("idle");
       updateClock(0, 0);
@@ -924,6 +967,10 @@ export default function App() {
   }
 
   function handleTimeUpdate() {
+    if (playerMode !== "audio") {
+      return;
+    }
+
     const audio = audioRef.current;
     if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) {
       updateClock(0, duration);
@@ -934,6 +981,10 @@ export default function App() {
   }
 
   function handleLoadedMetadata() {
+    if (playerMode !== "audio") {
+      return;
+    }
+
     const audio = audioRef.current;
     if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) {
       return;
@@ -951,6 +1002,11 @@ export default function App() {
   }
 
   function handleAudioError() {
+    if (playerMode !== "audio") {
+      return;
+    }
+
+    const requestId = playbackRequestRef.current;
     const audio = audioRef.current;
     if (!audio || !activeTrack) {
       setIsPlaying(false);
@@ -965,11 +1021,19 @@ export default function App() {
       void audio
         .play()
         .then(() => {
+          if (playbackRequestRef.current !== requestId) {
+            return;
+          }
+
           setPlayerMode("audio");
           setIsPlaying(true);
           setPlayerNotice("Stream diretto non disponibile: uso preview backend.");
         })
         .catch(() => {
+          if (playbackRequestRef.current !== requestId) {
+            return;
+          }
+
           setIsPlaying(false);
           setPlayerNotice("Audio browser non disponibile per questa traccia.");
         });
@@ -1026,7 +1090,7 @@ export default function App() {
     // Cambio uscita: Browser resta utile in sviluppo, Raspberry e' l'uscita reale in produzione.
     const nextTarget = playbackTarget === "server" ? "browser" : "server";
     if (playbackTarget === "server" && playerMode === "server" && token) {
-      void stopServerTrack(token).catch(() => {});
+      void stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current }).catch(() => {});
       setIsPlaying(false);
       embedClockRef.current = { baseTime: currentTime, startedAt: 0 };
     }
@@ -1054,14 +1118,15 @@ export default function App() {
       return;
     }
 
+    const endedOnServer = playerMode === "server";
     stopEmbedPlayback(0);
-    if (playerMode === "server" && token) {
-      void stopServerTrack(token).catch(() => {});
-    }
     updateClock(0, duration);
     const moved = playAdjacent(1, { fromEnded: true });
     if (!moved) {
       setIsPlaying(false);
+      if (endedOnServer && token) {
+        void stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current }).catch(() => {});
+      }
     }
   }
 

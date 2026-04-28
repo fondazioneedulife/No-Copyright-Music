@@ -26,6 +26,7 @@ export function PlayerDock({
   const subtitle = activeTrack?.subtitle || "Apri una traccia dal catalogo React.";
   const targetLabel = playbackTarget === "server" ? "Pi" : "PC";
   const stateLabel = isPlaying ? "In riproduzione" : activeTrack ? "In pausa" : "Idle";
+  const handleVolumeInput = (event) => setVolume(Number(event.currentTarget.value) / 100);
 
   return (
     <footer className="player-dock">
@@ -107,7 +108,8 @@ export function PlayerDock({
             min="0"
             max="100"
             value={Math.round(volume * 100)}
-            onInput={(event) => setVolume(Number(event.currentTarget.value) / 100)}
+            onInput={handleVolumeInput}
+            onChange={handleVolumeInput}
           />
           <span>{Math.round(volume * 100)}%</span>
         </label>

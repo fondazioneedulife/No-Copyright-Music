@@ -21,15 +21,17 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-# Runtime audio lato Raspberry: mpv riproduce sul device del server.
+# Runtime audio lato Raspberry: mpv riproduce sul device del server, ffmpeg aiuta codec/stream.
 # yt-dlp viene preso dal rilascio ufficiale piu' recente per evitare errori YouTube da pacchetto Debian vecchio.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl mpv python3 \
-  && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
-  && chmod a+rx /usr/local/bin/yt-dlp \
-  && ln -sf /usr/local/bin/yt-dlp /usr/local/bin/youtube-dl \
-  && /usr/local/bin/yt-dlp --version \
+  && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg mpv python3 \
   && rm -rf /var/lib/apt/lists/*
+
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/bin/yt-dlp \
+  && chmod a+rx /usr/bin/yt-dlp \
+  && ln -sf /usr/bin/yt-dlp /usr/bin/youtube-dl \
+  && ln -sf /usr/bin/yt-dlp /usr/local/bin/yt-dlp \
+  && /usr/bin/yt-dlp --version
 
 COPY package.json ./
 COPY server.js app.js index.html styles.css ./

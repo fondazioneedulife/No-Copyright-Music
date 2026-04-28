@@ -30,7 +30,7 @@ services:
       CLEARWAVE_AUDIO_DEVICE: "${CLEARWAVE_AUDIO_DEVICE:-}"
       ALSA_CARD: "${ALSA_CARD:-}"
       # YouTube sul server: forza uno stream audio e usa il binario yt-dlp aggiornato dell'immagine.
-      CLEARWAVE_YTDL_PATH: "${CLEARWAVE_YTDL_PATH:-/usr/local/bin/yt-dlp}"
+      CLEARWAVE_YTDL_PATH: "${CLEARWAVE_YTDL_PATH:-/usr/bin/yt-dlp}"
       CLEARWAVE_YTDL_FORMAT: "${CLEARWAVE_YTDL_FORMAT:-bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best}"
     # File Docker unico: su Raspberry prova prima con CLEARWAVE_DOCKER_PRIVILEGED=true.
     # Se l'audio host non viene esposto, puoi ancora sbloccare il device qui sotto.
