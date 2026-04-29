@@ -4,9 +4,9 @@ const os = require("node:os");
 const path = require("node:path");
 const fsSync = require("node:fs");
 const fs = require("node:fs/promises");
-const crypto = require("node:crypto");
 const { spawn } = require("node:child_process");
-const { DatabaseSync } = require("node:sqlite");
+const { createAuthService } = require("./lib/auth-service");
+const { catalogPageResponse } = require("./lib/catalog-page");
 
 // Percorsi principali dell'app: tutto resta locale e puo' essere spostato con variabili ambiente.
 const ROOT_DIR = __dirname;
@@ -32,7 +32,6 @@ const audioDbApiKey = process.env.THEAUDIODB_API_KEY || process.env.AUDIODB_API_
 const audiusApiKey = process.env.AUDIUS_API_KEY;
 const youtubeApiKey = process.env.YOUTUBE_API_KEY;
 const jamendoCoverCache = new Map();
-const authSessions = new Map();
 const serverPlayerCommand = process.env.CLEARWAVE_PLAYER_COMMAND || "mpv";
 const serverPlayerAudioOutput = String(process.env.CLEARWAVE_AUDIO_OUTPUT || "alsa").trim();
 const serverPlayerAudioDevice = String(process.env.CLEARWAVE_AUDIO_DEVICE || "").trim();
@@ -55,6 +54,23 @@ const serverPlayer = {
   lastError: "",
   volume: Number(process.env.CLEARWAVE_SERVER_VOLUME || 75),
 };
+const {
+  authUserFromRequest,
+  changeAuthPassword,
+  createAuthUser,
+  deleteAuthUser,
+  ensureAuthDatabase,
+  getBearerToken,
+  listAuthUsers,
+  loginAuthUser,
+  logoutAuthToken,
+  requireAdminRequest,
+  requireAuthRequest,
+  resetAuthUserPassword,
+} = createAuthService({
+  authDbFile: AUTH_DB_FILE,
+  initialAdminPassword: process.env.CLEARWAVE_ADMIN_PASSWORD || "admin123",
+});
 
 // Canali YouTube considerati "sicuri" per import permanente. Ogni traccia va comunque verificata.
 const youtubeCuratedChannels = [
@@ -784,8 +800,6 @@ const DISCOVERY_TIMEOUT_MS = 9000;
 const BULK_IMPORT_MAX_TRACKS = 5000;
 const LINK_IMPORT_MAX_TRACKS = 5000;
 const SESSION_IMPORT_MAX_TRACKS = 5000;
-const TRACK_PAGE_SIZE_DEFAULT = 20;
-const TRACK_PAGE_SIZE_MAX = 80;
 const YOUTUBE_PLAYLIST_MAX_PAGES = 120;
 const YOUTUBE_CURATED_LINK_MAX_SCAN = 6000;
 const YOUTUBE_UPLOADS_PAGE_SIZE = 50;
@@ -871,333 +885,6 @@ function httpError(status, message) {
   const error = new Error(message);
   error.status = status;
   return error;
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function slugifyAccount(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48);
-}
-
-function makeTempPassword() {
-  return `CW-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
-}
-
-function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
-  const hash = crypto.pbkdf2Sync(String(password), salt, 120000, 32, "sha256").toString("hex");
-  return `${salt}:${hash}`;
-}
-
-function verifyPassword(password, storedHash) {
-  const [salt, expectedHash] = String(storedHash || "").split(":");
-  if (!salt || !expectedHash) {
-    return false;
-  }
-
-  const actualHash = hashPassword(password, salt).split(":")[1];
-  if (actualHash.length !== expectedHash.length) {
-    return false;
-  }
-  return crypto.timingSafeEqual(Buffer.from(actualHash, "hex"), Buffer.from(expectedHash, "hex"));
-}
-
-function openAuthDb() {
-  return new DatabaseSync(AUTH_DB_FILE);
-}
-
-function publicUser(row) {
-  // Espone al frontend solo dati sicuri: mai password_hash o dettagli interni SQLite.
-  if (!row) {
-    return null;
-  }
-
-  return {
-    id: row.id,
-    username: row.username,
-    name: row.name,
-    role: row.role === "admin" ? "admin" : "user",
-    mustChangePassword: Boolean(row.must_change_password),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-function ensureAuthDatabase() {
-  fsSync.mkdirSync(DATA_DIR, { recursive: true });
-  const db = openAuthDb();
-  try {
-    // SQLite contiene solo utenti e ruoli. Il catalogo musicale resta in data/library.json.
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        username TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        role TEXT NOT NULL CHECK(role IN ('admin', 'user')),
-        password_hash TEXT NOT NULL,
-        must_change_password INTEGER NOT NULL DEFAULT 1,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      );
-    `);
-
-    const countRow = db.prepare("SELECT COUNT(*) AS count FROM users").get();
-    if (Number(countRow?.count || 0) === 0) {
-      // Primo avvio: crea un admin temporaneo, poi va cambiata password dalle impostazioni.
-      const initialPassword = process.env.CLEARWAVE_ADMIN_PASSWORD || "admin123";
-      db.prepare(
-        `INSERT INTO users
-          (id, username, name, role, password_hash, must_change_password, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(
-        "admin",
-        "admin",
-        "Amministratore",
-        "admin",
-        hashPassword(initialPassword),
-        1,
-        nowIso(),
-        nowIso()
-      );
-    }
-  } finally {
-    db.close();
-  }
-}
-
-function getBearerToken(req) {
-  // I token sono sessioni in memoria: al riavvio del server bisogna rifare login.
-  const header = String(req.headers.authorization || "");
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  return match ? match[1].trim() : "";
-}
-
-function authUserFromRequest(req) {
-  const token = getBearerToken(req);
-  if (!token) {
-    return null;
-  }
-
-  return authSessions.get(token) || null;
-}
-
-function isAdminRequest(req) {
-  const sessionUser = authUserFromRequest(req);
-  return sessionUser?.role === "admin";
-}
-
-function requireAdminRequest(req) {
-  if (!isAdminRequest(req)) {
-    throw httpError(403, "Solo l'amministratore puo' modificare il catalogo.");
-  }
-}
-
-function requireAuthRequest(req) {
-  const user = authUserFromRequest(req);
-  if (!user) {
-    throw httpError(401, "Accesso richiesto.");
-  }
-
-  return user;
-}
-
-function findUserByUsername(username) {
-  const db = openAuthDb();
-  try {
-    return db.prepare("SELECT * FROM users WHERE username = ?").get(username);
-  } finally {
-    db.close();
-  }
-}
-
-function listAuthUsers() {
-  const db = openAuthDb();
-  try {
-    return db
-      .prepare("SELECT id, username, name, role, must_change_password, created_at, updated_at FROM users ORDER BY role, name")
-      .all()
-      .map(publicUser);
-  } finally {
-    db.close();
-  }
-}
-
-function createAuthUser(payload) {
-  // Solo admin: crea account e restituisce una password temporanea da cambiare al primo accesso.
-  const name = String(payload?.name || payload?.username || "").trim();
-  const username = slugifyAccount(payload?.username || name);
-  const role = payload?.role === "admin" ? "admin" : "user";
-  if (!name || !username) {
-    throw httpError(400, "Nome utente non valido.");
-  }
-
-  if (findUserByUsername(username)) {
-    throw httpError(409, "Questo username esiste gia'.");
-  }
-
-  const tempPassword = makeTempPassword();
-  const createdAt = nowIso();
-  const db = openAuthDb();
-  try {
-    db.prepare(
-      `INSERT INTO users
-        (id, username, name, role, password_hash, must_change_password, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      username,
-      username,
-      name,
-      role,
-      hashPassword(tempPassword),
-      1,
-      createdAt,
-      createdAt
-    );
-  } finally {
-    db.close();
-  }
-
-  return {
-    user: publicUser(findUserByUsername(username)),
-    tempPassword,
-  };
-}
-
-function deleteAuthUser(req, usernameParam) {
-  const sessionUser = authUserFromRequest(req);
-  const username = slugifyAccount(usernameParam);
-  if (!username) {
-    throw httpError(400, "Username non valido.");
-  }
-
-  if (sessionUser?.username === username) {
-    throw httpError(400, "Non puoi eliminare l'utente con cui sei collegato.");
-  }
-
-  const row = findUserByUsername(username);
-  if (!row) {
-    throw httpError(404, "Utente non trovato.");
-  }
-
-  const db = openAuthDb();
-  try {
-    if (row.role === "admin") {
-      const adminCount = db.prepare("SELECT COUNT(*) AS count FROM users WHERE role = 'admin'").get();
-      if (Number(adminCount?.count || 0) <= 1) {
-        throw httpError(400, "Deve restare almeno un amministratore.");
-      }
-    }
-
-    db.prepare("DELETE FROM users WHERE username = ?").run(username);
-  } finally {
-    db.close();
-  }
-
-  for (const [token, user] of authSessions.entries()) {
-    if (user?.username === username) {
-      authSessions.delete(token);
-    }
-  }
-
-  return publicUser(row);
-}
-
-function resetAuthUserPassword(req, usernameParam) {
-  // Solo admin: resetta la password di un altro utente e forza il cambio al prossimo login.
-  const sessionUser = authUserFromRequest(req);
-  const username = slugifyAccount(usernameParam);
-  if (!username) {
-    throw httpError(400, "Username non valido.");
-  }
-
-  if (sessionUser?.username === username) {
-    throw httpError(400, "Usa Impostazioni per cambiare la tua password.");
-  }
-
-  const row = findUserByUsername(username);
-  if (!row) {
-    throw httpError(404, "Utente non trovato.");
-  }
-
-  const tempPassword = makeTempPassword();
-  const updatedAt = nowIso();
-  const db = openAuthDb();
-  try {
-    db.prepare(
-      "UPDATE users SET password_hash = ?, must_change_password = 1, updated_at = ? WHERE username = ?"
-    ).run(hashPassword(tempPassword), updatedAt, username);
-  } finally {
-    db.close();
-  }
-
-  for (const [token, user] of authSessions.entries()) {
-    if (user?.username === username) {
-      authSessions.delete(token);
-    }
-  }
-
-  return {
-    user: publicUser(findUserByUsername(username)),
-    tempPassword,
-  };
-}
-
-function loginAuthUser(payload) {
-  // Login classico username/password; la password resta hashata in SQLite.
-  const username = slugifyAccount(payload?.username || "");
-  const password = String(payload?.password || "");
-  if (!username || !password) {
-    throw httpError(400, "Inserisci username e password.");
-  }
-
-  const row = findUserByUsername(username);
-  if (!row || !verifyPassword(password, row.password_hash)) {
-    throw httpError(401, "Credenziali non valide.");
-  }
-
-  const token = crypto.randomBytes(32).toString("hex");
-  const user = publicUser(row);
-  authSessions.set(token, user);
-  return { token, user };
-}
-
-function changeAuthPassword(req, payload) {
-  const sessionUser = requireAuthRequest(req);
-  const currentPassword = String(payload?.currentPassword || "");
-  const newPassword = String(payload?.newPassword || "");
-  if (newPassword.length < 6) {
-    throw httpError(400, "La nuova password deve avere almeno 6 caratteri.");
-  }
-
-  const row = findUserByUsername(sessionUser.username);
-  if (!row || !verifyPassword(currentPassword, row.password_hash)) {
-    throw httpError(401, "Password attuale non valida.");
-  }
-
-  const updatedAt = nowIso();
-  const db = openAuthDb();
-  try {
-    db.prepare(
-      "UPDATE users SET password_hash = ?, must_change_password = 0, updated_at = ? WHERE username = ?"
-    ).run(hashPassword(newPassword), updatedAt, sessionUser.username);
-  } finally {
-    db.close();
-  }
-
-  const updatedUser = publicUser(findUserByUsername(sessionUser.username));
-  const token = getBearerToken(req);
-  if (token) {
-    authSessions.set(token, updatedUser);
-  }
-
-  return updatedUser;
 }
 
 async function ensureStorage() {
@@ -1672,115 +1359,6 @@ function attachComputedFields(track) {
     isRealTrack,
     previewPath,
     playbackPath: normalized.audioPath || previewPath,
-  };
-}
-
-function catalogGenreForTrack(track) {
-  return firstString(track.genre, track.instrument, "Altro");
-}
-
-function catalogSourceForTrack(track) {
-  const provider = firstString(track.externalProvider, track.sourceType).toLowerCase();
-  if (provider === "jamendo") {
-    return "jamendo";
-  }
-
-  if (provider === "youtube_curated" || provider === "youtube_session" || track.youtubeVideoId) {
-    return "youtube";
-  }
-
-  return "other";
-}
-
-function normalizeCatalogSearch(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function catalogTrackMatchesSearch(track, query) {
-  if (!query) {
-    return true;
-  }
-
-  return [
-    track.title,
-    track.subtitle,
-    track.creatorName,
-    track.license,
-    Array.isArray(track.tags) ? track.tags.join(" ") : track.tags,
-    catalogGenreForTrack(track),
-    catalogSourceForTrack(track),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase()
-    .includes(query);
-}
-
-function catalogTrackMatchesFilters(track, filters) {
-  if (filters.genre !== "all" && catalogGenreForTrack(track) !== filters.genre) {
-    return false;
-  }
-
-  if (filters.source !== "all" && catalogSourceForTrack(track) !== filters.source) {
-    return false;
-  }
-
-  return catalogTrackMatchesSearch(track, filters.query);
-}
-
-function catalogPageResponse(allTracks, searchParams) {
-  const tracks = allTracks.map(attachComputedFields);
-  const wantsServerPage = ["page", "limit", "q", "search", "genre", "source"].some((key) =>
-    searchParams.has(key)
-  );
-  const genres = [...new Set(tracks.map(catalogGenreForTrack).filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b)
-  );
-  const facets = {
-    // Facets arrivano dal catalogo completo: React non deve scaricare tutto solo per popolare i filtri.
-    genres,
-    sources: ["youtube", "jamendo", "other"],
-    totalTracks: tracks.length,
-  };
-
-  if (!wantsServerPage) {
-    return {
-      tracks,
-      pagination: {
-        page: 1,
-        pageSize: tracks.length,
-        totalItems: tracks.length,
-        totalPages: 1,
-      },
-      facets,
-    };
-  }
-
-  const filters = {
-    query: normalizeCatalogSearch(firstString(searchParams.get("q"), searchParams.get("search"))),
-    genre: firstString(searchParams.get("genre"), "all"),
-    source: firstString(searchParams.get("source"), "all"),
-  };
-  const filteredTracks = tracks.filter((track) => catalogTrackMatchesFilters(track, filters));
-  const pageSize = Math.max(
-    1,
-    Math.min(TRACK_PAGE_SIZE_MAX, Number(searchParams.get("limit")) || TRACK_PAGE_SIZE_DEFAULT)
-  );
-  const totalItems = filteredTracks.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const requestedPage = Math.max(1, Number(searchParams.get("page")) || 1);
-  const page = Math.min(requestedPage, totalPages);
-  const startIndex = (page - 1) * pageSize;
-
-  return {
-    tracks: filteredTracks.slice(startIndex, startIndex + pageSize),
-    pagination: {
-      page,
-      pageSize,
-      totalItems,
-      totalPages,
-    },
-    facets,
   };
 }
 
@@ -4317,35 +3895,79 @@ function serverPlayerSourceForTrack(track) {
   throw httpError(400, "Sorgente audio non valida per il player Raspberry.");
 }
 
-function serverPlayerAudioConfig() {
-  // Config robusta: default ALSA pulito, device esplicito solo se richiesto davvero.
-  const args = [];
+function normalizedMpvAudioDevice(value) {
+  const device = firstString(value);
+  if (!device) {
+    return "";
+  }
+
+  if (/^(alsa\/|auto|pulse|pipewire|null|jack|oss|openal|wasapi|coreaudio)/i.test(device)) {
+    return device;
+  }
+
+  if (/^(default|sysdefault|hw|plughw|dmix|front|iec958)(:|$)/i.test(device)) {
+    return `alsa/${device}`;
+  }
+
+  return device;
+}
+
+function audioConfigWithDevice(label, device, baseArgs, env) {
+  const normalizedDevice = normalizedMpvAudioDevice(device);
+  return {
+    args: normalizedDevice ? [...baseArgs, `--audio-device=${normalizedDevice}`] : [...baseArgs],
+    env: { ...env },
+    label: label || normalizedDevice || (serverPlayerAudioOutput ? `${serverPlayerAudioOutput}/default` : "audio/default"),
+  };
+}
+
+function uniqueAudioConfigs(configs) {
+  const seen = new Set();
+  return configs.filter((config) => {
+    const key = config.args.join("\u0000");
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function serverPlayerAudioConfigs() {
+  // Raspberry/ALSA puo' esporre card diverse: proviamo device esplicito, sysdefault e poi default.
+  const baseArgs = [];
   const env = { ...process.env };
 
   if (serverPlayerAudioOutput) {
-    args.push(`--ao=${serverPlayerAudioOutput}`);
+    baseArgs.push(`--ao=${serverPlayerAudioOutput}`);
   }
 
+  if (serverPlayerAudioOutput && serverPlayerAudioOutput !== "alsa") {
+    return [audioConfigWithDevice(serverPlayerAudioDevice || `${serverPlayerAudioOutput}/default`, serverPlayerAudioDevice, baseArgs, env)];
+  }
+
+  const configs = [];
   if (serverPlayerAudioDevice) {
-    args.push(`--audio-device=${serverPlayerAudioDevice}`);
-    return { args, env, label: serverPlayerAudioDevice };
+    configs.push(audioConfigWithDevice(serverPlayerAudioDevice, serverPlayerAudioDevice, baseArgs, env));
   }
 
-  if (!serverPlayerAlsaCard) {
-    return { args, env, label: serverPlayerAudioOutput ? `${serverPlayerAudioOutput}/default` : "audio/default" };
+  if (serverPlayerAlsaCard) {
+    if (/^\d+$/.test(serverPlayerAlsaCard)) {
+      configs.push(
+        audioConfigWithDevice(`alsa/sysdefault:CARD=${serverPlayerAlsaCard}`, `alsa/sysdefault:CARD=${serverPlayerAlsaCard}`, baseArgs, env),
+        audioConfigWithDevice(`alsa/plughw:CARD=${serverPlayerAlsaCard},DEV=0`, `alsa/plughw:CARD=${serverPlayerAlsaCard},DEV=0`, baseArgs, env),
+        audioConfigWithDevice(`alsa/plughw:${serverPlayerAlsaCard},0`, `alsa/plughw:${serverPlayerAlsaCard},0`, baseArgs, env)
+      );
+    } else {
+      configs.push(
+        audioConfigWithDevice(`alsa/sysdefault:CARD=${serverPlayerAlsaCard}`, `alsa/sysdefault:CARD=${serverPlayerAlsaCard}`, baseArgs, env),
+        audioConfigWithDevice(`alsa/plughw:CARD=${serverPlayerAlsaCard},DEV=0`, `alsa/plughw:CARD=${serverPlayerAlsaCard},DEV=0`, baseArgs, env)
+      );
+    }
   }
 
-  if (/^\d+$/.test(serverPlayerAlsaCard)) {
-    const deviceName = `alsa/plughw:${serverPlayerAlsaCard},0`;
-    args.push(`--audio-device=${deviceName}`);
-    env.AUDIODEV = `hw:${serverPlayerAlsaCard},0`;
-    return { args, env, label: deviceName };
-  }
-
-  const namedDevice = `alsa/sysdefault:CARD=${serverPlayerAlsaCard}`;
-  args.push(`--audio-device=${namedDevice}`);
-  env.AUDIODEV = serverPlayerAlsaCard;
-  return { args, env, label: namedDevice };
+  configs.push(audioConfigWithDevice("alsa/default", "", baseArgs, env));
+  return uniqueAudioConfigs(configs);
 }
 
 function serverPlayerYtdlConfig() {
@@ -4460,6 +4082,34 @@ function waitForServerPlayerReady(processRef, socketPath) {
   });
 }
 
+function waitForServerPlayerStable(processRef, timeoutMs = 850) {
+  return new Promise((resolve, reject) => {
+    if (processRef.exitCode !== null || processRef.signalCode) {
+      reject(new Error(`mpv terminato subito con codice ${processRef.exitCode ?? processRef.signalCode}.`));
+      return;
+    }
+
+    let settled = false;
+    const finish = (callback, value) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(timerId);
+      processRef.off("error", onError);
+      processRef.off("exit", onExit);
+      callback(value);
+    };
+    const onError = (error) => finish(reject, error);
+    const onExit = (code) => finish(reject, new Error(`mpv terminato subito con codice ${code ?? "sconosciuto"}.`));
+    const timerId = setTimeout(() => finish(resolve), timeoutMs);
+
+    processRef.once("error", onError);
+    processRef.once("exit", onExit);
+  });
+}
+
 function sendMpvCommand(command) {
   return new Promise((resolve, reject) => {
     if (!serverPlayer.process || !serverPlayer.socketPath) {
@@ -4521,111 +4171,123 @@ async function playOnServerPlayer(req, payload) {
   const startAt = Math.max(0, Number(payload?.startAt) || 0);
   const volume = Math.round(Math.max(0, Math.min(1, Number(payload?.volume ?? serverPlayer.volume / 100))) * 100);
   const duration = parseDurationSeconds(track.duration || track.durationSeconds);
-  const audioConfig = serverPlayerAudioConfig();
+  const audioConfigs = serverPlayerAudioConfigs();
   const ytdlArgs = serverPlayerYtdlConfig();
 
   stopServerPlayerProcess();
   const runId = serverPlayer.runId + 1;
-  const socketPath = serverPlayerSocketPath(runId);
   serverPlayer.runId = runId;
-  cleanupServerPlayerSocket(socketPath);
-
-  const args = [
+  const baseArgs = [
     "--no-video",
     "--force-window=no",
     "--idle=no",
     ...ytdlArgs,
     "--cache=yes",
     "--msg-level=all=warn",
-    `--input-ipc-server=${socketPath}`,
     `--volume=${volume}`,
-    ...audioConfig.args,
   ];
 
   if (startAt > 0) {
-    args.push(`--start=${startAt}`);
+    baseArgs.push(`--start=${startAt}`);
   }
 
-  args.push(source);
+  let lastStartError = "";
 
-  // Log orientato al debug Raspberry: aiuta a capire subito quale output stiamo tentando.
-  console.log(
-    `[server-player] Avvio mpv (${audioConfig.label}): ${serverPlayerCommand} ${args.join(" ")}`
-  );
-
-  let processRef;
-  try {
-    processRef = spawn(serverPlayerCommand, args, {
-      env: audioConfig.env,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  } catch (error) {
-    serverPlayer.lastError = error.message;
-    throw httpError(503, `Player Raspberry non disponibile: ${error.message}`);
-  }
-
-  serverPlayer.process = processRef;
-  serverPlayer.runId = runId;
-  serverPlayer.socketPath = socketPath;
-  serverPlayer.activeTrack = track;
-  serverPlayer.startedAt = Date.now() - startAt * 1000;
-  serverPlayer.pausedAt = startAt;
-  serverPlayer.duration = duration;
-  serverPlayer.isPaused = false;
-  serverPlayer.lastError = "";
-  serverPlayer.volume = volume;
-
-  processRef.stdout.on("data", (chunk) => {
-    if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
-      return;
-    }
-
-    const message = String(chunk || "").trim();
-    if (message) {
-      console.log(`[server-player] mpv stdout: ${message}`);
-    }
-  });
-  processRef.stderr.on("data", (chunk) => {
-    if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
-      return;
-    }
-
-    const message = String(chunk || "").trim();
-    if (message) {
-      serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
-      console.log(`[server-player] mpv stderr: ${message}`);
-    }
-  });
-  processRef.once("exit", (code) => {
-    console.log(`[server-player] mpv terminato con codice ${code}`);
+  for (let attemptIndex = 0; attemptIndex < audioConfigs.length; attemptIndex += 1) {
+    const audioConfig = audioConfigs[attemptIndex];
+    const socketPath = serverPlayerSocketPath(`${runId}-${attemptIndex + 1}`);
     cleanupServerPlayerSocket(socketPath);
-    if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
-      return;
+
+    const args = [
+      ...baseArgs,
+      `--input-ipc-server=${socketPath}`,
+      ...audioConfig.args,
+      source,
+    ];
+
+    const attemptLabel =
+      audioConfigs.length > 1 ? `${audioConfig.label} tentativo ${attemptIndex + 1}/${audioConfigs.length}` : audioConfig.label;
+    console.log(`[server-player] Avvio mpv (${attemptLabel}): ${serverPlayerCommand} ${args.join(" ")}`);
+
+    let processRef;
+    try {
+      processRef = spawn(serverPlayerCommand, args, {
+        env: audioConfig.env,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (error) {
+      lastStartError = error.message;
+      serverPlayer.lastError = error.message;
+      continue;
     }
 
-    if (code && !serverPlayer.lastError) {
-      serverPlayer.lastError = `mpv terminato con codice ${code}. Controlla audio device e sorgente.`;
-    }
-    if (!serverPlayer.isStopping) {
-      serverPlayer.activeTrack = null;
-      serverPlayer.duration = 0;
-      serverPlayer.process = null;
-      serverPlayer.socketPath = "";
-      serverPlayer.isPaused = false;
-      serverPlayer.startedAt = 0;
-      serverPlayer.pausedAt = 0;
-    }
-  });
+    serverPlayer.process = processRef;
+    serverPlayer.runId = runId;
+    serverPlayer.socketPath = socketPath;
+    serverPlayer.activeTrack = track;
+    serverPlayer.startedAt = Date.now() - startAt * 1000;
+    serverPlayer.pausedAt = startAt;
+    serverPlayer.duration = duration;
+    serverPlayer.isPaused = false;
+    serverPlayer.lastError = "";
+    serverPlayer.volume = volume;
 
-  try {
-    await waitForServerPlayerReady(processRef, socketPath);
-  } catch (error) {
-    stopServerPlayerProcess();
-    serverPlayer.lastError = error.message;
-    throw httpError(503, `Player Raspberry non avviato: ${error.message}`);
+    processRef.stdout.on("data", (chunk) => {
+      if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
+        return;
+      }
+
+      const message = String(chunk || "").trim();
+      if (message) {
+        serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
+        console.log(`[server-player] mpv stdout: ${message}`);
+      }
+    });
+    processRef.stderr.on("data", (chunk) => {
+      if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
+        return;
+      }
+
+      const message = String(chunk || "").trim();
+      if (message) {
+        serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
+        console.log(`[server-player] mpv stderr: ${message}`);
+      }
+    });
+    processRef.once("exit", (code) => {
+      console.log(`[server-player] mpv terminato con codice ${code}`);
+      cleanupServerPlayerSocket(socketPath);
+      if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
+        return;
+      }
+
+      if (code && !serverPlayer.lastError) {
+        serverPlayer.lastError = `mpv terminato con codice ${code}. Controlla audio device e sorgente.`;
+      }
+      if (!serverPlayer.isStopping) {
+        serverPlayer.activeTrack = null;
+        serverPlayer.duration = 0;
+        serverPlayer.process = null;
+        serverPlayer.socketPath = "";
+        serverPlayer.isPaused = false;
+        serverPlayer.startedAt = 0;
+        serverPlayer.pausedAt = 0;
+      }
+    });
+
+    try {
+      await waitForServerPlayerReady(processRef, socketPath);
+      await waitForServerPlayerStable(processRef);
+      return serverPlayerStatus();
+    } catch (error) {
+      lastStartError = firstString(serverPlayer.lastError, error.message);
+      console.log(`[server-player] Tentativo audio fallito (${audioConfig.label}): ${lastStartError}`);
+      stopServerPlayerProcess();
+    }
   }
 
-  return serverPlayerStatus();
+  serverPlayer.lastError = serverPlayerFriendlyError(lastStartError).slice(0, 400);
+  throw httpError(503, `Player Raspberry non avviato: ${serverPlayer.lastError || "nessun device audio disponibile."}`);
 }
 
 async function pauseServerPlayer(payload) {
@@ -4801,9 +4463,7 @@ async function requestHandler(req, res) {
 
     if (req.method === "POST" && pathname === "/api/auth/logout") {
       const token = getBearerToken(req);
-      if (token) {
-        authSessions.delete(token);
-      }
+      logoutAuthToken(token);
       json(res, 200, { ok: true });
       return;
     }
@@ -4888,7 +4548,7 @@ async function requestHandler(req, res) {
     if (req.method === "GET" && pathname === "/api/tracks") {
       // Con page/limit/q/genre/source la paginazione e' lato server; senza parametri resta compatibile.
       const tracks = await readLibrary();
-      json(res, 200, catalogPageResponse(tracks, url.searchParams));
+      json(res, 200, catalogPageResponse(tracks, url.searchParams, { attachComputedFields }));
       return;
     }
 

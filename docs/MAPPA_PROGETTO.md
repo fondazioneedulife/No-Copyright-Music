@@ -21,7 +21,8 @@ Questa pagina spiega cosa contiene ogni area del progetto ClearWave e quando con
 
 ## Backend
 
-`server.js` e' volutamente un file unico senza framework. Le aree principali sono:
+Il backend resta senza framework, ma le parti piu' delicate vengono separate in moduli piccoli.
+`server.js` mantiene router HTTP, storage e player; `lib/` contiene logiche riusabili.
 
 | Area | Cosa fa |
 | --- | --- |
@@ -37,6 +38,13 @@ Questa pagina spiega cosa contiene ogni area del progetto ClearWave e quando con
 | Import link | Interpreta URL Jamendo/YouTube e importa uno o piu' brani. |
 | Static serving | Serve `index.html`, partial, JS, CSS, asset, upload e build React. |
 | Router HTTP | La funzione `requestHandler(req, res)` collega metodi e URL alle funzioni sopra. |
+
+Moduli backend estratti:
+
+| Modulo | Ruolo |
+| --- | --- |
+| `lib/auth-service.js` | SQLite utenti, hash password, token sessione, ruoli admin/user e cambio password. |
+| `lib/catalog-page.js` | Filtri, facets e paginazione server-side di `GET /api/tracks`. |
 
 ## UI legacy
 
@@ -97,6 +105,7 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `frontend/src/main.jsx` | Monta React dentro `#root`. |
 | `frontend/src/App.jsx` | Stato globale React: auth, catalogo, utenti, filtri, coda, player Pi/PC, tema e routing interno. |
 | `frontend/src/api/client.js` | Wrapper unico per chiamate fetch: JSON, bearer token, player Raspberry e gestione errori. |
+| `frontend/src/hooks/useCatalogPage.js` | Stato e fetch della pagina catalogo, separati da `App.jsx`. |
 | `frontend/src/utils.js` | Helper React per classi CSS, sorgenti, ricerca, durate e YouTube embed. |
 | `frontend/src/styles/app.css` | Stile completo della UI React. |
 

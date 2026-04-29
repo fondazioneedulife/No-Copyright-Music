@@ -229,7 +229,9 @@ Questa sezione serve come mappa rapida per chi deve rimettere mano al codice sen
 
 ### Backend
 
-- `server.js`: e' il cuore dell'app. Contiene routing HTTP, API, autenticazione, SQLite utenti, catalogo, import provider, upload, static serving e player server-side.
+- `server.js`: e' il cuore dell'app. Contiene routing HTTP, API, storage catalogo, import provider, upload, static serving e player server-side.
+- `lib/auth-service.js`: isola autenticazione, SQLite utenti, hash password, token sessione e ruoli.
+- `lib/catalog-page.js`: isola filtri, facets e paginazione server-side del catalogo.
 - `GET /api/tracks`: supporta paginazione server-side; senza query resta compatibile e restituisce tutto il catalogo.
 - `POST /api/session/import-link`: per playlist YouTube temporanee usa prima Data API e poi fallback `yt-dlp`.
 - `data/`: contiene dati runtime generati dall'app, come catalogo JSON, database utenti e stato import YouTube.
@@ -241,6 +243,7 @@ Questa sezione serve come mappa rapida per chi deve rimettere mano al codice sen
 - `frontend/src/App.jsx`: tiene lo stato globale, coordina login, catalogo, player, sessioni temporanee, import e pannelli.
 - `frontend/src/api/client.js`: contiene tutte le chiamate fetch verso il backend.
 - `frontend/src/components/`: contiene i blocchi UI React separati per responsabilita'.
+- `frontend/src/hooks/useCatalogPage.js`: tiene fuori da `App.jsx` la pagina catalogo, il loading e il refresh server-side.
 - `frontend/src/styles/app.css`: contiene layout, tema, animazioni leggere, sidebar fissa, topbar fissa e player dock.
 
 Componenti principali:

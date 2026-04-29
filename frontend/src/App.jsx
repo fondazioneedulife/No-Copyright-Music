@@ -36,13 +36,13 @@ import { SettingsPanel } from "./components/SettingsPanel.jsx";
 import { Sidebar } from "./components/Sidebar.jsx";
 import { StudioPanel } from "./components/StudioPanel.jsx";
 import { Topbar } from "./components/Topbar.jsx";
+import { useCatalogPage } from "./hooks/useCatalogPage.js";
 import {
   durationSecondsFor,
   getGenre,
   getSource,
   isYouTubeTrack,
   normalizeSearch,
-  pageSize,
   playableSourceFor,
   trackMatchesSearch,
   youtubeEmbedSourceFor,
@@ -60,15 +60,6 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authStatus, setAuthStatus] = useState("");
   const [tracks, setTracks] = useState([]);
-  const [catalogTracks, setCatalogTracks] = useState([]);
-  const [catalogPagination, setCatalogPagination] = useState({
-    page: 1,
-    pageSize,
-    totalItems: 0,
-    totalPages: 1,
-  });
-  const [catalogFacets, setCatalogFacets] = useState({ genres: [], sources: [], totalTracks: 0 });
-  const [catalogLoading, setCatalogLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [activeSection, setActiveSection] = useState("catalog");
   const [theme, setTheme] = useState(() => window.localStorage.getItem("clearwave-react-theme") || "dark");
@@ -108,6 +99,22 @@ export default function App() {
   const [sessionTracks, setSessionTracks] = useState([]);
   const [uploadStatus, setUploadStatus] = useState("");
   const [uploadStatusType, setUploadStatusType] = useState("success");
+  const {
+    catalogTracks,
+    catalogPagination,
+    catalogFacets,
+    catalogLoading,
+    refreshCatalogPage,
+    resetCatalogPage,
+  } = useCatalogPage({
+    user,
+    page,
+    setPage,
+    search,
+    genre,
+    source,
+    setAuthStatus,
+  });
 
   useEffect(() => {
     // Tema salvato nel browser per mantenere dark/light mode anche dopo il refresh.
@@ -278,58 +285,6 @@ export default function App() {
       cancelled = true;
     };
   }, [user]);
-
-  useEffect(() => {
-    // Catalogo visibile paginato lato server: evita filtri pesanti e render inutili nel browser.
-    if (!user) {
-      return;
-    }
-
-    let cancelled = false;
-    async function loadCatalogPage() {
-      setCatalogLoading(true);
-      try {
-        const payload = await fetchTracks({
-          page,
-          limit: pageSize,
-          q: search,
-          genre,
-          source,
-        });
-        if (cancelled) {
-          return;
-        }
-
-        setCatalogTracks(payload.tracks || []);
-        setCatalogPagination(
-          payload.pagination || {
-            page,
-            pageSize,
-            totalItems: payload.tracks?.length || 0,
-            totalPages: 1,
-          }
-        );
-        setCatalogFacets(payload.facets || { genres: [], sources: [], totalTracks: 0 });
-        if (payload.pagination?.page && payload.pagination.page !== page) {
-          setPage(payload.pagination.page);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setCatalogTracks([]);
-          setAuthStatus(error.message || "Catalogo non disponibile.");
-        }
-      } finally {
-        if (!cancelled) {
-          setCatalogLoading(false);
-        }
-      }
-    }
-
-    void loadCatalogPage();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, page, search, genre, source]);
 
   useEffect(() => {
     if (!user) {
@@ -511,9 +466,7 @@ export default function App() {
     setToken("");
     setUser(null);
     setTracks([]);
-    setCatalogTracks([]);
-    setCatalogPagination({ page: 1, pageSize, totalItems: 0, totalPages: 1 });
-    setCatalogFacets({ genres: [], sources: [], totalTracks: 0 });
+    resetCatalogPage();
     setQueueIds([]);
     setSessionTracks([]);
     setActiveTrack(null);
@@ -542,21 +495,9 @@ export default function App() {
 
   async function refreshTracks() {
     // Dopo import/upload aggiorniamo sia la cache completa sia la pagina catalogo corrente.
-    const [fullPayload, pagePayload] = await Promise.all([
-      fetchTracks(),
-      fetchTracks({ page, limit: pageSize, q: search, genre, source }),
-    ]);
+    const fullPayload = await fetchTracks();
     setTracks(fullPayload.tracks || []);
-    setCatalogTracks(pagePayload.tracks || []);
-    setCatalogPagination(
-      pagePayload.pagination || {
-        page,
-        pageSize,
-        totalItems: pagePayload.tracks?.length || 0,
-        totalPages: 1,
-      }
-    );
-    setCatalogFacets(pagePayload.facets || { genres: [], sources: [], totalTracks: 0 });
+    await refreshCatalogPage();
   }
 
   function navigateToSection(sectionId) {

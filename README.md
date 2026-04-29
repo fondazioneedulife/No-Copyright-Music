@@ -5,6 +5,7 @@ ClearWave e' una web app locale per catalogare, cercare, importare e riprodurre 
 Il progetto contiene:
 
 - backend Node locale senza framework;
+- moduli backend in `lib/` per autenticazione e paginazione catalogo;
 - UI React principale su `http://localhost:3000`, `http://localhost:3000/react/` o in dev su `http://localhost:5173`;
 - UI legacy di fallback su `http://localhost:3000/legacy`;
 - autenticazione locale con SQLite;
@@ -181,6 +182,7 @@ La UI React usa:
 - `frontend/src/App.jsx` per stato globale;
 - `frontend/src/api/client.js` per fetch API;
 - `frontend/src/components/` per sezioni UI;
+- `frontend/src/hooks/` per logiche React riusabili;
 - `frontend/src/styles/app.css` per layout e tema.
 
 Funzioni React attuali:
