@@ -29,16 +29,16 @@ services:
       CLEARWAVE_SERVER_VOLUME: "${CLEARWAVE_SERVER_VOLUME:-75}"
       CLEARWAVE_AUDIO_OUTPUT: "${CLEARWAVE_AUDIO_OUTPUT:-alsa}"
       CLEARWAVE_AUDIO_DEVICE: "${CLEARWAVE_AUDIO_DEVICE:-}"
-      ALSA_CARD: "${ALSA_CARD:-}"
+      ALSA_CARD: "${ALSA_CARD:-1}"
       # YouTube sul server: forza uno stream audio e usa il binario yt-dlp aggiornato dell'immagine.
       CLEARWAVE_YTDL_PATH: "${CLEARWAVE_YTDL_PATH:-/usr/bin/yt-dlp}"
       CLEARWAVE_YTDL_FORMAT: "${CLEARWAVE_YTDL_FORMAT:-bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best}"
     # File Docker unico: su Raspberry prova prima con CLEARWAVE_DOCKER_PRIVILEGED=true.
     # Se l'audio host non viene esposto, puoi ancora sbloccare il device qui sotto.
-    # devices:
-    #   - /dev/snd:/dev/snd
-    # group_add:
-    #   - audio
+      devices:
+      - /dev/snd:/dev/snd
+      group_add:
+       - audio
     volumes:
       # Bind mount: Docker usa gli stessi dati del progetto, quindi catalogo e utenti non ripartono vuoti.
       - ./data:/app/data
