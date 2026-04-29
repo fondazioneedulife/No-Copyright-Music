@@ -149,6 +149,8 @@ Risposta:
 
 Avvia una traccia su `mpv` lato server.
 
+Gli avvii sono serializzati: se il browser invia piu' richieste `play` ravvicinate, il backend lascia vincere il comando piu' recente e non mantiene processi `mpv` sovrapposti.
+
 Body:
 
 ```json

@@ -58,6 +58,8 @@ const serverPlayer = {
   isStopping: false,
   lastError: "",
   volume: Number(process.env.CLEARWAVE_SERVER_VOLUME || 75),
+  playSequence: 0,
+  playQueue: Promise.resolve(),
 };
 const {
   authUserFromRequest,
@@ -4281,13 +4283,40 @@ async function resolveServerPlayerTrack(req, payload) {
   throw httpError(404, "Traccia non trovata per il player Raspberry.");
 }
 
-async function playOnServerPlayer(req, payload) {
+function isServerPlayerPlaySuperseded(playToken) {
+  return playToken && playToken !== serverPlayer.playSequence;
+}
+
+function enqueueServerPlayerPlay(req, payload) {
+  // Serializza gli avvii mpv: se React manda piu' Play ravvicinati, vince solo l'ultimo comando.
+  const playToken = serverPlayer.playSequence + 1;
+  serverPlayer.playSequence = playToken;
+
+  const queuedPlay = serverPlayer.playQueue
+    .catch(() => serverPlayerStatus())
+    .then(() => {
+      if (isServerPlayerPlaySuperseded(playToken)) {
+        return serverPlayerStatus();
+      }
+
+      return playOnServerPlayer(req, payload, playToken);
+    });
+
+  serverPlayer.playQueue = queuedPlay.catch(() => serverPlayerStatus());
+  return queuedPlay;
+}
+
+async function playOnServerPlayer(req, payload, playToken = 0) {
   if (process.env.CLEARWAVE_SERVER_PLAYER === "0") {
     throw httpError(503, "Player Raspberry disattivato da CLEARWAVE_SERVER_PLAYER=0.");
   }
 
   const track = await resolveServerPlayerTrack(req, payload);
   const source = serverPlayerSourceForTrack(track);
+  if (isServerPlayerPlaySuperseded(playToken)) {
+    return serverPlayerStatus();
+  }
+
   const startAt = Math.max(0, Number(payload?.startAt) || 0);
   const volume = Math.round(Math.max(0, Math.min(1, Number(payload?.volume ?? serverPlayer.volume / 100))) * 100);
   const duration = parseDurationSeconds(track.duration || track.durationSeconds);
@@ -4328,11 +4357,19 @@ async function playOnServerPlayer(req, payload) {
     const attemptLabel =
       audioConfigs.length > 1 ? `${audioConfig.label} tentativo ${attemptIndex + 1}/${audioConfigs.length}` : audioConfig.label;
 
+    if (isServerPlayerPlaySuperseded(playToken)) {
+      return serverPlayerStatus();
+    }
+
     const preflight = await runServerPlayerAudioPreflight(audioConfig);
     if (!preflight.ok) {
       lastStartError = preflight.message;
       console.log(`[server-player] Device audio scartato (${attemptLabel}): ${preflight.message}`);
       continue;
+    }
+
+    if (isServerPlayerPlaySuperseded(playToken)) {
+      return serverPlayerStatus();
     }
 
     console.log(`[server-player] Avvio mpv (${attemptLabel}): ${serverPlayerCommand} ${args.join(" ")}`);
@@ -4406,6 +4443,11 @@ async function playOnServerPlayer(req, payload) {
     try {
       await waitForServerPlayerReady(processRef, socketPath);
       await waitForServerPlayerStable(processRef);
+      if (isServerPlayerPlaySuperseded(playToken)) {
+        stopServerPlayerProcess();
+        return serverPlayerStatus();
+      }
+
       return serverPlayerStatus();
     } catch (error) {
       lastStartError = firstString(serverPlayer.lastError, error.message);
@@ -4610,7 +4652,7 @@ async function requestHandler(req, res) {
 
     if (req.method === "POST" && pathname === "/api/server-player/play") {
       const payload = await readJsonBody(req);
-      json(res, 200, { player: await playOnServerPlayer(req, payload) });
+      json(res, 200, { player: await enqueueServerPlayerPlay(req, payload) });
       return;
     }
 

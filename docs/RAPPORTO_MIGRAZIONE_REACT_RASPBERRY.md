@@ -312,6 +312,7 @@ La parte player Raspberry e' stata impostata per funzionare in modo piu' robusto
 - non viene piu' forzato automaticamente un device ALSA fragile;
 - ogni device ALSA viene provato con un mini WAV silenzioso prima di avviare davvero la canzone;
 - se un device come `plughw:1,0` fallisce, il backend lo scarta e passa ai fallback successivi;
+- gli avvii `Play` vengono serializzati: se arrivano comandi ravvicinati, il backend evita processi `mpv` sovrapposti;
 - se serve si puo' impostare il device in modo esplicito;
 - gli errori sono piu' facili da leggere dai log.
 
