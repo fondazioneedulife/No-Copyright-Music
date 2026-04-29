@@ -42,6 +42,8 @@ docker compose up -d --build
 
 Nel `.env` del Raspberry imposta `CLEARWAVE_DOCKER_PRIVILEGED=true`, poi apri l'app da browser con l'IP del Raspberry e nel player lascia selezionato `Pi`.
 
+Se devi aggiornare il progetto, ricreare il container o leggere errori audio, segui `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`. Quella guida separa bene host Raspberry, container Docker, Git, ALSA e yt-dlp.
+
 ## Primo accesso
 
 Al primo avvio, se `data/clearwave-auth.sqlite` non esiste, il backend crea un admin.

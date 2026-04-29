@@ -25,6 +25,7 @@ const LIBRARY_FILE = path.join(DATA_DIR, "library.json");
 const AUTH_DB_FILE = path.join(DATA_DIR, "clearwave-auth.sqlite");
 const YOUTUBE_IMPORT_STATE_FILE = path.join(DATA_DIR, "youtube-import-state.json");
 const publicFiles = new Set(["/index.html", "/styles.css", "/app.js"]);
+const SERVER_RUNTIME_REVISION = "raspberry-audio-queue-2026-04-29";
 
 // Chiavi API esterne. Devono arrivare dall'ambiente o da start-local.ps1, mai dal frontend.
 const jamendoClientId = process.env.JAMENDO_CLIENT_ID || process.env.JAMIENDO_CLIENT_ID;
@@ -4904,6 +4905,15 @@ if (require.main === module) {
     .then(() => {
       createAppServer().listen(port, () => {
         console.log(`ClearWave Library attiva su http://localhost:${port}`);
+        console.log(
+          `[server-player] Runtime ${SERVER_RUNTIME_REVISION}: queue=on, preflight=${
+            serverPlayerAudioPreflight ? "on" : "off"
+          }, output=${serverPlayerAudioOutput || "auto"}, device=${serverPlayerAudioDevice || "auto"}, alsaCard=${
+            serverPlayerAlsaCard || "auto"
+          }, fallback=${serverPlayerAudioConfigs()
+            .map((config) => config.label)
+            .join(" -> ")}`
+        );
 
         if (process.env.CLEARWAVE_AUTO_EXPAND === "1") {
           setTimeout(() => {

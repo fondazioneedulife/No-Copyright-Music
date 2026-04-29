@@ -111,8 +111,9 @@ Leggi in questo ordine:
 4. `docs/ENDPOINT_API.md`: elenco e contratto degli endpoint locali.
 5. `docs/CONFIGURAZIONE_API.md`: chiavi API, variabili ambiente e provider esterni.
 6. `docs/GUIDA_SVILUPPATORE.md`: regole pratiche per modificare codice e UI.
-7. `docs/DOCKER.md`: build e avvio del progetto in container.
-8. `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md`: riepilogo del lavoro fatto su React, player Raspberry e Docker.
+7. `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`: checklist pratica per Raspberry, Docker, Git, ALSA e yt-dlp.
+8. `docs/DOCKER.md`: build e avvio del progetto in container.
+9. `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md`: riepilogo del lavoro fatto su React, player Raspberry e Docker.
 
 ## Docker
 
@@ -159,6 +160,8 @@ CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
 
 Nel player React seleziona `Pi`: da quel momento il browser comanda il backend e la musica esce dal Raspberry, non dal PC.
 Se nei log vedi `Playback open error` o `Unknown error 524`, il problema e' ALSA: lascia `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE` vuoti e fai ripartire il container, cosi' il backend prova `sysdefault/default` prima di arrendersi. Se invece compare `Requested format is not available`, rebuilda e ricrea il container: il Dockerfile installa `yt-dlp` aggiornato e il backend forza un formato YouTube audio-only. Per evitare la cache Docker, il container prova anche ad aggiornare `/usr/bin/yt-dlp` ad ogni avvio quando `CLEARWAVE_UPDATE_YTDLP_ON_START=1`.
+
+Per debug rapido sul Raspberry usa `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`: contiene i comandi per capire se stai usando codice vecchio, se Docker vede ALSA e se `yt-dlp` e' aggiornato.
 
 ## Backend in breve
 

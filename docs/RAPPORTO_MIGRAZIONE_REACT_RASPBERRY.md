@@ -288,6 +288,7 @@ I file principali modificati durante questa fase di lavoro sono:
 - `.env.example`
 - `README.md`
 - `docs/DOCKER.md`
+- `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`
 - `docs/CONFIGURAZIONE_API.md`
 - `docs/ARCHITETTURA.md`
 - `docs/ENDPOINT_API.md`

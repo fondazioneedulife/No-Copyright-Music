@@ -158,4 +158,6 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `docs/ENDPOINT_API.md` | API locali esposte dal backend. |
 | `docs/CONFIGURAZIONE_API.md` | Chiavi API, variabili ambiente e provider. |
 | `docs/GUIDA_SVILUPPATORE.md` | Regole pratiche per modificare il codice. |
+| `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md` | Checklist operativa per Raspberry, Docker, Git, ALSA, mpv e yt-dlp. |
 | `docs/DOCKER.md` | Build, avvio e gestione dei volumi Docker. |
+| `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md` | Rapporto sul porting React, player Raspberry e stato del lavoro. |

@@ -51,6 +51,8 @@ docker compose up -d --build
 
 Sul Raspberry l'app React funziona come telecomando: il browser invia comandi al backend e l'audio esce dal Pi tramite `mpv`.
 
+Per una checklist completa di aggiornamento, rebuild, Git, ALSA e log, usa anche `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`.
+
 ```bash
 docker compose up -d --build
 ```
@@ -94,6 +96,14 @@ Docker puo' riusare la cache del layer `RUN curl ... latest/download/yt-dlp`. Pe
 [startup] Controllo aggiornamento yt-dlp...
 [startup] yt-dlp aggiornato:
 ```
+
+Subito dopo l'avvio del server devi vedere anche la firma del codice player:
+
+```text
+[server-player] Runtime raspberry-audio-queue-2026-04-29: queue=on, preflight=on, ...
+```
+
+Se questa riga non compare, il Raspberry sta ancora usando un'immagine o una cartella progetto vecchia anche se `yt-dlp` si aggiorna correttamente.
 
 Per controllare la versione dentro il container:
 
