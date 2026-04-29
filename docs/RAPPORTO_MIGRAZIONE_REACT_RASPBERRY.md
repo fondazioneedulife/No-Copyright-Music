@@ -310,7 +310,8 @@ Sono gia' stati eseguiti controlli tecnici su:
 La parte player Raspberry e' stata impostata per funzionare in modo piu' robusto rispetto a prima:
 
 - non viene piu' forzato automaticamente un device ALSA fragile;
-- si prova prima il default ALSA;
+- ogni device ALSA viene provato con un mini WAV silenzioso prima di avviare davvero la canzone;
+- se un device come `plughw:1,0` fallisce, il backend lo scarta e passa ai fallback successivi;
 - se serve si puo' impostare il device in modo esplicito;
 - gli errori sono piu' facili da leggere dai log.
 
@@ -320,12 +321,14 @@ Configurazione consigliata iniziale sul Raspberry:
 CLEARWAVE_DOCKER_PRIVILEGED=true
 CLEARWAVE_AUDIO_OUTPUT=alsa
 ALSA_CARD=
+CLEARWAVE_AUDIO_PREFLIGHT=1
 ```
 
 Se il default ALSA non basta, il passo successivo e':
 
-- controllare `aplay -l`;
-- poi impostare `ALSA_CARD` oppure `CLEARWAVE_AUDIO_DEVICE`.
+- controllare `docker compose exec clearwave aplay -l`;
+- controllare `docker compose exec clearwave aplay -L`;
+- poi impostare `ALSA_CARD` oppure `CLEARWAVE_AUDIO_DEVICE`, preferendo `alsa/sysdefault:CARD=...` a `alsa/plughw:...,0`.
 
 ## Problemi che restano da rifinire
 

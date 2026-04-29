@@ -41,7 +41,9 @@ npm start
 | `CLEARWAVE_PLAYER_COMMAND` | `server.js` | Comando usato per il player server-side, default `mpv`. |
 | `CLEARWAVE_SERVER_VOLUME` | `server.js` | Volume iniziale del player Raspberry, 0-100. |
 | `CLEARWAVE_AUDIO_OUTPUT` | `server.js` | Output mpv, default `alsa`. |
-| `CLEARWAVE_AUDIO_DEVICE` | `server.js` | Device mpv completo, per esempio `alsa/plughw:1,0`. |
+| `CLEARWAVE_AUDIO_DEVICE` | `server.js` | Device mpv completo, per esempio `alsa/sysdefault:CARD=1` o `alsa/default`. |
+| `CLEARWAVE_AUDIO_PREFLIGHT` | `server.js` | Se `1`, prova in silenzio il device ALSA prima di avviare la canzone. |
+| `CLEARWAVE_AUDIO_PREFLIGHT_TIMEOUT_MS` | `server.js` | Timeout del probe audio ALSA, default `2500`. |
 | `ALSA_CARD` | Docker/Raspberry | Scheda audio ALSA opzionale. Se vuota usa il default ALSA del Raspberry. |
 | `PORT` | `server.js` | Porta del server, default `3000`. |
 

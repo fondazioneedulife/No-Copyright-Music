@@ -40,6 +40,11 @@ const serverPlayerYtdlPath = String(process.env.CLEARWAVE_YTDL_PATH || "/usr/bin
 const serverPlayerYtdlFormat = String(
   process.env.CLEARWAVE_YTDL_FORMAT || "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
 ).trim();
+const serverPlayerAudioPreflight = process.env.CLEARWAVE_AUDIO_PREFLIGHT !== "0";
+const serverPlayerAudioPreflightTimeoutMs = Math.max(
+  700,
+  Number(process.env.CLEARWAVE_AUDIO_PREFLIGHT_TIMEOUT_MS || 2500) || 2500
+);
 const serverPlayer = {
   // Stato del player lato Raspberry: React diventa telecomando, l'audio esce dal server.
   process: null,
@@ -3852,6 +3857,10 @@ function serverPlayerStatus() {
     progress:
       serverPlayer.duration > 0 ? Math.min(100, (position / serverPlayer.duration) * 100) : 0,
     volume: Math.max(0, Math.min(100, serverPlayer.volume)),
+    audioOutput: serverPlayerAudioOutput,
+    audioDevice: serverPlayerAudioDevice,
+    alsaCard: serverPlayerAlsaCard,
+    audioPreflight: serverPlayerAudioPreflight,
     ytdlFormat: serverPlayerYtdlFormat,
     ytdlPath: serverPlayerYtdlPath,
   };
@@ -3966,8 +3975,115 @@ function serverPlayerAudioConfigs() {
     }
   }
 
-  configs.push(audioConfigWithDevice("alsa/default", "", baseArgs, env));
+  configs.push(
+    audioConfigWithDevice("alsa/default-device", "alsa/default", baseArgs, env),
+    audioConfigWithDevice("alsa/default-output", "", baseArgs, env)
+  );
   return uniqueAudioConfigs(configs);
+}
+
+function ensureServerPlayerProbeFile() {
+  const probePath = path.join(os.tmpdir(), "clearwave-audio-probe.wav");
+  if (fsSync.existsSync(probePath)) {
+    return probePath;
+  }
+
+  // WAV mono silenzioso: apre il device audio senza produrre suono udibile durante il test ALSA.
+  const sampleRate = 8000;
+  const sampleCount = Math.round(sampleRate * 0.16);
+  const dataSize = sampleCount * 2;
+  const buffer = Buffer.alloc(44 + dataSize);
+  buffer.write("RIFF", 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write("WAVE", 8);
+  buffer.write("fmt ", 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write("data", 36);
+  buffer.writeUInt32LE(dataSize, 40);
+  fsSync.writeFileSync(probePath, buffer);
+  return probePath;
+}
+
+function runServerPlayerAudioPreflight(audioConfig) {
+  if (!serverPlayerAudioPreflight || process.platform === "win32") {
+    return Promise.resolve({ ok: true, message: "" });
+  }
+
+  return new Promise((resolve) => {
+    let probePath;
+    try {
+      probePath = ensureServerPlayerProbeFile();
+    } catch (error) {
+      resolve({ ok: false, message: `Probe audio non creata: ${error.message}` });
+      return;
+    }
+
+    const args = [
+      "--no-video",
+      "--force-window=no",
+      "--idle=no",
+      "--no-config",
+      "--load-scripts=no",
+      "--volume=0",
+      "--msg-level=all=warn",
+      ...audioConfig.args,
+      probePath,
+    ];
+    let output = "";
+    let settled = false;
+
+    const finish = (processRef, ok, message) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(timeoutId);
+      if (!ok && processRef && processRef.exitCode === null) {
+        try {
+          processRef.kill("SIGTERM");
+        } catch {
+          // Il processo probe puo' essere gia' chiuso: l'esito sotto resta valido.
+        }
+      }
+      resolve({ ok, message: serverPlayerFriendlyError(message || output).slice(0, 400) });
+    };
+
+    let processRef;
+    try {
+      processRef = spawn(serverPlayerCommand, args, {
+        env: audioConfig.env,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (error) {
+      resolve({ ok: false, message: error.message });
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      finish(processRef, false, `Probe audio timeout dopo ${serverPlayerAudioPreflightTimeoutMs}ms.`);
+    }, serverPlayerAudioPreflightTimeoutMs);
+
+    const collectOutput = (chunk) => {
+      const message = String(chunk || "").trim();
+      if (message) {
+        output = `${output}\n${message}`.trim();
+      }
+    };
+
+    processRef.stdout.on("data", collectOutput);
+    processRef.stderr.on("data", collectOutput);
+    processRef.once("error", (error) => finish(processRef, false, error.message));
+    processRef.once("exit", (code) => {
+      finish(processRef, code === 0, output || `mpv probe terminato con codice ${code ?? "sconosciuto"}.`);
+    });
+  });
 }
 
 function serverPlayerYtdlConfig() {
@@ -3990,8 +4106,12 @@ function serverPlayerFriendlyError(message) {
     return "";
   }
 
+  if (/Unknown error 524|Playback open error|Could not open\/initialize audio device/i.test(text)) {
+    return `${text} ALSA non riesce ad aprire quel device: lascia CLEARWAVE_AUDIO_DEVICE e ALSA_CARD vuoti oppure prova sysdefault/default dal Raspberry.`;
+  }
+
   if (/alsa|audio output|audio device|ao\/alsa/i.test(text)) {
-    return `${text} Controlla CLEARWAVE_AUDIO_DEVICE o ALSA_CARD sul Raspberry Pi.`;
+    return `${text} Controlla CLEARWAVE_AUDIO_DEVICE, ALSA_CARD e l'accesso Docker a /dev/snd sul Raspberry Pi.`;
   }
 
   if (
@@ -4207,6 +4327,14 @@ async function playOnServerPlayer(req, payload) {
 
     const attemptLabel =
       audioConfigs.length > 1 ? `${audioConfig.label} tentativo ${attemptIndex + 1}/${audioConfigs.length}` : audioConfig.label;
+
+    const preflight = await runServerPlayerAudioPreflight(audioConfig);
+    if (!preflight.ok) {
+      lastStartError = preflight.message;
+      console.log(`[server-player] Device audio scartato (${attemptLabel}): ${preflight.message}`);
+      continue;
+    }
+
     console.log(`[server-player] Avvio mpv (${attemptLabel}): ${serverPlayerCommand} ${args.join(" ")}`);
 
     let processRef;

@@ -152,12 +152,13 @@ Nel file `.env` del Raspberry imposta:
 CLEARWAVE_DOCKER_PRIVILEGED=true
 CLEARWAVE_AUDIO_OUTPUT=alsa
 ALSA_CARD=
+CLEARWAVE_AUDIO_PREFLIGHT=1
 CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
 ```
 
 Nel player React seleziona `Pi`: da quel momento il browser comanda il backend e la musica esce dal Raspberry, non dal PC.
-Se nei log vedi `Requested format is not available`, rebuilda e ricrea il container: il Dockerfile installa `yt-dlp` aggiornato e il backend forza un formato YouTube audio-only. Per evitare la cache Docker, il container prova anche ad aggiornare `/usr/bin/yt-dlp` ad ogni avvio quando `CLEARWAVE_UPDATE_YTDLP_ON_START=1`.
+Se nei log vedi `Playback open error` o `Unknown error 524`, il problema e' ALSA: lascia `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE` vuoti e fai ripartire il container, cosi' il backend prova `sysdefault/default` prima di arrendersi. Se invece compare `Requested format is not available`, rebuilda e ricrea il container: il Dockerfile installa `yt-dlp` aggiornato e il backend forza un formato YouTube audio-only. Per evitare la cache Docker, il container prova anche ad aggiornare `/usr/bin/yt-dlp` ad ogni avvio quando `CLEARWAVE_UPDATE_YTDLP_ON_START=1`.
 
 ## Backend in breve
 

@@ -137,7 +137,10 @@ Risposta:
     "isPaused": false,
     "position": 0,
     "duration": 0,
-    "volume": 75
+    "volume": 75,
+    "audioOutput": "alsa",
+    "audioPreflight": true,
+    "ytdlPath": "/usr/bin/yt-dlp"
   }
 }
 ```

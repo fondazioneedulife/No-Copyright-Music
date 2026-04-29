@@ -61,6 +61,7 @@ Nel `.env` del Raspberry imposta almeno:
 CLEARWAVE_DOCKER_PRIVILEGED=true
 CLEARWAVE_AUDIO_OUTPUT=alsa
 ALSA_CARD=
+CLEARWAVE_AUDIO_PREFLIGHT=1
 CLEARWAVE_UPDATE_YTDLP_ON_START=1
 CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
@@ -74,13 +75,16 @@ http://IP_DEL_RASPBERRY:3000
 
 Nel player in basso lascia selezionato `Pi`. `PC` resta solo come fallback per ascoltare dal browser durante lo sviluppo.
 
-Se il Raspberry non riproduce audio, lascia prima `ALSA_CARD` vuoto e controlla che ALSA veda la scheda:
+Se il Raspberry non riproduce audio, lascia prima `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE` vuoti. Il backend fa un probe silenzioso dei device ALSA: nei log devi vedere righe come `Device audio scartato (...)` quando un device non e' apribile e poi `Avvio mpv (... tentativo ...)` sul fallback successivo.
+
+Per controllare che ALSA veda la scheda dentro al container:
 
 ```bash
-aplay -l
+docker compose exec clearwave aplay -l
+docker compose exec clearwave aplay -L
 ```
 
-Poi puoi scegliere la scheda con `ALSA_CARD` oppure passare direttamente `CLEARWAVE_AUDIO_DEVICE` nel file `.env`.
+Poi puoi scegliere la scheda con `ALSA_CARD` oppure passare direttamente `CLEARWAVE_AUDIO_DEVICE` nel file `.env`. Preferisci `alsa/sysdefault:CARD=1` o `alsa/default`; `alsa/plughw:1,0` resta supportato ma puo' fallire se il device e' gia' occupato.
 
 Se invece nei log compare `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato un formato riproducibile. L'immagine Docker installa `yt-dlp` aggiornato da `/usr/bin/yt-dlp` e il backend passa a `mpv` un formato audio-only tramite `CLEARWAVE_YTDL_FORMAT`.
 
@@ -130,7 +134,9 @@ Variabili principali:
 | `CLEARWAVE_PLAYER_COMMAND` | Comando player server-side, default `mpv`. |
 | `CLEARWAVE_SERVER_VOLUME` | Volume iniziale del player server, 0-100. |
 | `CLEARWAVE_AUDIO_OUTPUT` | Output mpv, default `alsa`. |
-| `CLEARWAVE_AUDIO_DEVICE` | Device mpv completo, es. `alsa/plughw:1,0`. |
+| `CLEARWAVE_AUDIO_DEVICE` | Device mpv completo, es. `alsa/sysdefault:CARD=1` o `alsa/default`. |
+| `CLEARWAVE_AUDIO_PREFLIGHT` | Se `1`, testa in silenzio il device ALSA prima di avviare la canzone. |
+| `CLEARWAVE_AUDIO_PREFLIGHT_TIMEOUT_MS` | Timeout del probe audio ALSA, default `2500`. |
 | `ALSA_CARD` | Scheda audio ALSA usata dal container Raspberry. |
 | `CLEARWAVE_YTDL_PATH` | Binario `yt-dlp` usato dal hook YouTube di `mpv`. |
 | `CLEARWAVE_YTDL_FORMAT` | Formato richiesto a YouTube; default audio-only per Raspberry. |
@@ -204,7 +210,7 @@ Con l'attuale compose a bind mount, `down -v` non elimina `./data` e `./uploads`
 ## Note tecniche
 
 - L'immagine usa `node:22-bookworm-slim`, coerente con l'uso di `node:sqlite`.
-- Il runtime installa `mpv`, `ffmpeg` e scarica `yt-dlp` aggiornato in `/usr/bin/yt-dlp`: servono per riprodurre file, stream e link YouTube dal server.
+- Il runtime installa `mpv`, `ffmpeg`, `alsa-utils`, `libasound2-plugins` e scarica `yt-dlp` aggiornato in `/usr/bin/yt-dlp`: servono per riprodurre file, stream e link YouTube dal server e per diagnosticare i device audio del Raspberry.
 - All'avvio il container puo' riscaricare `yt-dlp` per evitare che la cache Docker lasci una versione vecchia.
 - React viene buildato in uno stage separato con `npm ci --prefix frontend`.
 - Nel runtime finale non vengono installate dipendenze frontend.

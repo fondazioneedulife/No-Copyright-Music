@@ -25,7 +25,7 @@ WORKDIR /app
 # Runtime audio lato Raspberry: mpv riproduce sul device del server, ffmpeg aiuta codec/stream.
 # yt-dlp viene preso dal rilascio ufficiale piu' recente per evitare errori YouTube da pacchetto Debian vecchio.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg mpv python3 \
+  && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg mpv python3 alsa-utils libasound2-plugins \
   && rm -rf /var/lib/apt/lists/*
 
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/bin/yt-dlp \
