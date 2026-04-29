@@ -300,7 +300,20 @@ Risposta:
 
 ### `GET /api/tracks`
 
-Restituisce tutto il catalogo normalizzato.
+Restituisce il catalogo normalizzato.
+
+Senza query ritorna tutto il catalogo, per compatibilita' con la UI legacy e con strumenti interni.
+Con query usa filtri e paginazione lato server, quindi React riceve solo la pagina da renderizzare.
+
+Query opzionali:
+
+| Query | Valori |
+| --- | --- |
+| `page` | pagina richiesta, default `1` |
+| `limit` | card per pagina, default `20`, massimo `80` |
+| `q` / `search` | ricerca su titolo, autore, tag, licenza, genere e sorgente |
+| `genre` | genere esatto oppure `all` |
+| `source` | `youtube`, `jamendo`, `other` oppure `all` |
 
 Risposta:
 
@@ -316,7 +329,18 @@ Risposta:
       "previewPath": "/api/tracks/track-id/preview.wav",
       "downloadPath": "/api/tracks/track-id/download"
     }
-  ]
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "totalItems": 753,
+    "totalPages": 38
+  },
+  "facets": {
+    "genres": ["Electronic", "House"],
+    "sources": ["youtube", "jamendo", "other"],
+    "totalTracks": 753
+  }
 }
 ```
 
@@ -434,6 +458,10 @@ Supporta:
 Solo admin. Importa link YouTube temporanei nella sessione, senza salvarli nel catalogo sicuro.
 
 Uso: ascolto o prova rapida senza archiviazione permanente.
+
+Per le playlist prova prima la YouTube Data API; se la playlist non e' leggibile dalla API, usa `yt-dlp`
+come fallback server-side. Questo evita il caso in cui un link `watch?v=...&list=...` importi solo il
+video corrente invece dell'intera playlist.
 
 ## Media
 

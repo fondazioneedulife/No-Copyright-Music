@@ -784,6 +784,8 @@ const DISCOVERY_TIMEOUT_MS = 9000;
 const BULK_IMPORT_MAX_TRACKS = 5000;
 const LINK_IMPORT_MAX_TRACKS = 5000;
 const SESSION_IMPORT_MAX_TRACKS = 5000;
+const TRACK_PAGE_SIZE_DEFAULT = 20;
+const TRACK_PAGE_SIZE_MAX = 80;
 const YOUTUBE_PLAYLIST_MAX_PAGES = 120;
 const YOUTUBE_CURATED_LINK_MAX_SCAN = 6000;
 const YOUTUBE_UPLOADS_PAGE_SIZE = 50;
@@ -1670,6 +1672,115 @@ function attachComputedFields(track) {
     isRealTrack,
     previewPath,
     playbackPath: normalized.audioPath || previewPath,
+  };
+}
+
+function catalogGenreForTrack(track) {
+  return firstString(track.genre, track.instrument, "Altro");
+}
+
+function catalogSourceForTrack(track) {
+  const provider = firstString(track.externalProvider, track.sourceType).toLowerCase();
+  if (provider === "jamendo") {
+    return "jamendo";
+  }
+
+  if (provider === "youtube_curated" || provider === "youtube_session" || track.youtubeVideoId) {
+    return "youtube";
+  }
+
+  return "other";
+}
+
+function normalizeCatalogSearch(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function catalogTrackMatchesSearch(track, query) {
+  if (!query) {
+    return true;
+  }
+
+  return [
+    track.title,
+    track.subtitle,
+    track.creatorName,
+    track.license,
+    Array.isArray(track.tags) ? track.tags.join(" ") : track.tags,
+    catalogGenreForTrack(track),
+    catalogSourceForTrack(track),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .includes(query);
+}
+
+function catalogTrackMatchesFilters(track, filters) {
+  if (filters.genre !== "all" && catalogGenreForTrack(track) !== filters.genre) {
+    return false;
+  }
+
+  if (filters.source !== "all" && catalogSourceForTrack(track) !== filters.source) {
+    return false;
+  }
+
+  return catalogTrackMatchesSearch(track, filters.query);
+}
+
+function catalogPageResponse(allTracks, searchParams) {
+  const tracks = allTracks.map(attachComputedFields);
+  const wantsServerPage = ["page", "limit", "q", "search", "genre", "source"].some((key) =>
+    searchParams.has(key)
+  );
+  const genres = [...new Set(tracks.map(catalogGenreForTrack).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b)
+  );
+  const facets = {
+    // Facets arrivano dal catalogo completo: React non deve scaricare tutto solo per popolare i filtri.
+    genres,
+    sources: ["youtube", "jamendo", "other"],
+    totalTracks: tracks.length,
+  };
+
+  if (!wantsServerPage) {
+    return {
+      tracks,
+      pagination: {
+        page: 1,
+        pageSize: tracks.length,
+        totalItems: tracks.length,
+        totalPages: 1,
+      },
+      facets,
+    };
+  }
+
+  const filters = {
+    query: normalizeCatalogSearch(firstString(searchParams.get("q"), searchParams.get("search"))),
+    genre: firstString(searchParams.get("genre"), "all"),
+    source: firstString(searchParams.get("source"), "all"),
+  };
+  const filteredTracks = tracks.filter((track) => catalogTrackMatchesFilters(track, filters));
+  const pageSize = Math.max(
+    1,
+    Math.min(TRACK_PAGE_SIZE_MAX, Number(searchParams.get("limit")) || TRACK_PAGE_SIZE_DEFAULT)
+  );
+  const totalItems = filteredTracks.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const requestedPage = Math.max(1, Number(searchParams.get("page")) || 1);
+  const page = Math.min(requestedPage, totalPages);
+  const startIndex = (page - 1) * pageSize;
+
+  return {
+    tracks: filteredTracks.slice(startIndex, startIndex + pageSize),
+    pagination: {
+      page,
+      pageSize,
+      totalItems,
+      totalPages,
+    },
+    facets,
   };
 }
 
@@ -3126,6 +3237,154 @@ async function fetchYouTubeSessionVideoLink(videoId) {
   return mapped.slice(0, 1);
 }
 
+function ytDlpCommand() {
+  return firstString(serverPlayerYtdlPath, "yt-dlp");
+}
+
+function ytDlpPlaylistUrl(playlistId) {
+  return `https://www.youtube.com/playlist?list=${encodeURIComponent(playlistId)}`;
+}
+
+function runYtDlpJson(args, timeoutMs = 65000) {
+  return new Promise((resolve, reject) => {
+    const command = ytDlpCommand();
+    const processRef = spawn(command, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const timerId = setTimeout(() => {
+      settled = true;
+      processRef.kill("SIGTERM");
+      reject(httpError(504, "yt-dlp ha impiegato troppo tempo a leggere la playlist YouTube."));
+    }, timeoutMs);
+
+    processRef.stdout.on("data", (chunk) => {
+      stdout += String(chunk || "");
+    });
+    processRef.stderr.on("data", (chunk) => {
+      stderr += String(chunk || "");
+    });
+    processRef.on("error", (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timerId);
+      reject(httpError(502, `yt-dlp non avviabile: ${error.message || "comando non trovato"}.`));
+    });
+    processRef.once("exit", (code) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timerId);
+
+      if (code !== 0) {
+        reject(httpError(502, `yt-dlp non ha letto la playlist: ${stderr.trim() || `codice ${code}`}`));
+        return;
+      }
+
+      try {
+        resolve(JSON.parse(stdout || "{}"));
+      } catch {
+        reject(httpError(502, "yt-dlp ha restituito una risposta playlist non valida."));
+      }
+    });
+  });
+}
+
+function ytDlpThumbnailForEntry(entry = {}) {
+  const thumbnails = Array.isArray(entry.thumbnails)
+    ? entry.thumbnails.map((thumbnail) => thumbnail?.url)
+    : [];
+  return firstImageUrl(entry.thumbnail, ...thumbnails);
+}
+
+function mapYtDlpSessionEntry(entry = {}) {
+  const videoId = firstString(entry.id, entry.url).match(/[A-Za-z0-9_-]{8,}/)?.[0] || "";
+  if (!videoId) {
+    return null;
+  }
+
+  const title = decodeHtmlEntities(firstString(entry.title, `Video YouTube ${videoId}`));
+  const channelTitle = decodeHtmlEntities(firstString(entry.uploader, entry.channel, "Playlist YouTube"));
+  const durationSeconds = Number(entry.duration) || 0;
+  const originalCoverPath = ytDlpThumbnailForEntry(entry) || youtubeThumbnailUrl(null, videoId);
+
+  return normalizeTrack({
+    id: `youtube-session-${videoId}`,
+    title,
+    subtitle: `${channelTitle} / playlist utente temporanea`,
+    mood: inferMoodFromText([title, channelTitle].join(" ")),
+    duration: formatSeconds(durationSeconds),
+    energy: "Media",
+    license: "YouTube public embed",
+    licenseDetail: "Playlist temporanea utente: diritti commerciali non verificati",
+    licenseUrl: "https://www.youtube.com/t/terms",
+    attributionRequired: true,
+    useCases: ["Sessione utente"],
+    formats: ["STREAM"],
+    stems: 0,
+    instrument: "",
+    accent: pickAccent(title),
+    description: firstString(entry.description).slice(0, 280),
+    tags: ["youtube", "session-playlist", "unverified", "yt-dlp"],
+    preview: buildPreviewBlueprint(inferMoodFromText([title, channelTitle].join(" "))).preview,
+    wave: buildPreviewBlueprint(inferMoodFromText([title, channelTitle].join(" "))).wave,
+    youtubeVideoId: videoId,
+    embedPath: `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0`,
+    audioPath: "",
+    audioOriginalName: null,
+    sourceUrl: `https://www.youtube.com/watch?v=${videoId}`,
+    rightsNotes:
+      "Traccia letta con yt-dlp nella sessione temporanea. Non viene salvata nel catalogo sicuro: verifica licenza e autorizzazioni prima dell'uso commerciale.",
+    externalProvider: "youtube_session",
+    commercialStatus: "session-unverified",
+    creatorName: channelTitle,
+    creatorUrl: "",
+    sourceType: "session-import",
+    coverAlt: originalCoverPath ? `${title} - thumbnail originale YouTube` : "",
+    originalCoverPath,
+    canImport: false,
+    canPreview: true,
+  });
+}
+
+async function fetchYouTubeSessionPlaylistWithYtDlp(playlistId, maxTracks) {
+  if (!playlistId) {
+    throw httpError(400, "Link playlist YouTube senza playlist ID valido.");
+  }
+
+  const safeLimit = Math.max(1, Math.min(SESSION_IMPORT_MAX_TRACKS, Number(maxTracks) || 300));
+  const payload = await runYtDlpJson([
+    "--flat-playlist",
+    "--dump-single-json",
+    "--no-warnings",
+    "--playlist-end",
+    String(safeLimit),
+    ytDlpPlaylistUrl(playlistId),
+  ]);
+  const entries = Array.isArray(payload.entries) ? payload.entries.filter(Boolean) : [];
+  const mapped = entries.map(mapYtDlpSessionEntry).filter(Boolean).slice(0, safeLimit);
+
+  if (mapped.length === 0) {
+    throw httpError(404, "yt-dlp non ha trovato video leggibili nella playlist YouTube.");
+  }
+
+  return {
+    items: mapped,
+    scanned: entries.length,
+    pagesRead: 0,
+    maxPages: 0,
+    reachedEnd: mapped.length < safeLimit || entries.length < safeLimit,
+    hasMore: entries.length >= safeLimit,
+    limit: safeLimit,
+    source: "yt-dlp",
+  };
+}
+
 async function fetchYouTubeSessionPlaylistLink(playlistId, maxTracks) {
   if (!youtubeApiKey) {
     throw httpError(400, "YOUTUBE_API_KEY non configurato.");
@@ -3455,19 +3714,28 @@ async function importSessionLink(payload = {}) {
       items = result.items;
       sourceStats = result;
     } catch (error) {
-      if (!parsed.videoId) {
-        throw error;
-      }
-
       try {
-        items = await fetchYouTubeSessionVideoLink(parsed.videoId);
+        // Fallback Raspberry/Docker: quando la Data API non vede la playlist, yt-dlp legge l'elenco reale.
+        const result = await fetchYouTubeSessionPlaylistWithYtDlp(parsed.playlistId, maxTracks);
+        items = result.items;
+        sourceStats = result;
         notice =
-          "La playlist non e' accessibile dalla YouTube Data API: ho importato solo il video presente nel link.";
+          "Playlist importata con yt-dlp nella sessione temporanea: i brani non vengono salvati nel catalogo sicuro.";
       } catch {
-        throw httpError(
-          error.status || 404,
-          "Playlist non accessibile dalla YouTube Data API e video del link non disponibile o non embeddabile. Prova con il link diretto della playlist pubblica o con il link del canale /@handle."
-        );
+        if (!parsed.videoId) {
+          throw error;
+        }
+
+        try {
+          items = await fetchYouTubeSessionVideoLink(parsed.videoId);
+          notice =
+            "La playlist non e' accessibile dalla YouTube Data API o da yt-dlp: ho importato solo il video presente nel link.";
+        } catch {
+          throw httpError(
+            error.status || 404,
+            "Playlist non accessibile dalla YouTube Data API/yt-dlp e video del link non disponibile o non embeddabile. Prova con il link diretto della playlist pubblica o con il link del canale /@handle."
+          );
+        }
       }
     }
   } else if (parsed.provider === "youtube" && parsed.type === "channel") {
@@ -4618,9 +4886,9 @@ async function requestHandler(req, res) {
     }
 
     if (req.method === "GET" && pathname === "/api/tracks") {
-      // attachComputedFields aggiunge URL pronti per browser, senza cambiare il file library.json.
+      // Con page/limit/q/genre/source la paginazione e' lato server; senza parametri resta compatibile.
       const tracks = await readLibrary();
-      json(res, 200, { tracks: tracks.map(attachComputedFields) });
+      json(res, 200, catalogPageResponse(tracks, url.searchParams));
       return;
     }
 

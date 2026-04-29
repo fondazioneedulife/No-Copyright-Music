@@ -81,9 +81,18 @@ export function fetchCurrentUser(token) {
   return apiRequest("/api/auth/me", { token });
 }
 
-export function fetchTracks() {
-  // Catalogo gia' normalizzato dal backend con previewPath, coverPath e campi calcolati.
-  return apiRequest("/api/tracks");
+export function fetchTracks(params = null) {
+  // Con params il backend filtra e pagina: React riceve solo le card da renderizzare.
+  const query = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        query.set(key, String(value));
+      }
+    });
+  }
+
+  return apiRequest(`/api/tracks${query.toString() ? `?${query.toString()}` : ""}`);
 }
 
 export function fetchDiscoveryProviders() {

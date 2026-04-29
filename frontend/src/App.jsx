@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   bulkImportDiscovery,
   changePassword,
@@ -42,6 +42,7 @@ import {
   getSource,
   isYouTubeTrack,
   normalizeSearch,
+  pageSize,
   playableSourceFor,
   trackMatchesSearch,
   youtubeEmbedSourceFor,
@@ -59,6 +60,15 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authStatus, setAuthStatus] = useState("");
   const [tracks, setTracks] = useState([]);
+  const [catalogTracks, setCatalogTracks] = useState([]);
+  const [catalogPagination, setCatalogPagination] = useState({
+    page: 1,
+    pageSize,
+    totalItems: 0,
+    totalPages: 1,
+  });
+  const [catalogFacets, setCatalogFacets] = useState({ genres: [], sources: [], totalTracks: 0 });
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [activeSection, setActiveSection] = useState("catalog");
   const [theme, setTheme] = useState(() => window.localStorage.getItem("clearwave-react-theme") || "dark");
@@ -270,6 +280,58 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
+    // Catalogo visibile paginato lato server: evita filtri pesanti e render inutili nel browser.
+    if (!user) {
+      return;
+    }
+
+    let cancelled = false;
+    async function loadCatalogPage() {
+      setCatalogLoading(true);
+      try {
+        const payload = await fetchTracks({
+          page,
+          limit: pageSize,
+          q: search,
+          genre,
+          source,
+        });
+        if (cancelled) {
+          return;
+        }
+
+        setCatalogTracks(payload.tracks || []);
+        setCatalogPagination(
+          payload.pagination || {
+            page,
+            pageSize,
+            totalItems: payload.tracks?.length || 0,
+            totalPages: 1,
+          }
+        );
+        setCatalogFacets(payload.facets || { genres: [], sources: [], totalTracks: 0 });
+        if (payload.pagination?.page && payload.pagination.page !== page) {
+          setPage(payload.pagination.page);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setCatalogTracks([]);
+          setAuthStatus(error.message || "Catalogo non disponibile.");
+        }
+      } finally {
+        if (!cancelled) {
+          setCatalogLoading(false);
+        }
+      }
+    }
+
+    void loadCatalogPage();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, page, search, genre, source]);
+
+  useEffect(() => {
     if (!user) {
       return;
     }
@@ -309,33 +371,62 @@ export default function App() {
     }
   }, [user, activeSection]);
 
-  const query = normalizeSearch(search);
-  const genres = [...new Set(tracks.map(getGenre).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  const filteredTracks = tracks.filter((track) => {
-    if (genre !== "all" && getGenre(track) !== genre) {
-      return false;
-    }
+  const query = useMemo(() => normalizeSearch(search), [search]);
+  const genres = useMemo(
+    () =>
+      (catalogFacets.genres?.length
+        ? catalogFacets.genres
+        : [...new Set(tracks.map(getGenre).filter(Boolean))]
+      ).sort((a, b) => a.localeCompare(b)),
+    [catalogFacets.genres, tracks]
+  );
+  const filteredTracks = useMemo(
+    () =>
+      tracks.filter((track) => {
+        if (genre !== "all" && getGenre(track) !== genre) {
+          return false;
+        }
 
-    if (source !== "all" && getSource(track) !== source) {
-      return false;
-    }
+        if (source !== "all" && getSource(track) !== source) {
+          return false;
+        }
 
-    return trackMatchesSearch(track, query);
-  });
-  const queuedTracks = queueIds.map((trackId) => tracks.find((track) => track.id === trackId)).filter(Boolean);
-  const activeTrackInSession = sessionTracks.some((track) => track.id === activeTrack?.id);
-  const noAttributionCount = tracks.filter((track) => track.attributionRequired === false).length;
-  const useCaseCount = new Set(
-    tracks.flatMap((track) => {
-      if (Array.isArray(track.useCases)) {
-        return track.useCases;
-      }
-      return String(track.useCases || "")
-        .split(",")
-        .map((entry) => entry.trim())
-        .filter(Boolean);
-    })
-  ).size;
+        return trackMatchesSearch(track, query);
+      }),
+    [genre, query, source, tracks]
+  );
+  const knownTracks = useMemo(() => [...tracks, ...catalogTracks, ...sessionTracks], [
+    catalogTracks,
+    sessionTracks,
+    tracks,
+  ]);
+  const queuedTracks = useMemo(
+    () => queueIds.map((trackId) => knownTracks.find((track) => track.id === trackId)).filter(Boolean),
+    [knownTracks, queueIds]
+  );
+  const activeTrackInSession = useMemo(
+    () => sessionTracks.some((track) => track.id === activeTrack?.id),
+    [activeTrack?.id, sessionTracks]
+  );
+  const noAttributionCount = useMemo(
+    () => tracks.filter((track) => track.attributionRequired === false).length,
+    [tracks]
+  );
+  const useCaseCount = useMemo(
+    () =>
+      new Set(
+        tracks.flatMap((track) => {
+          if (Array.isArray(track.useCases)) {
+            return track.useCases;
+          }
+          return String(track.useCases || "")
+            .split(",")
+            .map((entry) => entry.trim())
+            .filter(Boolean);
+        })
+      ).size,
+    [tracks]
+  );
 
   function sendEmbedCommand(func, args = []) {
     // I comandi YouTube rendono play, pausa, seek e volume immediati senza ricaricare l'iframe.
@@ -420,6 +511,9 @@ export default function App() {
     setToken("");
     setUser(null);
     setTracks([]);
+    setCatalogTracks([]);
+    setCatalogPagination({ page: 1, pageSize, totalItems: 0, totalPages: 1 });
+    setCatalogFacets({ genres: [], sources: [], totalTracks: 0 });
     setQueueIds([]);
     setSessionTracks([]);
     setActiveTrack(null);
@@ -447,8 +541,22 @@ export default function App() {
   }
 
   async function refreshTracks() {
-    const payload = await fetchTracks();
-    setTracks(payload.tracks || []);
+    // Dopo import/upload aggiorniamo sia la cache completa sia la pagina catalogo corrente.
+    const [fullPayload, pagePayload] = await Promise.all([
+      fetchTracks(),
+      fetchTracks({ page, limit: pageSize, q: search, genre, source }),
+    ]);
+    setTracks(fullPayload.tracks || []);
+    setCatalogTracks(pagePayload.tracks || []);
+    setCatalogPagination(
+      pagePayload.pagination || {
+        page,
+        pageSize,
+        totalItems: pagePayload.tracks?.length || 0,
+        totalPages: 1,
+      }
+    );
+    setCatalogFacets(pagePayload.facets || { genres: [], sources: [], totalTracks: 0 });
   }
 
   function navigateToSection(sectionId) {
@@ -893,7 +1001,8 @@ export default function App() {
 
   function playAdjacent(direction, options = {}) {
     // Se stai ascoltando la playlist temporanea, prev/next restano in quella sessione.
-    const list = queuedTracks.length > 0 ? queuedTracks : activeTrackInSession ? sessionTracks : filteredTracks;
+    const catalogPlaybackList = filteredTracks.length > 0 ? filteredTracks : catalogTracks;
+    const list = queuedTracks.length > 0 ? queuedTracks : activeTrackInSession ? sessionTracks : catalogPlaybackList;
     if (list.length === 0) {
       return false;
     }
@@ -1158,14 +1267,17 @@ export default function App() {
           <Topbar
             user={user}
             search={search}
-            setSearch={setSearch}
+            setSearch={(nextSearch) => {
+              setSearch(nextSearch);
+              setPage(1);
+            }}
             theme={theme}
             setTheme={setTheme}
             onLogout={handleLogout}
           />
           <div className="content-shell">
             <Hero
-              tracksCount={tracks.length}
+              tracksCount={catalogFacets.totalTracks || tracks.length}
               queueCount={queuedTracks.length}
               noAttributionCount={noAttributionCount}
               useCaseCount={useCaseCount}
@@ -1176,14 +1288,16 @@ export default function App() {
             <div className="main-grid">
               <div className="feed-column">
                 <Catalog
-                  tracks={filteredTracks}
+                  tracks={catalogTracks}
                   genres={genres}
                   genre={genre}
                   setGenre={setGenre}
                   source={source}
                   setSource={setSource}
-                  page={page}
+                  page={catalogPagination.page || page}
                   setPage={setPage}
+                  pagination={catalogPagination}
+                  isLoading={catalogLoading}
                   queueIds={queueIds}
                   activeTrack={activeTrack}
                   isPlaying={isPlaying}

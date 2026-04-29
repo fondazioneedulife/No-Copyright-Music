@@ -1,4 +1,4 @@
-import { cx, getGenre, getSource, pageSize, readableDuration, sourceLabel } from "../utils.js";
+import { cx, getGenre, getSource, readableDuration, sourceLabel } from "../utils.js";
 
 export function Catalog({
   tracks,
@@ -9,6 +9,8 @@ export function Catalog({
   setSource,
   page,
   setPage,
+  pagination,
+  isLoading = false,
   queueIds,
   activeTrack,
   isPlaying,
@@ -17,10 +19,11 @@ export function Catalog({
   onNavigate,
   isAdmin,
 }) {
-  // La paginazione resta nel componente catalogo: 20 card per pagina, filtri sempre globali.
-  const totalPages = Math.max(1, Math.ceil(tracks.length / pageSize));
-  const safePage = Math.min(Math.max(1, page), totalPages);
-  const visibleTracks = tracks.slice((safePage - 1) * pageSize, safePage * pageSize);
+  // Le pagine arrivano gia' filtrate dal backend: qui renderizziamo solo la pagina visibile.
+  const totalItems = Number(pagination?.totalItems ?? tracks.length);
+  const totalPages = Math.max(1, Number(pagination?.totalPages || 1));
+  const safePage = Math.min(Math.max(1, Number(pagination?.page || page)), totalPages);
+  const visibleTracks = tracks;
 
   return (
     <section className="panel catalog-panel" id="catalogo">
@@ -29,7 +32,7 @@ export function Catalog({
           <p className="eyebrow">Catalogo</p>
           <h2>Brani disponibili</h2>
           <p>
-            {tracks.length} tracce filtrate. Pagina {safePage} di {totalPages}.
+            {totalItems} tracce filtrate. Pagina {safePage} di {totalPages}.
           </p>
         </div>
         {isAdmin ? (
@@ -87,7 +90,8 @@ export function Catalog({
       </div>
 
       <p className="results-summary">
-        {tracks.length} risultati nel catalogo corrente. Click destro aggiunge alla coda.
+        {isLoading ? "Caricamento pagina catalogo..." : `${totalItems} risultati filtrati lato server.`} Click destro
+        aggiunge alla coda.
       </p>
 
       <div className="track-grid">

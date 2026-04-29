@@ -147,7 +147,11 @@ Nell'ultimo passaggio sono state chiuse alcune parti rimaste a meta':
 - pulizia completa del player locale/embed al logout;
 - bug fix del pulsante `Play` nella coda playlist React;
 - sessione temporanea admin resa piu' esplicita e piu' vicina al flusso legacy;
-- messaggi sessione migliorati per distinguere nuove tracce e duplicati gia' presenti.
+- messaggi sessione migliorati per distinguere nuove tracce e duplicati gia' presenti;
+- catalogo React collegato a paginazione lato server con `page`, `limit`, `q`, `genre` e `source`;
+- calcoli pesanti React messi in memo, cosi' il player non rifiltra il catalogo a ogni tick;
+- stati attivi di shuffle, repeat e uscita `Pi` resi piu' evidenti;
+- import playlist temporanea con fallback `yt-dlp`, utile quando YouTube Data API non restituisce la lista completa.
 
 ## Docker
 
@@ -180,6 +184,7 @@ Per Raspberry Pi la parte audio si controlla con le variabili:
 - `CLEARWAVE_YTDL_FORMAT`
 
 La parte YouTube usa `yt-dlp` scaricato nel Dockerfile in `/usr/bin/yt-dlp`, non il pacchetto Debian, per ridurre i blocchi causati da cambiamenti frequenti nei formati YouTube.
+Dato che Docker puo' cacheare il download `latest`, il container prova anche ad aggiornare `yt-dlp` durante l'avvio quando `CLEARWAVE_UPDATE_YTDLP_ON_START=1`.
 
 ### Collaudo Docker consigliato
 
@@ -202,7 +207,7 @@ docker compose logs -f clearwave
 Endpoint minimi da controllare dopo l'avvio:
 
 - `GET /api/health`
-- `GET /api/tracks`
+- `GET /api/tracks?page=1&limit=20`
 - `POST /api/auth/login`
 - `GET /api/server-player/status`
 
@@ -225,6 +230,8 @@ Questa sezione serve come mappa rapida per chi deve rimettere mano al codice sen
 ### Backend
 
 - `server.js`: e' il cuore dell'app. Contiene routing HTTP, API, autenticazione, SQLite utenti, catalogo, import provider, upload, static serving e player server-side.
+- `GET /api/tracks`: supporta paginazione server-side; senza query resta compatibile e restituisce tutto il catalogo.
+- `POST /api/session/import-link`: per playlist YouTube temporanee usa prima Data API e poi fallback `yt-dlp`.
 - `data/`: contiene dati runtime generati dall'app, come catalogo JSON, database utenti e stato import YouTube.
 - `uploads/`: contiene file audio e documenti licenza caricati manualmente.
 - `assets/`: contiene asset statici e copertine locali.

@@ -156,7 +156,7 @@ CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
 ```
 
 Nel player React seleziona `Pi`: da quel momento il browser comanda il backend e la musica esce dal Raspberry, non dal PC.
-Se nei log vedi `Requested format is not available`, rebuilda l'immagine: il Dockerfile installa `yt-dlp` aggiornato e il backend forza un formato YouTube audio-only.
+Se nei log vedi `Requested format is not available`, rebuilda e ricrea il container: il Dockerfile installa `yt-dlp` aggiornato e il backend forza un formato YouTube audio-only. Per evitare la cache Docker, il container prova anche ad aggiornare `/usr/bin/yt-dlp` ad ogni avvio quando `CLEARWAVE_UPDATE_YTDLP_ON_START=1`.
 
 ## Backend in breve
 
@@ -186,13 +186,13 @@ La UI React usa:
 Funzioni React attuali:
 
 - login/logout;
-- catalogo filtrabile;
+- catalogo filtrabile con paginazione lato server;
 - coda;
 - player con uscita `Pi` server-side o `PC` browser;
 - tema dark/light;
 - gestione utenti admin;
 - import sicuro da Jamendo/YouTube whitelist;
-- playlist YouTube temporanea admin con pulizia al logout;
+- playlist YouTube temporanea admin con pulizia al logout e fallback `yt-dlp` per liste non lette dalla Data API;
 - archivio licenze e upload manuale;
 - reset password temporanea;
 - cambio password.
@@ -262,7 +262,7 @@ Smoke test:
 
 ```text
 GET http://localhost:3000/api/health
-GET http://localhost:3000/api/tracks
+GET http://localhost:3000/api/tracks?page=1&limit=20
 ```
 
 ## Nota licenze

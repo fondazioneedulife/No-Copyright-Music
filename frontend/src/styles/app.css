@@ -696,6 +696,9 @@ body[data-theme="light"] .hero-panel::after {
 .track-card {
   min-width: 0;
   padding: 8px;
+  /* Aiuta Chrome sul Raspberry: le card fuori viewport non vengono dipinte subito. */
+  content-visibility: auto;
+  contain-intrinsic-size: 260px 190px;
   border: 1px solid var(--border);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.07);
@@ -1481,6 +1484,20 @@ body[data-theme="light"] .pagination .is-active {
   padding: 0;
 }
 
+.transport button.is-active {
+  color: #fff;
+  border-color: rgba(255, 118, 84, 0.95);
+  background: linear-gradient(135deg, #ff2f42, #ff7a45);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 0 24px rgba(255, 47, 66, 0.42);
+  transform: translateY(-1px) scale(1.04);
+}
+
+body[data-theme="light"] .transport button.is-active {
+  color: #031018;
+}
+
 .player-toggle {
   display: grid;
   width: 46px;
@@ -1546,6 +1563,11 @@ body[data-theme="light"] .pagination .is-active {
   accent-color: var(--accent);
 }
 
+.progress-range::-webkit-slider-thumb,
+.volume input::-webkit-slider-thumb {
+  filter: drop-shadow(0 0 10px rgba(255, 47, 66, 0.42));
+}
+
 .volume-cluster {
   /* Uscita compatta: il selettore Pi/PC sta accanto al volume senza rubare spazio al player. */
   display: flex;
@@ -1565,9 +1587,14 @@ body[data-theme="light"] .pagination .is-active {
 }
 
 .playback-target.is-active {
-  color: var(--text);
-  border-color: rgba(255, 68, 80, 0.8);
-  background: rgba(255, 68, 80, 0.12);
+  color: #fff;
+  border-color: rgba(255, 118, 84, 0.95);
+  background: linear-gradient(135deg, rgba(255, 47, 66, 0.92), rgba(255, 122, 69, 0.78));
+  box-shadow: 0 0 20px rgba(255, 47, 66, 0.3);
+}
+
+body[data-theme="light"] .playback-target.is-active {
+  color: #031018;
 }
 
 .playback-target .player-icon {

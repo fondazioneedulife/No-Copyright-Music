@@ -61,6 +61,7 @@ Nel `.env` del Raspberry imposta almeno:
 CLEARWAVE_DOCKER_PRIVILEGED=true
 CLEARWAVE_AUDIO_OUTPUT=alsa
 ALSA_CARD=
+CLEARWAVE_UPDATE_YTDLP_ON_START=1
 CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
 ```
@@ -82,6 +83,13 @@ aplay -l
 Poi puoi scegliere la scheda con `ALSA_CARD` oppure passare direttamente `CLEARWAVE_AUDIO_DEVICE` nel file `.env`.
 
 Se invece nei log compare `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato un formato riproducibile. L'immagine Docker installa `yt-dlp` aggiornato da `/usr/bin/yt-dlp` e il backend passa a `mpv` un formato audio-only tramite `CLEARWAVE_YTDL_FORMAT`.
+
+Docker puo' riusare la cache del layer `RUN curl ... latest/download/yt-dlp`. Per questo il container prova anche ad aggiornare `/usr/bin/yt-dlp` ad ogni avvio quando `CLEARWAVE_UPDATE_YTDLP_ON_START=1`. Nei log devi vedere:
+
+```text
+[startup] Controllo aggiornamento yt-dlp...
+[startup] yt-dlp aggiornato:
+```
 
 Per controllare la versione dentro il container:
 
@@ -117,6 +125,7 @@ Variabili principali:
 | `CLEARWAVE_ENABLE_DEMOS` | Se `1`, abilita demo al primo catalogo vuoto. |
 | `CLEARWAVE_AUTO_EXPAND` | Se `1`, prova import automatico all'avvio. |
 | `CLEARWAVE_DOCKER_PRIVILEGED` | Se `true`, il container puo' accedere ai device host audio del Raspberry. |
+| `CLEARWAVE_UPDATE_YTDLP_ON_START` | Se `1`, riscarica `yt-dlp` latest all'avvio del container. |
 | `CLEARWAVE_SERVER_PLAYER` | Se `1`, abilita il player backend per audio sul Raspberry. |
 | `CLEARWAVE_PLAYER_COMMAND` | Comando player server-side, default `mpv`. |
 | `CLEARWAVE_SERVER_VOLUME` | Volume iniziale del player server, 0-100. |
@@ -196,6 +205,7 @@ Con l'attuale compose a bind mount, `down -v` non elimina `./data` e `./uploads`
 
 - L'immagine usa `node:22-bookworm-slim`, coerente con l'uso di `node:sqlite`.
 - Il runtime installa `mpv`, `ffmpeg` e scarica `yt-dlp` aggiornato in `/usr/bin/yt-dlp`: servono per riprodurre file, stream e link YouTube dal server.
+- All'avvio il container puo' riscaricare `yt-dlp` per evitare che la cache Docker lasci una versione vecchia.
 - React viene buildato in uno stage separato con `npm ci --prefix frontend`.
 - Nel runtime finale non vengono installate dipendenze frontend.
 - `CLEARWAVE_DATA_DIR` e `CLEARWAVE_UPLOADS_DIR` puntano alle cartelle bind mount `./data` e `./uploads`.
