@@ -4941,7 +4941,12 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
         };
         console.log(`[server-player] Traccia non riprodotta: ${exitMessage}`);
       } else {
-        console.log(`[server-player] mpv terminato con codice ${code}`);
+        const completedTitle = firstString(track?.title, track?.name, "traccia");
+        console.log(
+          code === 0
+            ? `[server-player] mpv ha completato "${completedTitle}" correttamente (codice 0)`
+            : `[server-player] mpv terminato con codice ${code ?? "sconosciuto"}`
+        );
       }
 
       if (!serverPlayer.isStopping) {

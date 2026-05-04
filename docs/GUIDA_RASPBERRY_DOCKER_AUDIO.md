@@ -197,6 +197,7 @@ Se YouTube restituisce `Requested format is not available`, il problema non e' A
 | `Requested format is not available` | Problema YouTube/formato, non device audio | Verifica `yt-dlp --version` e `CLEARWAVE_YTDL_FORMAT` |
 | Playlist importata con 1 solo brano | Link radio/mix `RD...` oppure Data API ha visto solo il video corrente | Usa un link `playlist?list=...`; per playlist normali il backend prova anche `yt-dlp` se la API restituisce solo 1 brano |
 | `mpv precedente chiuso per cambio traccia/comando` | Un nuovo play ha sostituito il processo mpv precedente | Non e' un errore finale: vuol dire che React/server hanno cambiato brano o comando prima che il vecchio processo chiudesse |
+| `mpv ha completato "... " correttamente (codice 0)` | La traccia e' finita o mpv ha chiuso normalmente | Non e' un errore. Se succede dopo pochi secondi, controlla durata reale della sorgente o eventuali click/skip dalla UI |
 | `mpv terminato con codice 4` senza `precedente chiuso` | `mpv` non e' riuscito ad aprire quella sorgente; spesso un video YouTube non disponibile, formato cambiato o stream Jamendo scaduto | Se la traccia successiva parte, la coda sta recuperando. Controlla la riga `Traccia non riprodotta` per sapere quale brano e' stato saltato |
 | `SQLite is an experimental feature` | Warning Node su `node:sqlite` | Non blocca l'app, si puo' ignorare |
 | Docker Desktop pipe error su Windows | Docker Desktop non e' acceso | Apri Docker Desktop e rilancia il comando |
