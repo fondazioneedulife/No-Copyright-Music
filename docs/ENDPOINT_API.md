@@ -441,6 +441,7 @@ L'import legge prima la playlist tecnica degli upload del canale, poi una selezi
 Se gli upload risultano gia' completati nello stato locale, il backend li salta ma continua comunque a leggere le playlist pubbliche del canale.
 La UI React invia `youtubeRestartCompleted: true`: in questo modo un canale marcato `completed` viene comunque risondato dagli upload, utile quando il catalogo locale non contiene ancora tutto o lo stato e' vecchio.
 La scansione standard della UI e' pensata per canali grandi: legge fino a 20 pagine upload, 30 playlist pubbliche per canale e 80 elementi per playlist, fermandosi comunque quando ha raccolto abbastanza candidati per non saturare quota API e Raspberry.
+L'amministratore puo' scegliere dalla UI una dimensione lotto da 120, 250 o 500 tracce; il valore finisce in `maxTracks` e decide quante nuove tracce provare a salvare in quel giro.
 
 Body tipico:
 

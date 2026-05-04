@@ -118,14 +118,19 @@ export function importDiscoveryTrack(token, track) {
   });
 }
 
-export function bulkImportDiscovery(token) {
+const bulkImportSizes = new Set([120, 250, 500]);
+
+export function bulkImportDiscovery(token, options = {}) {
+  const requestedMaxTracks = Number(options.maxTracks) || 120;
+  const maxTracks = bulkImportSizes.has(requestedMaxTracks) ? requestedMaxTracks : 120;
+
   return apiRequest("/api/discovery/bulk-import", {
     method: "POST",
     token,
     body: {
       includeYouTubeChannels: true,
       limitPerQuery: 10,
-      maxTracks: 120,
+      maxTracks,
       youtubeChannelMaxPages: 20,
       youtubeResume: true,
       youtubeRestartCompleted: true,

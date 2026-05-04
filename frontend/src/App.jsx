@@ -564,16 +564,18 @@ export default function App() {
     }
   }
 
-  async function handleBulkImport() {
+  async function handleBulkImport(maxTracks = 120) {
     if (user?.role !== "admin") {
       setDiscoveryStatusType("error");
       setDiscoveryStatus("Solo l'amministratore puo' importare lotti.");
       return;
     }
 
+    const requestedMaxTracks = Number(maxTracks) || 120;
+
     try {
-      setDiscoveryStatus("Importo un piccolo lotto progressivo...");
-      const payload = await bulkImportDiscovery(token);
+      setDiscoveryStatus(`Importo un lotto progressivo da ${requestedMaxTracks} tracce...`);
+      const payload = await bulkImportDiscovery(token, { maxTracks: requestedMaxTracks });
       await refreshTracks();
       const importErrors = Array.isArray(payload.errors) ? payload.errors : [];
       const youtubeProgress = Array.isArray(payload.youtubeProgress) ? payload.youtubeProgress : [];

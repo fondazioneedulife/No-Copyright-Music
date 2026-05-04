@@ -30,6 +30,7 @@ export function DiscoveryPanel({
   const [query, setQuery] = useState("");
   const [link, setLink] = useState("");
   const [provider, setProvider] = useState("all");
+  const [bulkSize, setBulkSize] = useState(120);
   const [busyAction, setBusyAction] = useState("");
 
   async function runAction(actionName, action) {
@@ -115,6 +116,14 @@ export function DiscoveryPanel({
                 })}
               </select>
             </label>
+            <label>
+              Dimensione lotto
+              <select value={bulkSize} onChange={(event) => setBulkSize(Number(event.target.value))}>
+                <option value={120}>120 tracce</option>
+                <option value={250}>250 tracce</option>
+                <option value={500}>500 tracce</option>
+              </select>
+            </label>
           </>
         ) : null}
         <div className="discovery-actions">
@@ -146,8 +155,12 @@ export function DiscoveryPanel({
             </button>
           ) : null}
           {isAdmin ? (
-            <button type="button" disabled={busyAction === "bulk"} onClick={() => runAction("bulk", onBulkImport)}>
-              {busyAction === "bulk" ? "Importo..." : "Importa lotto"}
+            <button
+              type="button"
+              disabled={busyAction === "bulk"}
+              onClick={() => runAction("bulk", () => onBulkImport(bulkSize))}
+            >
+              {busyAction === "bulk" ? "Importo..." : `Importa ${bulkSize}`}
             </button>
           ) : null}
         </div>

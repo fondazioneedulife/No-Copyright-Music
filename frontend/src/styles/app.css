@@ -649,7 +649,7 @@ body[data-theme="light"] .hero-panel::after {
 }
 
 .discovery-toolbar {
-  grid-template-columns: minmax(220px, 1.3fr) minmax(220px, 1.3fr) minmax(160px, 0.8fr);
+  grid-template-columns: minmax(220px, 1.4fr) minmax(220px, 1.3fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr);
 }
 
 .filter-rack label,
