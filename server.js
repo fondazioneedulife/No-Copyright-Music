@@ -2768,7 +2768,8 @@ async function fetchYouTubeCuratedChannelBackfill(maxTracks, maxPages, options =
 
   for (const channel of youtubeCuratedChannels) {
     const previousState = state.channels[channel.id] || {};
-    if (resume && previousState.reachedEnd && !restartCompleted) {
+    const uploadsCompleted = resume && previousState.reachedEnd && !restartCompleted;
+    if (uploadsCompleted && !includePlaylists) {
       progress.push({
         channel: channel.name,
         pagesRead: 0,
@@ -2783,6 +2784,18 @@ async function fetchYouTubeCuratedChannelBackfill(maxTracks, maxPages, options =
       const channelItemIds = new Set();
       let resetCursor = false;
       let resumeToken = resume ? firstString(previousState.nextPageToken) : "";
+      let result = uploadsCompleted
+        ? {
+            items: [],
+            scanned: 0,
+            nextPageToken: "",
+            pagesRead: 0,
+            maxPages,
+            limit: perChannelScanLimit,
+            hasMore: false,
+            reachedEnd: true,
+          }
+        : null;
       const persistProgress = async ({ nextPageToken, reachedEnd }) => {
         state.channels[channel.id] = {
           name: channel.name,
@@ -2793,34 +2806,35 @@ async function fetchYouTubeCuratedChannelBackfill(maxTracks, maxPages, options =
         };
         await writeYouTubeImportState(state);
       };
-      let result;
 
-      try {
-        result = await fetchYouTubeCuratedUploads(channel, perChannelScanLimit, maxPages, {
-          pageToken: resumeToken,
-          onProgress: persistProgress,
-        });
-      } catch (error) {
-        if (!resumeToken || !isYouTubeResumeTokenError(error)) {
-          throw error;
+      if (!result) {
+        try {
+          result = await fetchYouTubeCuratedUploads(channel, perChannelScanLimit, maxPages, {
+            pageToken: resumeToken,
+            onProgress: persistProgress,
+          });
+        } catch (error) {
+          if (!resumeToken || !isYouTubeResumeTokenError(error)) {
+            throw error;
+          }
+
+          // I pageToken YouTube possono scadere: in quel caso ripartiamo dall'inizio del canale
+          // invece di bloccare tutto l'import automatico.
+          resetCursor = true;
+          resumeToken = "";
+          result = await fetchYouTubeCuratedUploads(channel, perChannelScanLimit, maxPages, {
+            pageToken: "",
+            onProgress: persistProgress,
+          });
         }
 
-        // I pageToken YouTube possono scadere: in quel caso ripartiamo dall'inizio del canale
-        // invece di bloccare tutto l'import automatico.
-        resetCursor = true;
-        resumeToken = "";
-        result = await fetchYouTubeCuratedUploads(channel, perChannelScanLimit, maxPages, {
-          pageToken: "",
-          onProgress: persistProgress,
-        });
-      }
-
-      if (result.items.length === 0 && resumeToken) {
-        resetCursor = true;
-        result = await fetchYouTubeCuratedUploads(channel, perChannelScanLimit, maxPages, {
-          pageToken: "",
-          onProgress: persistProgress,
-        });
+        if (result.items.length === 0 && resumeToken) {
+          resetCursor = true;
+          result = await fetchYouTubeCuratedUploads(channel, perChannelScanLimit, maxPages, {
+            pageToken: "",
+            onProgress: persistProgress,
+          });
+        }
       }
 
       for (const item of result.items) {
@@ -2882,6 +2896,7 @@ async function fetchYouTubeCuratedChannelBackfill(maxTracks, maxPages, options =
         reachedEnd: result.reachedEnd,
         hasMore: result.hasMore,
         resetCursor,
+        skipped: uploadsCompleted ? "uploads-completed" : "",
       });
       items.push(...channelItems);
     } catch (error) {

@@ -586,7 +586,10 @@ export default function App() {
               const playlistText = entry.playlistsRead
                 ? `, playlist ${entry.playlistItems || 0}/${entry.playlistItemsScanned || 0}`
                 : "";
-              return `${entry.channel}: ${entry.items || 0}/${entry.scanned || 0}${playlistText}${resetText}${skippedText}`;
+              const uploadText = entry.skipped === "uploads-completed"
+                ? "upload gia' completi"
+                : `${entry.items || 0}/${entry.scanned || 0}`;
+              return `${entry.channel}: ${uploadText}${playlistText}${resetText}${skippedText}`;
             })
             .join("; ")}.`
         : "";
