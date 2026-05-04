@@ -814,10 +814,10 @@ const SESSION_IMPORT_MAX_TRACKS = 5000;
 const YOUTUBE_PLAYLIST_MAX_PAGES = 120;
 const YOUTUBE_CURATED_LINK_MAX_SCAN = 6000;
 const YOUTUBE_UPLOADS_PAGE_SIZE = 50;
-const YOUTUBE_BULK_SCAN_MULTIPLIER = 4;
+const YOUTUBE_BULK_SCAN_MULTIPLIER = 8;
 const YOUTUBE_CURATED_PLAYLIST_PAGE_SIZE = 25;
-const YOUTUBE_CURATED_PLAYLIST_SCAN_LIMIT = 12;
-const YOUTUBE_CURATED_PLAYLIST_ITEMS_LIMIT = 50;
+const YOUTUBE_CURATED_PLAYLIST_SCAN_LIMIT = 30;
+const YOUTUBE_CURATED_PLAYLIST_ITEMS_LIMIT = 80;
 const primaryMusicProviders = new Set(["jamendo", "youtube_curated"]);
 const bulkImportPlans = [
   {
@@ -2604,11 +2604,18 @@ async function fetchYouTubeCuratedPlaylistItems(channel, playlistId, maxItems) {
 async function fetchYouTubeCuratedChannelPlaylists(channel, options = {}) {
   const maxPlaylists = Math.max(
     1,
-    Math.min(50, Number(options.maxPlaylists) || YOUTUBE_CURATED_PLAYLIST_SCAN_LIMIT)
+    Math.min(80, Number(options.maxPlaylists) || YOUTUBE_CURATED_PLAYLIST_SCAN_LIMIT)
   );
   const maxItemsPerPlaylist = Math.max(
     1,
-    Math.min(100, Number(options.maxItemsPerPlaylist) || YOUTUBE_CURATED_PLAYLIST_ITEMS_LIMIT)
+    Math.min(150, Number(options.maxItemsPerPlaylist) || YOUTUBE_CURATED_PLAYLIST_ITEMS_LIMIT)
+  );
+  const maxTotalItems = Math.max(
+    1,
+    Math.min(
+      YOUTUBE_CURATED_LINK_MAX_SCAN,
+      Number(options.maxTotalItems) || YOUTUBE_CURATED_LINK_MAX_SCAN
+    )
   );
   const collected = [];
   const seenVideoIds = new Set();
@@ -2617,13 +2624,13 @@ async function fetchYouTubeCuratedChannelPlaylists(channel, options = {}) {
   let playlistsRead = 0;
   let playlistItemsScanned = 0;
 
-  while (playlistsRead < maxPlaylists) {
+  while (playlistsRead < maxPlaylists && collected.length < maxTotalItems) {
     const payload = await fetchYouTubeChannelPlaylistsPage(channel.id, pageToken);
     const playlists = Array.isArray(payload.items) ? payload.items : [];
     playlistPagesRead += 1;
 
     for (const playlist of playlists) {
-      if (playlistsRead >= maxPlaylists) {
+      if (playlistsRead >= maxPlaylists || collected.length >= maxTotalItems) {
         break;
       }
 
@@ -2650,6 +2657,9 @@ async function fetchYouTubeCuratedChannelPlaylists(channel, options = {}) {
 
           seenVideoIds.add(identity);
           collected.push(item);
+          if (collected.length >= maxTotalItems) {
+            break;
+          }
         }
       } catch {
         // Una playlist privata/cancellata non deve fermare l'import di tutto il canale.
@@ -2739,25 +2749,25 @@ async function fetchYouTubeCuratedChannelBackfill(maxTracks, maxPages, options =
   );
   const scanMultiplier = Math.max(
     1,
-    Math.min(12, Number(options.scanMultiplier) || YOUTUBE_BULK_SCAN_MULTIPLIER)
+    Math.min(16, Number(options.scanMultiplier) || YOUTUBE_BULK_SCAN_MULTIPLIER)
   );
   const perChannelScanLimit = Math.min(
     YOUTUBE_CURATED_LINK_MAX_SCAN,
     Math.max(perChannelLimit, perChannelLimit * scanMultiplier)
   );
-  const perChannelCandidateLimit = Math.min(YOUTUBE_CURATED_LINK_MAX_SCAN, perChannelScanLimit * 2);
+  const perChannelCandidateLimit = Math.min(YOUTUBE_CURATED_LINK_MAX_SCAN, perChannelScanLimit * 3);
   const candidatePoolLimit = Math.min(
     YOUTUBE_CURATED_LINK_MAX_SCAN,
-    Math.max(maxTracks, maxTracks * scanMultiplier * 3)
+    Math.max(maxTracks, maxTracks * scanMultiplier * 4)
   );
   const includePlaylists = options.includePlaylists !== false;
   const playlistScanLimit = Math.max(
     1,
-    Math.min(50, Number(options.playlistScanLimit) || YOUTUBE_CURATED_PLAYLIST_SCAN_LIMIT)
+    Math.min(80, Number(options.playlistScanLimit) || YOUTUBE_CURATED_PLAYLIST_SCAN_LIMIT)
   );
   const playlistItemsPerPlaylist = Math.max(
     1,
-    Math.min(100, Number(options.playlistItemsPerPlaylist) || YOUTUBE_CURATED_PLAYLIST_ITEMS_LIMIT)
+    Math.min(150, Number(options.playlistItemsPerPlaylist) || YOUTUBE_CURATED_PLAYLIST_ITEMS_LIMIT)
   );
   const resume = options.resume !== false;
   const restartCompleted = options.restartCompleted === true;
@@ -2854,9 +2864,12 @@ async function fetchYouTubeCuratedChannelBackfill(maxTracks, maxPages, options =
         playlistsRead: 0,
       };
       if (includePlaylists && channelItems.length < perChannelCandidateLimit) {
+        // La scansione playlist e' piu' profonda degli upload, ma resta limitata al pool
+        // necessario per evitare richieste API enormi quando un canale ha migliaia di brani.
         playlistResult = await fetchYouTubeCuratedChannelPlaylists(channel, {
           maxPlaylists: playlistScanLimit,
           maxItemsPerPlaylist: playlistItemsPerPlaylist,
+          maxTotalItems: perChannelCandidateLimit - channelItems.length,
         });
 
         for (const item of playlistResult.items) {
@@ -3926,17 +3939,17 @@ async function bulkImportDiscoveryTracks(payload = {}) {
   );
   const youtubeScanMultiplier = Math.max(
     1,
-    Math.min(12, Number(payload.youtubeScanMultiplier) || YOUTUBE_BULK_SCAN_MULTIPLIER)
+    Math.min(16, Number(payload.youtubeScanMultiplier) || YOUTUBE_BULK_SCAN_MULTIPLIER)
   );
   const includeYouTubePlaylists = payload.includeYouTubePlaylists !== false;
   const youtubePlaylistScanLimit = Math.max(
     1,
-    Math.min(50, Number(payload.youtubePlaylistScanLimit) || YOUTUBE_CURATED_PLAYLIST_SCAN_LIMIT)
+    Math.min(80, Number(payload.youtubePlaylistScanLimit) || YOUTUBE_CURATED_PLAYLIST_SCAN_LIMIT)
   );
   const youtubePlaylistItemsPerPlaylist = Math.max(
     1,
     Math.min(
-      100,
+      150,
       Number(payload.youtubePlaylistItemsPerPlaylist) || YOUTUBE_CURATED_PLAYLIST_ITEMS_LIMIT
     )
   );
@@ -5455,14 +5468,14 @@ if (require.main === module) {
           setTimeout(() => {
             bulkImportDiscoveryTracks({
               includeYouTubeChannels: true,
-              limitPerQuery: 6,
-              maxTracks: 35,
-              youtubeChannelMaxPages: 4,
+              limitPerQuery: 8,
+              maxTracks: 60,
+              youtubeChannelMaxPages: 12,
               youtubeRestartCompleted: true,
-              youtubeScanMultiplier: 4,
+              youtubeScanMultiplier: 8,
               includeYouTubePlaylists: true,
-              youtubePlaylistScanLimit: 10,
-              youtubePlaylistItemsPerPlaylist: 40,
+              youtubePlaylistScanLimit: 24,
+              youtubePlaylistItemsPerPlaylist: 80,
             })
               .then((result) => {
                 console.log(

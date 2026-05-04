@@ -73,7 +73,7 @@ const serverPlayerCommand = process.env.CLEARWAVE_PLAYER_COMMAND || "mpv";
 - Funzioni principali: `searchYouTubeCurated`, `fetchYouTubePlaylistLink`, `fetchYouTubeCuratedChannelBackfill`, `mapYouTubeCuratedVideo`.
 - Endpoint usati lato server: YouTube Data API v3.
 - Canali whitelist per import permanente: NoCopyrightSounds (`UC_aEa8K-EOJ3D6gOs7HcyNg`), Infraction - No Copyright Music (`UCkRrhwhJ2Ia_ZlkTQ4XFWJA`), BreakingCopyright - Royalty Free Music (`UCUFDNffZtBGisDliMx12fYw`).
-- `Importa lotto` legge questi canali in modo progressivo: conserva il cursore in `data/youtube-import-state.json`, scansiona piu' video dei brani richiesti per superare duplicati gia' presenti, legge anche una selezione di playlist pubbliche del canale e riparte dall'inizio se YouTube rifiuta un vecchio page token. La UI forza anche la riscan degli upload completati, per non trattare `completed` come "catalogo del canale esaurito".
+- `Importa lotto` legge questi canali in modo progressivo: conserva il cursore in `data/youtube-import-state.json`, scansiona piu' video dei brani richiesti per superare duplicati gia' presenti, legge anche una selezione profonda di playlist pubbliche del canale e riparte dall'inizio se YouTube rifiuta un vecchio page token. La UI forza anche la riscan degli upload completati, per non trattare `completed` come "catalogo del canale esaurito".
 - Nota licenza: YouTube non permette download audio via Data API. ClearWave riproduce con embed interno e conserva metadata/link.
 
 ### Audius

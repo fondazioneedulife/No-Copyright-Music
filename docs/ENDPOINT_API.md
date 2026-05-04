@@ -440,21 +440,22 @@ Se il cursore YouTube salvato non e' piu' valido, il backend riparte dall'inizio
 L'import legge prima la playlist tecnica degli upload del canale, poi una selezione di playlist pubbliche dello stesso canale; i video di playlist vengono salvati nel catalogo permanente solo se il proprietario del video e' ancora uno dei canali whitelist.
 Se gli upload risultano gia' completati nello stato locale, il backend li salta ma continua comunque a leggere le playlist pubbliche del canale.
 La UI React invia `youtubeRestartCompleted: true`: in questo modo un canale marcato `completed` viene comunque risondato dagli upload, utile quando il catalogo locale non contiene ancora tutto o lo stato e' vecchio.
+La scansione standard della UI e' pensata per canali grandi: legge fino a 20 pagine upload, 30 playlist pubbliche per canale e 80 elementi per playlist, fermandosi comunque quando ha raccolto abbastanza candidati per non saturare quota API e Raspberry.
 
 Body tipico:
 
 ```json
 {
   "includeYouTubeChannels": true,
-  "limitPerQuery": 8,
-  "maxTracks": 80,
-  "youtubeChannelMaxPages": 6,
+  "limitPerQuery": 10,
+  "maxTracks": 120,
+  "youtubeChannelMaxPages": 20,
   "youtubeResume": true,
   "youtubeRestartCompleted": true,
-  "youtubeScanMultiplier": 4,
+  "youtubeScanMultiplier": 8,
   "includeYouTubePlaylists": true,
-  "youtubePlaylistScanLimit": 12,
-  "youtubePlaylistItemsPerPlaylist": 50
+  "youtubePlaylistScanLimit": 30,
+  "youtubePlaylistItemsPerPlaylist": 80
 }
 ```
 

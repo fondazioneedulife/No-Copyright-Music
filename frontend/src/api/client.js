@@ -124,15 +124,15 @@ export function bulkImportDiscovery(token) {
     token,
     body: {
       includeYouTubeChannels: true,
-      limitPerQuery: 8,
-      maxTracks: 80,
-      youtubeChannelMaxPages: 6,
+      limitPerQuery: 10,
+      maxTracks: 120,
+      youtubeChannelMaxPages: 20,
       youtubeResume: true,
       youtubeRestartCompleted: true,
-      youtubeScanMultiplier: 4,
+      youtubeScanMultiplier: 8,
       includeYouTubePlaylists: true,
-      youtubePlaylistScanLimit: 12,
-      youtubePlaylistItemsPerPlaylist: 50,
+      youtubePlaylistScanLimit: 30,
+      youtubePlaylistItemsPerPlaylist: 80,
     },
   });
 }
