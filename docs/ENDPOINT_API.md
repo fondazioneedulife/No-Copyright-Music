@@ -437,6 +437,7 @@ Solo admin. Importa un risultato discovery selezionato nel catalogo permanente.
 Solo admin. Importa lotti progressivi da provider primari, evitando duplicati.
 Per YouTube usa solo i canali whitelist commerciali configurati nel backend e conserva lo stato pagina in `data/youtube-import-state.json`.
 Se il cursore YouTube salvato non e' piu' valido, il backend riparte dall'inizio del canale invece di bloccare l'import.
+L'import legge prima la playlist tecnica degli upload del canale, poi una selezione di playlist pubbliche dello stesso canale; i video di playlist vengono salvati nel catalogo permanente solo se il proprietario del video e' ancora uno dei canali whitelist.
 
 Body tipico:
 
@@ -447,7 +448,10 @@ Body tipico:
   "maxTracks": 80,
   "youtubeChannelMaxPages": 6,
   "youtubeResume": true,
-  "youtubeScanMultiplier": 4
+  "youtubeScanMultiplier": 4,
+  "includeYouTubePlaylists": true,
+  "youtubePlaylistScanLimit": 12,
+  "youtubePlaylistItemsPerPlaylist": 50
 }
 ```
 

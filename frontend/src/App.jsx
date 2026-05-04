@@ -583,7 +583,10 @@ export default function App() {
             .map((entry) => {
               const resetText = entry.resetCursor ? ", reset token" : "";
               const skippedText = entry.skipped ? `, ${entry.skipped}` : "";
-              return `${entry.channel}: ${entry.items || 0}/${entry.scanned || 0}${resetText}${skippedText}`;
+              const playlistText = entry.playlistsRead
+                ? `, playlist ${entry.playlistItems || 0}/${entry.playlistItemsScanned || 0}`
+                : "";
+              return `${entry.channel}: ${entry.items || 0}/${entry.scanned || 0}${playlistText}${resetText}${skippedText}`;
             })
             .join("; ")}.`
         : "";

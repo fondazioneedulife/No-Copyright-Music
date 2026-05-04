@@ -129,6 +129,9 @@ export function bulkImportDiscovery(token) {
       youtubeChannelMaxPages: 6,
       youtubeResume: true,
       youtubeScanMultiplier: 4,
+      includeYouTubePlaylists: true,
+      youtubePlaylistScanLimit: 12,
+      youtubePlaylistItemsPerPlaylist: 50,
     },
   });
 }
