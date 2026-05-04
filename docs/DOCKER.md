@@ -150,6 +150,7 @@ Variabili principali:
 | `ALSA_CARD` | Scheda audio ALSA usata dal container Raspberry. |
 | `CLEARWAVE_YTDL_PATH` | Binario `yt-dlp` usato dal hook YouTube di `mpv`. |
 | `CLEARWAVE_YTDL_FORMAT` | Formato richiesto a YouTube; default audio-only per Raspberry. |
+| `CLEARWAVE_MPV_MSG_LEVEL` | Livello log `mpv`, default `all=warn,ytdl_hook=info` per vedere avvisi e risoluzione YouTube. |
 | `JAMENDO_CLIENT_ID` | Discovery/import Jamendo. |
 | `YOUTUBE_API_KEY` | Discovery/import canali YouTube whitelist. |
 | `AUDIUS_API_KEY` | Ricerca/stream Audius. |

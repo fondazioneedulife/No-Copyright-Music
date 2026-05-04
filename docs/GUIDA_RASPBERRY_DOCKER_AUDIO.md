@@ -102,6 +102,7 @@ CLEARWAVE_AUDIO_PREFLIGHT=1
 CLEARWAVE_UPDATE_YTDLP_ON_START=1
 CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
+CLEARWAVE_MPV_MSG_LEVEL=all=warn,ytdl_hook=info
 ```
 
 Motivo: ClearWave prova prima il default ALSA e scarta automaticamente i device che non si aprono.
@@ -194,7 +195,7 @@ Se YouTube restituisce `Requested format is not available`, il problema non e' A
 | Socket `/tmp/clearwave-mpv-1.sock` senza `tentativo` | Player vecchio | Ricostruisci immagine o verifica che Docker usi la cartella giusta |
 | `Playback open error` / `Unknown error 524` | ALSA non apre quel device | Lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`, poi usa `aplay -l` |
 | `Requested format is not available` | Problema YouTube/formato, non device audio | Verifica `yt-dlp --version` e `CLEARWAVE_YTDL_FORMAT` |
-| `mpv terminato con codice 4` | `mpv` non e' riuscito ad aprire sorgente o output | Leggi le righe subito prima, poi separa audio da YouTube |
+| `mpv terminato con codice 4` | `mpv` non e' riuscito ad aprire quella sorgente; spesso un video YouTube non disponibile o formato cambiato | Se la traccia successiva parte, la coda sta recuperando. Controlla la riga `Traccia non riprodotta` per sapere quale brano e' stato saltato |
 | `SQLite is an experimental feature` | Warning Node su `node:sqlite` | Non blocca l'app, si puo' ignorare |
 | Docker Desktop pipe error su Windows | Docker Desktop non e' acceso | Apri Docker Desktop e rilancia il comando |
 

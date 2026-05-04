@@ -140,7 +140,10 @@ Risposta:
     "volume": 75,
     "audioOutput": "alsa",
     "audioPreflight": true,
-    "ytdlPath": "/usr/bin/yt-dlp"
+    "lastExitCode": null,
+    "lastFailedTrack": null,
+    "ytdlPath": "/usr/bin/yt-dlp",
+    "mpvMsgLevel": "all=warn,ytdl_hook=info"
   }
 }
 ```

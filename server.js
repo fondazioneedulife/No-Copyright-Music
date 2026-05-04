@@ -41,6 +41,7 @@ const serverPlayerYtdlPath = String(process.env.CLEARWAVE_YTDL_PATH || "/usr/bin
 const serverPlayerYtdlFormat = String(
   process.env.CLEARWAVE_YTDL_FORMAT || "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
 ).trim();
+const serverPlayerMpvMsgLevel = String(process.env.CLEARWAVE_MPV_MSG_LEVEL || "all=warn,ytdl_hook=info").trim();
 const serverPlayerAudioPreflight = process.env.CLEARWAVE_AUDIO_PREFLIGHT !== "0";
 const serverPlayerAudioPreflightTimeoutMs = Math.max(
   700,
@@ -58,6 +59,8 @@ const serverPlayer = {
   isPaused: false,
   isStopping: false,
   lastError: "",
+  lastExitCode: null,
+  lastFailedTrack: null,
   volume: Number(process.env.CLEARWAVE_SERVER_VOLUME || 75),
   playSequence: 0,
   playQueue: Promise.resolve(),
@@ -3864,8 +3867,11 @@ function serverPlayerStatus() {
     audioDevice: serverPlayerAudioDevice,
     alsaCard: serverPlayerAlsaCard,
     audioPreflight: serverPlayerAudioPreflight,
+    lastExitCode: serverPlayer.lastExitCode,
+    lastFailedTrack: serverPlayer.lastFailedTrack,
     ytdlFormat: serverPlayerYtdlFormat,
     ytdlPath: serverPlayerYtdlPath,
+    mpvMsgLevel: serverPlayerMpvMsgLevel,
   };
 }
 
@@ -4103,6 +4109,12 @@ function serverPlayerYtdlConfig() {
   return args;
 }
 
+function isServerPlayerErrorMessage(message) {
+  return /error|failed|unable|denied|timeout|not available|unavailable|could not|no such|sign in|ao\/alsa|failed to|terminato/i.test(
+    String(message || "")
+  );
+}
+
 function serverPlayerFriendlyError(message) {
   const text = String(message || "").trim();
   if (!text) {
@@ -4128,6 +4140,25 @@ function serverPlayerFriendlyError(message) {
   return text;
 }
 
+function serverPlayerExitMessage(code, track, source) {
+  const title = firstString(track?.title, track?.name, track?.id, "traccia sconosciuta");
+  const normalizedSource = String(source || "");
+
+  if (code === 4 && /youtube\.com|youtu\.be/i.test(normalizedSource)) {
+    return `mpv ha saltato "${title}" con codice 4: sorgente YouTube non riproducibile, formato cambiato o video non disponibile. Se c'e' una coda, React puo' passare alla traccia successiva.`;
+  }
+
+  if (code === 4) {
+    return `mpv ha saltato "${title}" con codice 4: file/sorgente non apribile oppure output audio non disponibile.`;
+  }
+
+  if (code === 2) {
+    return `mpv ha terminato "${title}" con codice 2: opzione o sorgente non accettata dal player.`;
+  }
+
+  return `mpv ha terminato "${title}" con codice ${code ?? "sconosciuto"}.`;
+}
+
 function stopServerPlayerProcess() {
   const processRef = serverPlayer.process;
   const socketPath = serverPlayer.socketPath;
@@ -4150,6 +4181,8 @@ function stopServerPlayerProcess() {
   serverPlayer.duration = 0;
   serverPlayer.isPaused = false;
   serverPlayer.isStopping = false;
+  serverPlayer.lastExitCode = null;
+  serverPlayer.lastFailedTrack = null;
 }
 
 function stopServerPlayerForPayload(payload = {}) {
@@ -4333,7 +4366,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     "--idle=no",
     ...ytdlArgs,
     "--cache=yes",
-    "--msg-level=all=warn",
+    `--msg-level=${serverPlayerMpvMsgLevel}`,
     `--volume=${volume}`,
   ];
 
@@ -4396,6 +4429,8 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     serverPlayer.duration = duration;
     serverPlayer.isPaused = false;
     serverPlayer.lastError = "";
+    serverPlayer.lastExitCode = null;
+    serverPlayer.lastFailedTrack = null;
     serverPlayer.volume = volume;
 
     processRef.stdout.on("data", (chunk) => {
@@ -4405,7 +4440,9 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
 
       const message = String(chunk || "").trim();
       if (message) {
-        serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
+        if (isServerPlayerErrorMessage(message)) {
+          serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
+        }
         console.log(`[server-player] mpv stdout: ${message}`);
       }
     });
@@ -4416,20 +4453,32 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
 
       const message = String(chunk || "").trim();
       if (message) {
-        serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
+        if (isServerPlayerErrorMessage(message)) {
+          serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
+        }
         console.log(`[server-player] mpv stderr: ${message}`);
       }
     });
     processRef.once("exit", (code) => {
-      console.log(`[server-player] mpv terminato con codice ${code}`);
       cleanupServerPlayerSocket(socketPath);
       if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
+        console.log(`[server-player] mpv terminato con codice ${code} (processo superato)`);
         return;
       }
 
-      if (code && !serverPlayer.lastError) {
-        serverPlayer.lastError = `mpv terminato con codice ${code}. Controlla audio device e sorgente.`;
+      if (code && !serverPlayer.isStopping) {
+        const exitMessage = serverPlayerFriendlyError(firstString(serverPlayer.lastError, serverPlayerExitMessage(code, track, source)));
+        serverPlayer.lastError = exitMessage.slice(0, 400);
+        serverPlayer.lastExitCode = code;
+        serverPlayer.lastFailedTrack = {
+          id: firstString(track?.id),
+          title: firstString(track?.title, track?.name, "Traccia senza titolo"),
+        };
+        console.log(`[server-player] Traccia non riprodotta: ${exitMessage}`);
+      } else {
+        console.log(`[server-player] mpv terminato con codice ${code}`);
       }
+
       if (!serverPlayer.isStopping) {
         serverPlayer.activeTrack = null;
         serverPlayer.duration = 0;
