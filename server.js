@@ -3919,6 +3919,7 @@ async function bulkImportDiscoveryTracks(payload = {}) {
   const maxTracks = Math.max(10, Math.min(BULK_IMPORT_MAX_TRACKS, Number(payload.maxTracks) || 80));
   const includeYouTubeChannels = payload.includeYouTubeChannels === true;
   const youtubeResume = payload.youtubeResume !== false;
+  const youtubeRestartCompleted = payload.youtubeRestartCompleted !== false;
   const youtubeChannelMaxPages = Math.max(
     1,
     Math.min(120, Number(payload.youtubeChannelMaxPages) || 35)
@@ -4004,6 +4005,7 @@ async function bulkImportDiscoveryTracks(payload = {}) {
     try {
       const result = await fetchYouTubeCuratedChannelBackfill(maxTracks, youtubeChannelMaxPages, {
         resume: youtubeResume,
+        restartCompleted: youtubeRestartCompleted,
         scanMultiplier: youtubeScanMultiplier,
         includePlaylists: includeYouTubePlaylists,
         playlistScanLimit: youtubePlaylistScanLimit,
@@ -5456,6 +5458,7 @@ if (require.main === module) {
               limitPerQuery: 6,
               maxTracks: 35,
               youtubeChannelMaxPages: 4,
+              youtubeRestartCompleted: true,
               youtubeScanMultiplier: 4,
               includeYouTubePlaylists: true,
               youtubePlaylistScanLimit: 10,

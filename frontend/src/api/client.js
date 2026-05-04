@@ -128,6 +128,7 @@ export function bulkImportDiscovery(token) {
       maxTracks: 80,
       youtubeChannelMaxPages: 6,
       youtubeResume: true,
+      youtubeRestartCompleted: true,
       youtubeScanMultiplier: 4,
       includeYouTubePlaylists: true,
       youtubePlaylistScanLimit: 12,

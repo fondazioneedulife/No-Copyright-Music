@@ -439,6 +439,7 @@ Per YouTube usa solo i canali whitelist commerciali configurati nel backend e co
 Se il cursore YouTube salvato non e' piu' valido, il backend riparte dall'inizio del canale invece di bloccare l'import.
 L'import legge prima la playlist tecnica degli upload del canale, poi una selezione di playlist pubbliche dello stesso canale; i video di playlist vengono salvati nel catalogo permanente solo se il proprietario del video e' ancora uno dei canali whitelist.
 Se gli upload risultano gia' completati nello stato locale, il backend li salta ma continua comunque a leggere le playlist pubbliche del canale.
+La UI React invia `youtubeRestartCompleted: true`: in questo modo un canale marcato `completed` viene comunque risondato dagli upload, utile quando il catalogo locale non contiene ancora tutto o lo stato e' vecchio.
 
 Body tipico:
 
@@ -449,6 +450,7 @@ Body tipico:
   "maxTracks": 80,
   "youtubeChannelMaxPages": 6,
   "youtubeResume": true,
+  "youtubeRestartCompleted": true,
   "youtubeScanMultiplier": 4,
   "includeYouTubePlaylists": true,
   "youtubePlaylistScanLimit": 12,
