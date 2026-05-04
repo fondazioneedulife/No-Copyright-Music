@@ -1108,9 +1108,8 @@ function pickAccent(seedText) {
 }
 
 function inferGenreFromText(text) {
-  const normalized = String(text || "").toLowerCase();
-  const match = genreRules().find((rule) => rule.pattern.test(normalized));
-  return match ? match.genre : defaultGenre;
+  const genreEvidence = inferGenreEvidence(text);
+  return genreEvidence.genre || defaultGenre;
 }
 
 function genreRules() {
@@ -1118,33 +1117,186 @@ function genreRules() {
     { genre: "Drum & Bass", pattern: /(drum\s*(and|&|n)?\s*bass|\bdnb\b|jungle|breakbeat)/ },
     { genre: "Trap", pattern: /(trap|808|phonk)/ },
     { genre: "Hip Hop", pattern: /(\bhip\s*hop\b|\brap\b|\bbeats?\b|boom bap)/ },
-    { genre: "House", pattern: /(house|deep house|tech house|garage|dance|club|edm)/ },
-    { genre: "Electronic", pattern: /(electronic|electro|techno|trance|dubstep|midtempo|bass music|synthwave|future bass|melodic bass)/ },
+    { genre: "R&B", pattern: /(\br\s*&?\s*b\b|\brnb\b)/ },
+    { genre: "Jazz", pattern: /(\bjazz\b|saxophone)/ },
+    { genre: "Funk", pattern: /(\bfunk\b|\bfunnk\b)/ },
+    { genre: "Folk", pattern: /(\bfolk\b|banjo)/ },
+    { genre: "Country", pattern: /(\bcountry\b|western)/ },
+    { genre: "Disco", pattern: /\bdisco\b/ },
+    { genre: "Pop", pattern: /(dance\s*pop|hyperpop|futurepop|alternative\s*pop|\bj\s*-?\s*pop\b|\bpop\b)/ },
+    { genre: "Dance", pattern: /\bdance\b/ },
+    { genre: "House", pattern: /(house|deep house|tech house|future house|garage|club)/ },
+    { genre: "Downtempo", pattern: /downtempo/ },
     { genre: "Cinematic", pattern: /(cinematic|epic|trailer|orchestral|film|score|dramatic)/ },
     { genre: "Ambient", pattern: /(ambient|meditation|relax|calm|wellness|atmospheric)/ },
     { genre: "Lofi", pattern: /(lofi|lo-fi|chillhop|study)/ },
     { genre: "Piano", pattern: /(piano|keys|neoclassical|classical)/ },
     { genre: "Rock", pattern: /(rock|guitar|punk|metal|indie rock)/ },
     { genre: "Corporate", pattern: /(corporate|business|presentation|commercial|advertising|inspiring)/ },
-    { genre: "Pop", pattern: /(pop|happy|summer|bright|vlog)/ },
+    { genre: "Electronic", pattern: /(edm|electronic|electro|techno|trance|dubstep|midtempo|bass music|synthwave|future bass|melodic bass)/ },
   ];
 }
 
-function auditGenre(currentGenre, text, provider) {
+const explicitGenreAliases = new Map(
+  [
+    ["dnb", "Drum & Bass"],
+    ["drum and bass", "Drum & Bass"],
+    ["drum n bass", "Drum & Bass"],
+    ["drum & bass", "Drum & Bass"],
+    ["hip-hop", "Hip Hop"],
+    ["hip hop", "Hip Hop"],
+    ["j pop", "J-Pop"],
+    ["j-pop", "J-Pop"],
+    ["rnb", "R&B"],
+    ["r&b", "R&B"],
+    ["edm", "Electronic"],
+    ["electro", "Electronic"],
+  ].map(([alias, genre]) => [normalizeGenreAlias(alias), genre])
+);
+
+const explicitGenreLabels = [
+  "Alternative",
+  "Alternative Pop",
+  "Alternative Rock",
+  "Baile Bass",
+  "Bass House",
+  "Chill House",
+  "Cloud Rap",
+  "Color Bass",
+  "Complextro",
+  "Dance Pop",
+  "Dance",
+  "Disco",
+  "Discoplug",
+  "Drumstep",
+  "Dubstep",
+  "Downtempo",
+  "Electronic",
+  "Electronic Pop",
+  "Country",
+  "Folk",
+  "Funk",
+  "Future Bass",
+  "Future Bounce",
+  "Future House",
+  "Future Trap",
+  "Garage",
+  "Glitch Hop",
+  "Happy Hardcore",
+  "Hardcore",
+  "Hardstyle",
+  "House",
+  "Hyperpop",
+  "Jersey Club",
+  "Jazz",
+  "Melodic Dubstep",
+  "Melodic House",
+  "Midtempo Bass",
+  "Phonk",
+  "Phouse",
+  "Progressive House",
+  "R&B",
+  "Rally House",
+  "Speed Garage",
+  "Speed House",
+  "Synthwave",
+  "Tech House",
+  "Techno",
+  "Trance",
+  "Trap",
+  "Tropical House",
+  "UK Dubstep",
+  "Witch Funk",
+  "Witch House",
+  "Jedag Jedug",
+];
+
+const explicitGenreLookup = new Map(
+  explicitGenreLabels.map((genre) => [normalizeGenreAlias(genre), genre])
+);
+
+function normalizeGenreAlias(value) {
+  return String(value || "")
+    .normalize("NFKD")
+    .replace(/[^\w&+\-\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function inferExplicitGenreFromText(text) {
+  const candidates = String(text || "")
+    .split(/[|[\]\n\r]/)
+    .map((candidate) => candidate.trim())
+    .filter(Boolean);
+
+  for (const candidate of candidates) {
+    // I titoli YouTube/NCS usano spesso "Titolo | Genere | NCS": quel token e' piu' affidabile
+    // delle parole larghe dentro descrizioni commerciali o note di licenza.
+    if (candidate.length > 36 || /\b(copyright|music|subscribe|download|whitelist|playlist)\b/i.test(candidate)) {
+      continue;
+    }
+
+    const alias = normalizeGenreAlias(candidate);
+    const genre = explicitGenreAliases.get(alias) || explicitGenreLookup.get(alias);
+    if (genre) {
+      return genre;
+    }
+  }
+
+  return "";
+}
+
+function inferGenreEvidence(text) {
+  const explicitGenre = inferExplicitGenreFromText(text);
+  if (explicitGenre) {
+    return { genre: explicitGenre, evidence: "tag esplicito nel titolo", source: "explicit" };
+  }
+
   const normalized = String(text || "").toLowerCase();
   const match = genreRules().find((rule) => rule.pattern.test(normalized));
-  const inferredGenre = match?.genre || "";
-  const selectedGenre = inferredGenre || firstString(currentGenre, defaultGenre);
+  return match
+    ? { genre: match.genre, evidence: "metadata testuali", source: "rule" }
+    : { genre: "", evidence: "", source: "" };
+}
+
+function auditGenre(currentGenre, text, provider) {
+  const genreEvidence = inferGenreEvidence(text);
+  const inferredGenre = genreEvidence.genre;
+  const existingGenre = firstString(currentGenre);
+  const hasSpecificExistingGenre = existingGenre && existingGenre !== defaultGenre;
   const providerLabel = provider === "jamendo"
     ? "Jamendo metadata"
     : provider === "youtube_curated" || provider === "youtube_session"
       ? "YouTube title/description"
       : "metadata";
 
+  if (genreEvidence.source === "explicit") {
+    return {
+      genre: inferredGenre,
+      audit: `Genere verificato da ${providerLabel} (${genreEvidence.evidence}): ${inferredGenre}`,
+      confidence: "alta",
+    };
+  }
+
+  if (hasSpecificExistingGenre) {
+    const secondaryEvidence = inferredGenre && inferredGenre !== existingGenre
+      ? `; metadata testuali suggeriscono anche ${inferredGenre}`
+      : "";
+
+    return {
+      genre: existingGenre,
+      audit: `Genere mantenuto da ${providerLabel}: ${existingGenre}${secondaryEvidence}`,
+      confidence: inferredGenre && inferredGenre !== existingGenre ? "media" : "alta",
+    };
+  }
+
+  const selectedGenre = inferredGenre || firstString(existingGenre, defaultGenre);
+
   return {
     genre: selectedGenre,
     audit: inferredGenre
-      ? `Genere verificato da ${providerLabel}: ${selectedGenre}`
+      ? `Genere verificato da ${providerLabel} (${genreEvidence.evidence}): ${selectedGenre}`
       : `Genere da verificare: uso ${selectedGenre} per metadata insufficienti`,
     confidence: inferredGenre ? "alta" : "media",
   };
@@ -3302,6 +3454,21 @@ async function importSessionLink(payload = {}) {
       const result = await fetchYouTubeSessionPlaylistLink(parsed.playlistId, maxTracks);
       items = result.items;
       sourceStats = result;
+      if (items.length <= 1 && !parsed.isRadio) {
+        try {
+          // Alcune playlist pubbliche via Data API restituiscono solo il video del link: yt-dlp prova a leggere l'elenco reale.
+          const fallbackResult = await fetchYouTubeSessionPlaylistWithYtDlp(parsed.playlistId, maxTracks);
+          if (fallbackResult.items.length > items.length) {
+            items = fallbackResult.items;
+            sourceStats = fallbackResult;
+            notice =
+              "La YouTube Data API ha letto pochi brani: ho espanso la playlist con yt-dlp nella sessione temporanea.";
+          }
+        } catch {
+          notice =
+            "La playlist sembra contenere un solo brano accessibile dalla API. Se e' una playlist pubblica piu' lunga, prova il link diretto /playlist?list=...";
+        }
+      }
     } catch (error) {
       try {
         // Fallback Raspberry/Docker: quando la Data API non vede la playlist, yt-dlp legge l'elenco reale.

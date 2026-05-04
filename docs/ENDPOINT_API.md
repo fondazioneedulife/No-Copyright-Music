@@ -309,6 +309,8 @@ Risposta:
 ### `GET /api/tracks`
 
 Restituisce il catalogo normalizzato.
+Durante la normalizzazione il backend controlla anche il genere: se un titolo YouTube/NCS contiene un tag esplicito come `| DnB |`, `| Speed Garage |` o `| Future Bass |`, quel valore ha priorita' sulle regole testuali piu' generiche.
+Se invece una traccia ha gia' un genere specifico salvato da Jamendo o inserito manualmente, il backend lo mantiene e usa le parole del titolo solo come supporto di audit.
 
 Senza query ritorna tutto il catalogo, per compatibilita' con la UI legacy e con strumenti interni.
 Con query usa filtri e paginazione lato server, quindi React riceve solo la pagina da renderizzare.
@@ -333,6 +335,8 @@ Risposta:
       "title": "Titolo",
       "creatorName": "Autore",
       "genre": "Electronic",
+      "genreAudit": "Genere verificato da YouTube title/description (metadata testuali): Electronic",
+      "genreConfidence": "alta",
       "coverPath": "/assets/covers/electronic.svg",
       "previewPath": "/api/tracks/track-id/preview.wav",
       "downloadPath": "/api/tracks/track-id/download"
@@ -470,6 +474,11 @@ Uso: ascolto o prova rapida senza archiviazione permanente.
 Per le playlist prova prima la YouTube Data API; se la playlist non e' leggibile dalla API, usa `yt-dlp`
 come fallback server-side. Questo evita il caso in cui un link `watch?v=...&list=...` importi solo il
 video corrente invece dell'intera playlist.
+
+Se la Data API risponde ma restituisce un solo brano da una playlist normale, il backend prova comunque
+`yt-dlp` per espandere la playlist temporanea. I link `start_radio=1` o con playlist `RD...` sono invece
+mix/radio automatici di YouTube: in quel caso viene importato solo il video corrente perche' non sono
+playlist API stabili.
 
 ## Media
 

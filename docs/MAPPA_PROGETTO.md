@@ -30,7 +30,7 @@ Il backend resta senza framework, ma le parti piu' delicate vengono separate in 
 | Seed/demo | Contiene tracce demo e varianti, usate solo se `CLEARWAVE_ENABLE_DEMOS=1`. |
 | Provider discovery | Costruisce la lista provider disponibili e marca quelli configurati con chiavi API. |
 | Autenticazione | Hash password, SQLite utenti, login, logout, cambio password, reset password e cancellazione utenti. |
-| Storage catalogo | Legge e scrive `data/library.json`, normalizza le tracce e aggiunge campi calcolati. |
+| Storage catalogo | Legge e scrive `data/library.json`, normalizza le tracce, verifica i generi da tag espliciti/metadata e aggiunge campi calcolati. |
 | Copertine | Sceglie copertine locali, thumbnail provider o proxy Jamendo. |
 | Preview audio | Genera una preview WAV sintetica quando non esiste audio diretto. |
 | Player server | API `/api/server-player/...`, processo `mpv`, seek, pausa, volume e stop sul Raspberry. |
