@@ -435,15 +435,23 @@ Solo admin. Importa un risultato discovery selezionato nel catalogo permanente.
 ### `POST /api/discovery/bulk-import`
 
 Solo admin. Importa lotti progressivi da provider primari, evitando duplicati.
+Per YouTube usa solo i canali whitelist commerciali configurati nel backend e conserva lo stato pagina in `data/youtube-import-state.json`.
+Se il cursore YouTube salvato non e' piu' valido, il backend riparte dall'inizio del canale invece di bloccare l'import.
 
 Body tipico:
 
 ```json
 {
-  "limit": 20,
-  "rights_mode": "commercial"
+  "includeYouTubeChannels": true,
+  "limitPerQuery": 8,
+  "maxTracks": 80,
+  "youtubeChannelMaxPages": 6,
+  "youtubeResume": true,
+  "youtubeScanMultiplier": 4
 }
 ```
+
+La risposta include `youtubeProgress`, `skippedSummary` ed `errors`, cosi' la UI puo' spiegare se non sono entrati brani nuovi per duplicati, video troppo brevi, quota API o canali completati.
 
 ### `POST /api/discovery/import-link`
 

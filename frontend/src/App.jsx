@@ -575,9 +575,28 @@ export default function App() {
       setDiscoveryStatus("Importo un piccolo lotto progressivo...");
       const payload = await bulkImportDiscovery(token);
       await refreshTracks();
-      setDiscoveryStatusType(Array.isArray(payload.errors) && payload.errors.length > 0 ? "error" : "success");
+      const importErrors = Array.isArray(payload.errors) ? payload.errors : [];
+      const youtubeProgress = Array.isArray(payload.youtubeProgress) ? payload.youtubeProgress : [];
+      const skippedSummary = Array.isArray(payload.skippedSummary) ? payload.skippedSummary : [];
+      const youtubeText = youtubeProgress.length
+        ? ` YouTube: ${youtubeProgress
+            .map((entry) => {
+              const resetText = entry.resetCursor ? ", reset token" : "";
+              const skippedText = entry.skipped ? `, ${entry.skipped}` : "";
+              return `${entry.channel}: ${entry.items || 0}/${entry.scanned || 0}${resetText}${skippedText}`;
+            })
+            .join("; ")}.`
+        : "";
+      const skippedText = skippedSummary.length
+        ? ` Saltate: ${skippedSummary.map((entry) => `${entry.label} ${entry.count}`).join(", ")}.`
+        : "";
+      const errorText = importErrors.length
+        ? ` Avvisi: ${importErrors.map((entry) => entry.message).join(" | ")}`
+        : "";
+      // Il riepilogo esplicito evita il caso "0 nuove tracce" senza capire se erano duplicati, quota o canali finiti.
+      setDiscoveryStatusType(importErrors.length > 0 && !payload.importedCount ? "error" : "success");
       setDiscoveryStatus(
-        `Lotto completato: ${payload.importedCount || 0} nuove tracce su ${payload.scanned || 0} risultati letti.`
+        `Lotto completato: ${payload.importedCount || 0} nuove tracce su ${payload.scanned || 0} risultati letti.${youtubeText}${skippedText}${errorText}`
       );
     } catch (error) {
       setDiscoveryStatusType("error");

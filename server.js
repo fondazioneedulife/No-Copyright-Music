@@ -814,6 +814,7 @@ const SESSION_IMPORT_MAX_TRACKS = 5000;
 const YOUTUBE_PLAYLIST_MAX_PAGES = 120;
 const YOUTUBE_CURATED_LINK_MAX_SCAN = 6000;
 const YOUTUBE_UPLOADS_PAGE_SIZE = 50;
+const YOUTUBE_BULK_SCAN_MULTIPLIER = 4;
 const primaryMusicProviders = new Set(["jamendo", "youtube_curated"]);
 const bulkImportPlans = [
   {
@@ -2598,6 +2599,14 @@ async function fetchYouTubeCuratedChannelBackfill(maxTracks, maxPages, options =
     YOUTUBE_UPLOADS_PAGE_SIZE,
     Math.ceil(maxTracks / youtubeCuratedChannels.length)
   );
+  const scanMultiplier = Math.max(
+    1,
+    Math.min(12, Number(options.scanMultiplier) || YOUTUBE_BULK_SCAN_MULTIPLIER)
+  );
+  const perChannelScanLimit = Math.min(
+    YOUTUBE_CURATED_LINK_MAX_SCAN,
+    Math.max(perChannelLimit, perChannelLimit * scanMultiplier)
+  );
   const resume = options.resume !== false;
   const restartCompleted = options.restartCompleted === true;
   const state = await readYouTubeImportState();
@@ -2618,19 +2627,48 @@ async function fetchYouTubeCuratedChannelBackfill(maxTracks, maxPages, options =
     }
 
     try {
-      const result = await fetchYouTubeCuratedUploads(channel, perChannelLimit, maxPages, {
-        pageToken: resume ? previousState.nextPageToken : "",
-        onProgress: async ({ nextPageToken, reachedEnd }) => {
-          state.channels[channel.id] = {
-            name: channel.name,
-            nextPageToken: reachedEnd ? "" : nextPageToken,
-            reachedEnd,
-            pagesReadTotal: Number(previousState.pagesReadTotal || 0),
-            updatedAt: new Date().toISOString(),
-          };
-          await writeYouTubeImportState(state);
-        },
-      });
+      let resetCursor = false;
+      let resumeToken = resume ? firstString(previousState.nextPageToken) : "";
+      const persistProgress = async ({ nextPageToken, reachedEnd }) => {
+        state.channels[channel.id] = {
+          name: channel.name,
+          nextPageToken: reachedEnd ? "" : nextPageToken,
+          reachedEnd,
+          pagesReadTotal: Number(previousState.pagesReadTotal || 0),
+          updatedAt: new Date().toISOString(),
+        };
+        await writeYouTubeImportState(state);
+      };
+      let result;
+
+      try {
+        result = await fetchYouTubeCuratedUploads(channel, perChannelScanLimit, maxPages, {
+          pageToken: resumeToken,
+          onProgress: persistProgress,
+        });
+      } catch (error) {
+        if (!resumeToken || !isYouTubeResumeTokenError(error)) {
+          throw error;
+        }
+
+        // I pageToken YouTube possono scadere: in quel caso ripartiamo dall'inizio del canale
+        // invece di bloccare tutto l'import automatico.
+        resetCursor = true;
+        resumeToken = "";
+        result = await fetchYouTubeCuratedUploads(channel, perChannelScanLimit, maxPages, {
+          pageToken: "",
+          onProgress: persistProgress,
+        });
+      }
+
+      if (result.items.length === 0 && resumeToken) {
+        resetCursor = true;
+        result = await fetchYouTubeCuratedUploads(channel, perChannelScanLimit, maxPages, {
+          pageToken: "",
+          onProgress: persistProgress,
+        });
+      }
+
       const nextPagesReadTotal = Number(previousState.pagesReadTotal || 0) + result.pagesRead;
       state.channels[channel.id] = {
         name: channel.name,
@@ -2643,9 +2681,12 @@ async function fetchYouTubeCuratedChannelBackfill(maxTracks, maxPages, options =
       progress.push({
         channel: channel.name,
         items: result.items.length,
+        scanned: result.scanned,
         pagesRead: result.pagesRead,
         pagesReadTotal: nextPagesReadTotal,
         reachedEnd: result.reachedEnd,
+        hasMore: result.hasMore,
+        resetCursor,
       });
       items.push(...result.items);
     } catch (error) {
@@ -2836,6 +2877,10 @@ function normalizeYouTubeLinkError(error, fallbackMessage) {
   }
 
   return httpError(502, fallbackMessage);
+}
+
+function isYouTubeResumeTokenError(error) {
+  return /invalidpagetoken|page token|pagetoken/i.test(String(error?.message || ""));
 }
 
 async function fetchYouTubeVideoLink(videoId) {
@@ -3668,6 +3713,10 @@ async function bulkImportDiscoveryTracks(payload = {}) {
     1,
     Math.min(120, Number(payload.youtubeChannelMaxPages) || 35)
   );
+  const youtubeScanMultiplier = Math.max(
+    1,
+    Math.min(12, Number(payload.youtubeScanMultiplier) || YOUTUBE_BULK_SCAN_MULTIPLIER)
+  );
   const existingTracks = await readLibrary();
   const knownIdentities = new Set(existingTracks.map(discoveryIdentity));
   const knownTitleKeys = new Set(
@@ -3733,6 +3782,7 @@ async function bulkImportDiscoveryTracks(payload = {}) {
     try {
       const result = await fetchYouTubeCuratedChannelBackfill(maxTracks, youtubeChannelMaxPages, {
         resume: youtubeResume,
+        scanMultiplier: youtubeScanMultiplier,
       });
       errors.push(...result.errors);
       youtubeProgress.push(...(Array.isArray(result.progress) ? result.progress : []));
@@ -5137,7 +5187,8 @@ if (require.main === module) {
               includeYouTubeChannels: true,
               limitPerQuery: 6,
               maxTracks: 35,
-              youtubeChannelMaxPages: 1,
+              youtubeChannelMaxPages: 4,
+              youtubeScanMultiplier: 4,
             })
               .then((result) => {
                 console.log(
