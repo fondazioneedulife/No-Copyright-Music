@@ -4312,7 +4312,24 @@ function youtubeWatchUrl(track) {
   return videoId ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}` : "";
 }
 
-function serverPlayerSourceForTrack(track) {
+async function freshJamendoAudioSource(track) {
+  const jamendoTrackId = jamendoTrackIdFromTrack(track);
+  if (!jamendoClientId || !jamendoTrackId) {
+    return "";
+  }
+
+  try {
+    // Gli URL audio Jamendo possono essere firmati: al play chiediamo un link fresco invece
+    // di fidarci sempre del vecchio audioPath salvato nel catalogo.
+    const [freshTrack] = await fetchJamendoTrackLink(jamendoTrackId);
+    return firstString(freshTrack?.audioPath);
+  } catch (error) {
+    serverPlayer.lastError = `Refresh Jamendo non riuscito: ${error.message || error}`;
+    return "";
+  }
+}
+
+async function serverPlayerSourceForTrack(track) {
   const normalized = attachComputedFields(track);
   const localAudioPath = localAudioPathForTrack(normalized);
   if (localAudioPath && fsSync.existsSync(localAudioPath)) {
@@ -4322,6 +4339,13 @@ function serverPlayerSourceForTrack(track) {
   const youtubeUrl = firstString(normalized.sourceUrl, youtubeWatchUrl(normalized));
   if (normalized.youtubeVideoId && youtubeUrl) {
     return youtubeUrl;
+  }
+
+  if (firstString(normalized.externalProvider) === "jamendo") {
+    const freshJamendoUrl = await freshJamendoAudioSource(normalized);
+    if (freshJamendoUrl) {
+      return freshJamendoUrl;
+    }
   }
 
   const streamPath = firstString(normalized.audioPath, normalized.playbackPath, normalized.previewPath);
@@ -4522,8 +4546,16 @@ function runServerPlayerAudioPreflight(audioConfig) {
   });
 }
 
-function serverPlayerYtdlConfig() {
+function serverPlayerNeedsYtdl(source) {
+  return /(?:youtube\.com|youtu\.be)/i.test(String(source || ""));
+}
+
+function serverPlayerYtdlConfig(source) {
   // YouTube cambia spesso formati disponibili: sul Raspberry chiediamo audio-only e yt-dlp recente.
+  if (!serverPlayerNeedsYtdl(source)) {
+    return ["--ytdl=no"];
+  }
+
   const args = ["--ytdl=yes"];
   if (serverPlayerYtdlFormat) {
     args.push(`--ytdl-format=${serverPlayerYtdlFormat}`);
@@ -4573,6 +4605,10 @@ function serverPlayerExitMessage(code, track, source) {
 
   if (code === 4 && /youtube\.com|youtu\.be/i.test(normalizedSource)) {
     return `mpv ha saltato "${title}" con codice 4: sorgente YouTube non riproducibile, formato cambiato o video non disponibile. Se c'e' una coda, React puo' passare alla traccia successiva.`;
+  }
+
+  if (code === 4 && /jamendo|storage\.jamendo/i.test(normalizedSource)) {
+    return `mpv ha saltato "${title}" con codice 4: stream Jamendo non apribile. Il backend prova a rinfrescare l'URL audio prima del play; se resta cosi', verifica JAMENDO_CLIENT_ID e rete del container.`;
   }
 
   if (code === 4) {
@@ -4773,7 +4809,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
   }
 
   const track = await resolveServerPlayerTrack(req, payload);
-  const source = serverPlayerSourceForTrack(track);
+  const source = await serverPlayerSourceForTrack(track);
   if (isServerPlayerPlaySuperseded(playToken)) {
     return serverPlayerStatus();
   }
@@ -4782,7 +4818,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
   const volume = Math.round(Math.max(0, Math.min(1, Number(payload?.volume ?? serverPlayer.volume / 100))) * 100);
   const duration = parseDurationSeconds(track.duration || track.durationSeconds);
   const audioConfigs = serverPlayerAudioConfigs();
-  const ytdlArgs = serverPlayerYtdlConfig();
+  const ytdlArgs = serverPlayerYtdlConfig(source);
 
   stopServerPlayerProcess();
   const runId = serverPlayer.runId + 1;
@@ -4889,7 +4925,9 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     processRef.once("exit", (code) => {
       cleanupServerPlayerSocket(socketPath);
       if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
-        console.log(`[server-player] mpv terminato con codice ${code} (processo superato)`);
+        console.log(
+          `[server-player] mpv precedente chiuso per cambio traccia/comando (codice ${code ?? "n/d"})`
+        );
         return;
       }
 
