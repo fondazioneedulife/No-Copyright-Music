@@ -62,6 +62,38 @@ export async function apiRequest(path, options = {}) {
   return payload;
 }
 
+function filenameFromDisposition(disposition, fallbackName) {
+  const match = String(disposition || "").match(/filename="([^"]+)"/i);
+  return match?.[1] || fallbackName;
+}
+
+export async function downloadRequest(path, token, fallbackName) {
+  // Download admin con Bearer token: evita URL pubblici e mantiene gli export protetti.
+  let response;
+  try {
+    response = await fetch(path, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new Error("Backend locale non raggiungibile. Avvia il server con npm start.");
+  }
+
+  if (!response.ok) {
+    let payload = {};
+    try {
+      payload = await response.json();
+    } catch {
+      payload = {};
+    }
+    throw new Error(payload.error || "Download non riuscito.");
+  }
+
+  return {
+    blob: await response.blob(),
+    filename: filenameFromDisposition(response.headers.get("Content-Disposition"), fallbackName),
+  };
+}
+
 export function login(credentials) {
   // POST /api/auth/login restituisce token di sessione e ruolo utente/admin.
   return apiRequest("/api/auth/login", {
@@ -233,6 +265,14 @@ export function resetYouTubeImportState(token) {
     method: "POST",
     token,
   });
+}
+
+export function exportCatalogBackup(token) {
+  return downloadRequest("/api/admin/export/catalog.json", token, "clearwave-catalog-backup.json");
+}
+
+export function exportLicenseReport(token) {
+  return downloadRequest("/api/admin/export/licenses.csv", token, "clearwave-license-report.csv");
 }
 
 export function createTrack(token, trackPayload) {

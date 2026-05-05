@@ -119,7 +119,7 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `Hero.jsx` | Riepilogo alto con numero tracce e coda. |
 | `Catalog.jsx` | Griglia tracce, filtri, paginazione e play. |
 | `QueuePanel.jsx` | Visualizza e svuota la coda React. |
-| `AdminPanel.jsx` | Crea utenti, resetta password temporanea ed elimina utenti. |
+| `AdminPanel.jsx` | Crea utenti, resetta password temporanea, elimina utenti, resetta stato YouTube, mostra diagnostica Raspberry ed esporta backup/report. |
 | `SettingsPanel.jsx` | Cambio password dell'utente loggato. |
 | `PlayerDock.jsx` | Player inferiore React: play, prev, next, progress, shuffle, repeat, volume e uscita Pi/PC. |
 
@@ -159,5 +159,6 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `docs/CONFIGURAZIONE_API.md` | Chiavi API, variabili ambiente e provider. |
 | `docs/GUIDA_SVILUPPATORE.md` | Regole pratiche per modificare il codice. |
 | `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md` | Checklist operativa per Raspberry, Docker, Git, ALSA, mpv e yt-dlp. |
+| `docs/GUIDA_CONSEGNA.md` | Guida rapida finale per installare, aggiornare, testare e consegnare ClearWave. |
 | `docs/DOCKER.md` | Build, avvio e gestione dei volumi Docker. |
 | `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md` | Rapporto sul porting React, player Raspberry e stato del lavoro. |

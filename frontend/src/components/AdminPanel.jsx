@@ -27,6 +27,8 @@ export function AdminPanel({
   onResetUserPassword,
   onResetYouTubeImportState,
   onLoadDiagnostics,
+  onExportCatalogBackup,
+  onExportLicenseReport,
   status,
   statusType = "success",
 }) {
@@ -42,6 +44,7 @@ export function AdminPanel({
   const [diagnosticsStatus, setDiagnosticsStatus] = useState("");
   const [diagnosticsStatusType, setDiagnosticsStatusType] = useState("success");
   const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
+  const [exporting, setExporting] = useState("");
 
   async function handleCreate(event) {
     event.preventDefault();
@@ -115,6 +118,15 @@ export function AdminPanel({
       setDiagnosticsStatus(error.message || "Diagnostica non riuscita.");
     } finally {
       setLoadingDiagnostics(false);
+    }
+  }
+
+  async function handleExport(type, action) {
+    setExporting(type);
+    try {
+      await action();
+    } finally {
+      setExporting("");
     }
   }
 
@@ -205,6 +217,33 @@ export function AdminPanel({
           <button type="button" className="danger-button" onClick={() => setPendingYouTubeReset(true)}>
             Reset scan YouTube
           </button>
+        </article>
+
+        <article className="admin-tool-card">
+          <div>
+            <p className="eyebrow">Backup</p>
+            <h3>Export catalogo e licenze</h3>
+            <p>
+              Scarica il catalogo completo in JSON e un report CSV con sorgente, licenza,
+              note diritti e stato commerciale delle tracce.
+            </p>
+          </div>
+          <div className="admin-tool-actions">
+            <button
+              type="button"
+              onClick={() => handleExport("catalog", onExportCatalogBackup)}
+              disabled={exporting === "catalog"}
+            >
+              {exporting === "catalog" ? "Esporto..." : "Backup catalogo"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExport("licenses", onExportLicenseReport)}
+              disabled={exporting === "licenses"}
+            >
+              {exporting === "licenses" ? "Esporto..." : "Report licenze"}
+            </button>
+          </div>
         </article>
 
         <article className="admin-tool-card diagnostic-card">

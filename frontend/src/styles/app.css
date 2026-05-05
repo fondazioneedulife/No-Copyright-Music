@@ -956,7 +956,18 @@ body[data-theme="light"] .pagination .is-active {
   color: var(--muted);
 }
 
+.admin-tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-tool-actions button {
+  flex: 1 1 150px;
+}
+
 .diagnostic-card {
+  grid-column: 1 / -1;
   min-width: 0;
 }
 

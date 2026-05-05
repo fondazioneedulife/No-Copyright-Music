@@ -486,6 +486,18 @@ Risposta:
 Solo admin. Restituisce diagnostica runtime per Raspberry/audio: versione Node, revisione runtime, configurazione player, stato mpv corrente, versioni `mpv`/`yt-dlp`, device ALSA e risultati del preflight audio.
 Non espone valori segreti delle API: indica solo se le chiavi principali sono configurate.
 
+### `GET /api/admin/export/catalog.json`
+
+Solo admin. Scarica un backup JSON del catalogo permanente.
+Il file contiene `exportedAt`, revisione runtime, numero tracce e array `tracks` letto da `data/library.json`.
+Non include password, token o segreti API.
+
+### `GET /api/admin/export/licenses.csv`
+
+Solo admin. Scarica un CSV per controllo licenze e fonti.
+Ogni riga contiene titolo, autore, provider, genere, licenza, dettaglio licenza, URL licenza, stato commerciale, note diritti, fonte e data import.
+Serve come report operativo prima dell'uso commerciale: le licenze vanno comunque verificate e conservate quando richiesto dal provider.
+
 ### `POST /api/discovery/import-link`
 
 Solo admin. Importa da link esterno nel catalogo permanente, quando il link e' accettato.

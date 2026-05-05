@@ -5,6 +5,8 @@ import {
   createTrack,
   createUser,
   deleteUser,
+  exportCatalogBackup,
+  exportLicenseReport,
   fetchAdminDiagnostics,
   fetchDiscoveryProviders,
   fetchCurrentUser,
@@ -57,6 +59,17 @@ function clampVolumeLevel(value) {
   }
 
   return Math.max(0, Math.min(1, numeric));
+}
+
+function downloadBlob({ blob, filename }) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
 export default function App() {
@@ -804,6 +817,30 @@ export default function App() {
     return payload.diagnostics || null;
   }
 
+  async function handleExportCatalogBackup() {
+    try {
+      const file = await exportCatalogBackup(token);
+      downloadBlob(file);
+      setAdminStatusType("success");
+      setAdminStatus(`Backup catalogo esportato: ${file.filename}.`);
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Export catalogo non riuscito.");
+    }
+  }
+
+  async function handleExportLicenseReport() {
+    try {
+      const file = await exportLicenseReport(token);
+      downloadBlob(file);
+      setAdminStatusType("success");
+      setAdminStatus(`Report licenze esportato: ${file.filename}.`);
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Export report licenze non riuscito.");
+    }
+  }
+
   async function handleChangePassword(passwordPayload) {
     try {
       const payload = await changePassword(token, passwordPayload);
@@ -1371,6 +1408,8 @@ export default function App() {
                       onResetUserPassword={handleResetUserPassword}
                       onResetYouTubeImportState={handleResetYouTubeImportState}
                       onLoadDiagnostics={handleLoadAdminDiagnostics}
+                      onExportCatalogBackup={handleExportCatalogBackup}
+                      onExportLicenseReport={handleExportLicenseReport}
                       status={adminStatus}
                       statusType={adminStatusType}
                     />

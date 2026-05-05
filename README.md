@@ -112,8 +112,9 @@ Leggi in questo ordine:
 5. `docs/CONFIGURAZIONE_API.md`: chiavi API, variabili ambiente e provider esterni.
 6. `docs/GUIDA_SVILUPPATORE.md`: regole pratiche per modificare codice e UI.
 7. `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`: checklist pratica per Raspberry, Docker, Git, ALSA e yt-dlp.
-8. `docs/DOCKER.md`: build e avvio del progetto in container.
-9. `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md`: riepilogo del lavoro fatto su React, player Raspberry e Docker.
+8. `docs/GUIDA_CONSEGNA.md`: checklist finale per consegna, test, backup e report.
+9. `docs/DOCKER.md`: build e avvio del progetto in container.
+10. `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md`: riepilogo del lavoro fatto su React, player Raspberry e Docker.
 
 ## Docker
 
@@ -173,6 +174,7 @@ Per debug rapido sul Raspberry usa `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`: conti
 - API catalogo sotto `/api/tracks`;
 - API discovery/import sotto `/api/discovery/...`;
 - API player Raspberry sotto `/api/server-player/...`;
+- API admin per diagnostica, reset stato YouTube, backup catalogo e report licenze sotto `/api/admin/...`;
 - media dinamici come preview WAV, download e proxy copertine;
 - UI React da `/` e `/react/`;
 - UI legacy di fallback da `/legacy`.
@@ -201,7 +203,8 @@ Funzioni React attuali:
 - playlist YouTube temporanea admin con pulizia al logout e fallback `yt-dlp` per liste non lette dalla Data API;
 - archivio licenze e upload manuale;
 - reset password temporanea;
-- cambio password.
+- cambio password;
+- diagnostica Raspberry, reset scan YouTube, backup catalogo JSON e report licenze CSV.
 
 ## UI legacy in breve
 

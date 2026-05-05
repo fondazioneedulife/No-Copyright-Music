@@ -735,6 +735,7 @@ const seedTracks = expandedSeedTrackBlueprints.map((track, index) => ({
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
+  ".csv": "text/csv; charset=utf-8",
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
@@ -4281,6 +4282,76 @@ async function serveFileDownload(res, filePath, downloadName) {
   res.end(content);
 }
 
+function downloadText(res, downloadName, contentType, text) {
+  res.writeHead(200, {
+    "Cache-Control": "no-store",
+    "Content-Disposition": contentDisposition(downloadName),
+    "Content-Type": contentType,
+  });
+  res.end(text);
+}
+
+function csvValue(value) {
+  const text = Array.isArray(value) ? value.join("; ") : String(value ?? "");
+  return `"${text.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+}
+
+function exportStamp() {
+  return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+async function serveCatalogBackup(res) {
+  const tracks = await readLibrary();
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    app: "ClearWave Library",
+    version: SERVER_RUNTIME_REVISION,
+    trackCount: tracks.length,
+    tracks,
+  };
+
+  downloadText(
+    res,
+    `clearwave-catalog-backup-${exportStamp()}.json`,
+    "application/json; charset=utf-8",
+    JSON.stringify(payload, null, 2)
+  );
+}
+
+async function serveLicenseReportCsv(res) {
+  const tracks = (await readLibrary()).map(normalizeTrack);
+  const columns = [
+    ["id", (track) => track.id],
+    ["titolo", (track) => track.title],
+    ["autore", (track) => firstString(track.creatorName, track.subtitle)],
+    ["provider", (track) => firstString(track.externalProvider, track.sourceType)],
+    ["genere", (track) => track.genre],
+    ["durata", (track) => track.duration],
+    ["licenza", (track) => track.license],
+    ["dettaglio_licenza", (track) => track.licenseDetail],
+    ["url_licenza", (track) => track.licenseUrl],
+    ["status_commerciale", (track) => track.commercialStatus],
+    ["attribuzione_richiesta", (track) => (track.attributionRequired ? "si" : "no")],
+    ["note_diritti", (track) => track.rightsNotes],
+    ["fonte", (track) => track.sourceUrl],
+    ["creator_url", (track) => track.creatorUrl],
+    ["file_licenza", (track) => firstString(track.licenseFileName, track.licensePath)],
+    ["importato_il", (track) => track.createdAt],
+    ["aggiornato_il", (track) => track.updatedAt],
+  ];
+  const rows = [
+    columns.map(([name]) => csvValue(name)).join(","),
+    ...tracks.map((track) => columns.map(([, getter]) => csvValue(getter(track))).join(",")),
+  ];
+
+  downloadText(
+    res,
+    `clearwave-license-report-${exportStamp()}.csv`,
+    "text/csv; charset=utf-8",
+    `\uFEFF${rows.join("\r\n")}\r\n`
+  );
+}
+
 function localAudioPathForTrack(track) {
   const audioPath = String(track.audioPath || "");
   if (!audioPath.startsWith("/uploads/audio/")) {
@@ -5419,6 +5490,18 @@ async function requestHandler(req, res) {
     if (req.method === "POST" && pathname === "/api/admin/youtube-import-state/reset") {
       requireAdminRequest(req);
       json(res, 200, await resetYouTubeImportState());
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/admin/export/catalog.json") {
+      requireAdminRequest(req);
+      await serveCatalogBackup(res);
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/admin/export/licenses.csv") {
+      requireAdminRequest(req);
+      await serveLicenseReportCsv(res);
       return;
     }
 
