@@ -15,6 +15,7 @@ Il progetto contiene:
 - supporto provider Audius e TheAudioDB;
 - upload manuale audio e licenze;
 - player globale browser/Raspberry, con audio server-side tramite `mpv`;
+- backup/ripristino catalogo e report licenze CSV/HTML;
 - documentazione tecnica e operativa.
 
 ## Avvio rapido

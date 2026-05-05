@@ -119,7 +119,7 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `Hero.jsx` | Riepilogo alto con numero tracce e coda. |
 | `Catalog.jsx` | Griglia tracce, filtri, paginazione e play. |
 | `QueuePanel.jsx` | Visualizza e svuota la coda React. |
-| `AdminPanel.jsx` | Crea utenti, resetta password temporanea, elimina utenti, resetta stato YouTube, mostra diagnostica Raspberry ed esporta backup/report. |
+| `AdminPanel.jsx` | Crea utenti, resetta password temporanea, elimina utenti, resetta stato YouTube, mostra diagnostica Raspberry, esporta/ripristina backup e produce report licenze. |
 | `SettingsPanel.jsx` | Cambio password dell'utente loggato. |
 | `PlayerDock.jsx` | Player inferiore React: play, prev, next, progress, shuffle, repeat, volume e uscita Pi/PC. |
 

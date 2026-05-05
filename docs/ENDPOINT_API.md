@@ -485,6 +485,7 @@ Risposta:
 
 Solo admin. Restituisce diagnostica runtime per Raspberry/audio: versione Node, revisione runtime, configurazione player, stato mpv corrente, versioni `mpv`/`yt-dlp`, device ALSA e risultati del preflight audio.
 Non espone valori segreti delle API: indica solo se le chiavi principali sono configurate.
+La risposta include anche gli ultimi eventi del player, utili per capire se una traccia e' partita, e' stata sostituita da un comando nuovo o e' terminata correttamente.
 
 ### `GET /api/admin/export/catalog.json`
 
@@ -492,11 +493,39 @@ Solo admin. Scarica un backup JSON del catalogo permanente.
 Il file contiene `exportedAt`, revisione runtime, numero tracce e array `tracks` letto da `data/library.json`.
 Non include password, token o segreti API.
 
+### `POST /api/admin/import/catalog-backup`
+
+Solo admin. Ripristina il catalogo da un backup JSON esportato da ClearWave.
+Prima di sovrascrivere `data/library.json`, il backend crea automaticamente un file `library.backup-*.json` nella cartella `data`.
+
+Body:
+
+```json
+{
+  "tracks": []
+}
+```
+
+Risposta:
+
+```json
+{
+  "ok": true,
+  "importedCount": 753,
+  "backupFile": "library.backup-2026-05-05T10-00-00-000Z.json"
+}
+```
+
 ### `GET /api/admin/export/licenses.csv`
 
 Solo admin. Scarica un CSV per controllo licenze e fonti.
 Ogni riga contiene titolo, autore, provider, genere, licenza, dettaglio licenza, URL licenza, stato commerciale, note diritti, fonte e data import.
 Serve come report operativo prima dell'uso commerciale: le licenze vanno comunque verificate e conservate quando richiesto dal provider.
+
+### `GET /api/admin/export/licenses.html`
+
+Solo admin. Scarica lo stesso report licenze in formato HTML, con riepiloghi per provider, licenza e stato commerciale.
+Serve per leggere o stampare rapidamente il report senza passare da Excel.
 
 ### `POST /api/discovery/import-link`
 

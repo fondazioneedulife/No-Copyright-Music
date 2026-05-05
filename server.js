@@ -64,6 +64,7 @@ const serverPlayer = {
   volume: Number(process.env.CLEARWAVE_SERVER_VOLUME || 75),
   playSequence: 0,
   playQueue: Promise.resolve(),
+  events: [],
 };
 const {
   authUserFromRequest,
@@ -4300,6 +4301,63 @@ function exportStamp() {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
+async function writeCatalogSafetyBackup(tracks, reason) {
+  const backupName = `library.backup-${exportStamp()}.json`;
+  const backupPath = path.join(DATA_DIR, backupName);
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    app: "ClearWave Library",
+    version: SERVER_RUNTIME_REVISION,
+    reason,
+    trackCount: tracks.length,
+    tracks,
+  };
+
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.writeFile(backupPath, JSON.stringify(payload, null, 2), "utf8");
+  return backupName;
+}
+
+function tracksFromCatalogBackupPayload(payload) {
+  const tracks = Array.isArray(payload) ? payload : payload?.tracks;
+  if (!Array.isArray(tracks)) {
+    throw httpError(400, "Backup catalogo non valido: manca l'array tracks.");
+  }
+
+  if (tracks.length > 20000) {
+    throw httpError(413, "Backup catalogo troppo grande: limite 20000 tracce.");
+  }
+
+  return tracks;
+}
+
+function normalizeImportedCatalogTracks(sourceTracks) {
+  const now = new Date().toISOString();
+  const seenIds = new Set();
+
+  return sourceTracks.map((track, index) => {
+    if (!track || typeof track !== "object" || Array.isArray(track)) {
+      throw httpError(400, `Traccia ${index + 1} non valida nel backup.`);
+    }
+
+    const baseId = firstString(track.id, slugify(firstString(track.title, track.name, `track-${index + 1}`)));
+    let id = baseId;
+    let suffix = 2;
+    while (seenIds.has(id)) {
+      id = `${baseId}-${suffix}`;
+      suffix += 1;
+    }
+    seenIds.add(id);
+
+    return normalizeTrack({
+      ...track,
+      id,
+      createdAt: firstString(track.createdAt, now),
+      updatedAt: firstString(track.updatedAt, now),
+    });
+  });
+}
+
 async function serveCatalogBackup(res) {
   const tracks = await readLibrary();
   const payload = {
@@ -4316,6 +4374,22 @@ async function serveCatalogBackup(res) {
     "application/json; charset=utf-8",
     JSON.stringify(payload, null, 2)
   );
+}
+
+async function importCatalogBackup(payload) {
+  const sourceTracks = tracksFromCatalogBackupPayload(payload);
+  const previousTracks = await readLibrary();
+  const backupFile = await writeCatalogSafetyBackup(previousTracks, "pre-catalog-restore");
+  const tracks = normalizeImportedCatalogTracks(sourceTracks);
+
+  // Ripristino intenzionalmente distruttivo: prima viene salvato il backup di sicurezza qui sopra.
+  await writeLibrary(tracks);
+  return {
+    ok: true,
+    importedAt: new Date().toISOString(),
+    importedCount: tracks.length,
+    backupFile,
+  };
 }
 
 async function serveLicenseReportCsv(res) {
@@ -4352,6 +4426,113 @@ async function serveLicenseReportCsv(res) {
   );
 }
 
+function htmlValue(value) {
+  const text = Array.isArray(value) ? value.join(", ") : String(value ?? "");
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function countByValue(tracks, getter) {
+  const counts = new Map();
+  for (const track of tracks) {
+    const key = firstString(getter(track), "n/d");
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+
+async function serveLicenseReportHtml(res) {
+  const tracks = (await readLibrary()).map(normalizeTrack);
+  const providerCounts = countByValue(tracks, (track) => firstString(track.externalProvider, track.sourceType));
+  const licenseCounts = countByValue(tracks, (track) => track.license);
+  const commercialCounts = countByValue(tracks, (track) => track.commercialStatus);
+  const summaryList = (title, entries) => `
+    <section>
+      <h2>${htmlValue(title)}</h2>
+      <ul>
+        ${entries.map(([label, count]) => `<li><strong>${htmlValue(label)}</strong>: ${count}</li>`).join("")}
+      </ul>
+    </section>`;
+  const rows = tracks
+    .map((track) => {
+      const sourceUrl = firstString(track.sourceUrl);
+      const licenseUrl = firstString(track.licenseUrl);
+      return `<tr>
+        <td>${htmlValue(track.title)}</td>
+        <td>${htmlValue(firstString(track.creatorName, track.subtitle))}</td>
+        <td>${htmlValue(firstString(track.externalProvider, track.sourceType))}</td>
+        <td>${htmlValue(track.genre)}</td>
+        <td>${htmlValue(track.duration)}</td>
+        <td>${htmlValue(track.license)}</td>
+        <td>${htmlValue(track.commercialStatus)}</td>
+        <td>${track.attributionRequired ? "si" : "no"}</td>
+        <td>${sourceUrl ? `<a href="${htmlValue(sourceUrl)}">fonte</a>` : ""}</td>
+        <td>${licenseUrl ? `<a href="${htmlValue(licenseUrl)}">licenza</a>` : ""}</td>
+        <td>${htmlValue(track.rightsNotes)}</td>
+      </tr>`;
+    })
+    .join("");
+  const html = `<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>ClearWave - Report licenze</title>
+  <style>
+    body { margin: 24px; background: #17030a; color: #fff7f4; font: 14px/1.45 system-ui, sans-serif; }
+    h1 { margin: 0 0 8px; font-size: 32px; }
+    h2 { margin: 20px 0 8px; font-size: 18px; }
+    p, li { color: #d9bdc5; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 20px 0; }
+    section, table { border: 1px solid #893042; border-radius: 12px; background: #2b111a; }
+    section { padding: 14px; }
+    table { width: 100%; border-collapse: collapse; overflow: hidden; }
+    th, td { padding: 10px; border-bottom: 1px solid #5b2430; text-align: left; vertical-align: top; }
+    th { color: #ff4255; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    a { color: #7efcff; }
+  </style>
+</head>
+<body>
+  <h1>ClearWave - Report licenze</h1>
+  <p>Esportato il ${htmlValue(new Date().toISOString())}. Tracce totali: ${tracks.length}.</p>
+  <div class="summary">
+    ${summaryList("Provider", providerCounts)}
+    ${summaryList("Licenze", licenseCounts)}
+    ${summaryList("Uso commerciale", commercialCounts)}
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Titolo</th>
+        <th>Autore</th>
+        <th>Provider</th>
+        <th>Genere</th>
+        <th>Durata</th>
+        <th>Licenza</th>
+        <th>Commerciale</th>
+        <th>Attribuzione</th>
+        <th>Fonte</th>
+        <th>Licenza URL</th>
+        <th>Note diritti</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+</body>
+</html>`;
+
+  downloadText(
+    res,
+    `clearwave-license-report-${exportStamp()}.html`,
+    "text/html; charset=utf-8",
+    html
+  );
+}
+
 function localAudioPathForTrack(track) {
   const audioPath = String(track.audioPath || "");
   if (!audioPath.startsWith("/uploads/audio/")) {
@@ -4383,6 +4564,20 @@ function cleanupServerPlayerSocket(socketPath) {
       serverPlayer.lastError = error.message;
     }
   }
+}
+
+function recordServerPlayerEvent(type, message, details = {}) {
+  // Diagnostica breve per capire cosa e' successo senza rileggere tutti i log Docker.
+  const event = {
+    id: `${Date.now()}-${serverPlayer.events.length}`,
+    at: new Date().toISOString(),
+    type,
+    message: String(message || "").slice(0, 600),
+    details,
+  };
+
+  serverPlayer.events = [event, ...serverPlayer.events].slice(0, 40);
+  return event;
 }
 
 function currentServerPlayerPosition() {
@@ -4422,6 +4617,7 @@ function serverPlayerStatus() {
     ytdlFormat: serverPlayerYtdlFormat,
     ytdlPath: serverPlayerYtdlPath,
     mpvMsgLevel: serverPlayerMpvMsgLevel,
+    events: serverPlayer.events.slice(0, 20),
   };
 }
 
@@ -4885,6 +5081,8 @@ function serverPlayerExitMessage(code, track, source) {
 function stopServerPlayerProcess() {
   const processRef = serverPlayer.process;
   const socketPath = serverPlayer.socketPath;
+  const stoppedTrack = serverPlayer.activeTrack;
+  const stoppedRunId = serverPlayer.runId;
 
   if (processRef) {
     serverPlayer.isStopping = true;
@@ -4893,6 +5091,12 @@ function stopServerPlayerProcess() {
     } catch {
       // Se mpv e' gia' terminato, puliamo comunque lo stato sotto.
     }
+  }
+
+  if (processRef && stoppedTrack) {
+    recordServerPlayerEvent("stop", `Stop player: ${firstString(stoppedTrack.title, stoppedTrack.name, stoppedTrack.id)}`, {
+      runId: stoppedRunId,
+    });
   }
 
   cleanupServerPlayerSocket(socketPath);
@@ -5139,6 +5343,9 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     if (!preflight.ok) {
       lastStartError = preflight.message;
       console.log(`[server-player] Device audio scartato (${attemptLabel}): ${preflight.message}`);
+      recordServerPlayerEvent("warn", `Device audio scartato (${attemptLabel})`, {
+        message: preflight.message,
+      });
       continue;
     }
 
@@ -5147,6 +5354,12 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     }
 
     console.log(`[server-player] Avvio mpv (${attemptLabel}): ${serverPlayerCommand} ${args.join(" ")}`);
+    recordServerPlayerEvent("start", `Avvio: ${firstString(track.title, track.name, track.id)}`, {
+      runId,
+      audio: attemptLabel,
+      sourceType: serverPlayerNeedsYtdl(source) ? "youtube" : "direct",
+      volume,
+    });
 
     let processRef;
     try {
@@ -5157,6 +5370,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     } catch (error) {
       lastStartError = error.message;
       serverPlayer.lastError = error.message;
+      recordServerPlayerEvent("error", `mpv non avviato: ${error.message}`, { runId, audio: attemptLabel });
       continue;
     }
 
@@ -5182,6 +5396,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
       if (message) {
         if (isServerPlayerErrorMessage(message)) {
           serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
+          recordServerPlayerEvent("error", serverPlayer.lastError, { runId, stream: "stdout" });
         }
         console.log(`[server-player] mpv stdout: ${message}`);
       }
@@ -5195,6 +5410,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
       if (message) {
         if (isServerPlayerErrorMessage(message)) {
           serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
+          recordServerPlayerEvent("error", serverPlayer.lastError, { runId, stream: "stderr" });
         }
         console.log(`[server-player] mpv stderr: ${message}`);
       }
@@ -5205,6 +5421,10 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
         console.log(
           `[server-player] mpv precedente chiuso per cambio traccia/comando (codice ${code ?? "n/d"})`
         );
+        recordServerPlayerEvent("switch", "mpv precedente chiuso per cambio traccia/comando", {
+          runId,
+          code,
+        });
         return;
       }
 
@@ -5217,6 +5437,11 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
           title: firstString(track?.title, track?.name, "Traccia senza titolo"),
         };
         console.log(`[server-player] Traccia non riprodotta: ${exitMessage}`);
+        recordServerPlayerEvent("error", exitMessage, {
+          runId,
+          code,
+          trackId: firstString(track?.id),
+        });
       } else {
         const completedTitle = firstString(track?.title, track?.name, "traccia");
         console.log(
@@ -5224,6 +5449,10 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
             ? `[server-player] mpv ha completato "${completedTitle}" correttamente (codice 0)`
             : `[server-player] mpv terminato con codice ${code ?? "sconosciuto"}`
         );
+        recordServerPlayerEvent(code === 0 ? "complete" : "exit", `mpv terminato: ${completedTitle}`, {
+          runId,
+          code,
+        });
       }
 
       if (!serverPlayer.isStopping) {
@@ -5249,6 +5478,9 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     } catch (error) {
       lastStartError = firstString(serverPlayer.lastError, error.message);
       console.log(`[server-player] Tentativo audio fallito (${audioConfig.label}): ${lastStartError}`);
+      recordServerPlayerEvent("error", `Tentativo audio fallito (${audioConfig.label}): ${lastStartError}`, {
+        runId,
+      });
       stopServerPlayerProcess();
     }
   }
@@ -5264,6 +5496,9 @@ async function pauseServerPlayer(payload) {
   serverPlayer.isPaused = paused;
   serverPlayer.pausedAt = currentPosition;
   serverPlayer.startedAt = paused ? 0 : Date.now() - currentPosition * 1000;
+  recordServerPlayerEvent(paused ? "pause" : "resume", paused ? "Player in pausa" : "Player ripreso", {
+    position: Math.round(currentPosition),
+  });
   return serverPlayerStatus();
 }
 
@@ -5272,6 +5507,7 @@ async function seekServerPlayer(payload) {
   await sendMpvCommand(["seek", seconds, "absolute"]);
   serverPlayer.pausedAt = seconds;
   serverPlayer.startedAt = serverPlayer.isPaused ? 0 : Date.now() - seconds * 1000;
+  recordServerPlayerEvent("seek", `Seek a ${Math.round(seconds)}s`, { seconds: Math.round(seconds) });
   return serverPlayerStatus();
 }
 
@@ -5281,6 +5517,7 @@ async function volumeServerPlayer(payload) {
   if (serverPlayer.process) {
     await sendMpvCommand(["set_property", "volume", volume]);
   }
+  recordServerPlayerEvent("volume", `Volume server ${volume}%`, { volume });
   return serverPlayerStatus();
 }
 
@@ -5499,9 +5736,22 @@ async function requestHandler(req, res) {
       return;
     }
 
+    if (req.method === "POST" && pathname === "/api/admin/import/catalog-backup") {
+      requireAdminRequest(req);
+      const payload = await readJsonBody(req);
+      json(res, 200, await importCatalogBackup(payload));
+      return;
+    }
+
     if (req.method === "GET" && pathname === "/api/admin/export/licenses.csv") {
       requireAdminRequest(req);
       await serveLicenseReportCsv(res);
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/admin/export/licenses.html") {
+      requireAdminRequest(req);
+      await serveLicenseReportHtml(res);
       return;
     }
 

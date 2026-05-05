@@ -48,7 +48,8 @@ Il progetto contiene:
 - player Raspberry basato su `mpv` e `yt-dlp`;
 - Dockerfile e `docker-compose.yml` unico;
 - diagnostica admin per audio, mpv, yt-dlp e ALSA;
-- export backup catalogo e report licenze.
+- export e ripristino backup catalogo;
+- report licenze CSV e HTML.
 
 ClearWave non sostituisce una verifica legale finale. Il report licenze aiuta a sapere da dove arrivano i brani e quali prove conservare, ma prima di usare musica in campagne o spazi commerciali vanno sempre controllati i termini del provider.
 
@@ -62,9 +63,9 @@ ClearWave non sostituisce una verifica legale finale. Il report licenze aiuta a 
 | Player | Play, pausa, seek, next, prev, shuffle, repeat, volume slider e input numerico. |
 | Uscita audio | `PC` per browser locale, `Pi` per audio server-side su Raspberry. |
 | Admin | Utenti, reset password, elimina utente, reset scan YouTube. |
-| Diagnostica | Runtime, mpv, yt-dlp, ALSA, preflight audio, ultimo errore player. |
-| Backup | Export JSON del catalogo. |
-| Report | Export CSV licenze/fonti. |
+| Diagnostica | Runtime, mpv, yt-dlp, ALSA, preflight audio, ultimo errore ed eventi player. |
+| Backup | Export JSON del catalogo e ripristino con copia automatica preventiva. |
+| Report | Export CSV e HTML licenze/fonti. |
 | Docker | Un solo container con backend, React, mpv, ffmpeg, yt-dlp. |
 
 ## 3. Architettura generale
@@ -459,7 +460,8 @@ La diagnostica mostra:
 - `aplay -l`;
 - `aplay -L`;
 - `/proc/asound/cards`;
-- risultati preflight audio.
+- risultati preflight audio;
+- ultimi eventi player, per vedere start, stop, cambio traccia, errori mpv e completamenti codice `0`.
 
 Endpoint:
 
@@ -471,7 +473,7 @@ La diagnostica non mostra chiavi API reali. Indica solo se sono configurate.
 
 ## 14. Backup, export e report licenze
 
-Nel pannello admin sono disponibili due export.
+Nel pannello admin sono disponibili export, ripristino e report leggibili.
 
 ### Backup catalogo
 
@@ -489,9 +491,26 @@ Endpoint:
 GET /api/admin/export/catalog.json
 ```
 
+### Ripristino backup catalogo
+
+Il bottone `Importa backup` accetta il JSON esportato da ClearWave.
+Prima di sostituire `data/library.json`, il backend crea automaticamente un backup del catalogo corrente in `data/library.backup-*.json`.
+
+Endpoint:
+
+```text
+POST /api/admin/import/catalog-backup
+```
+
+Uso consigliato:
+
+1. esporta sempre un backup recente;
+2. importa solo file JSON generati da ClearWave o verificati;
+3. dopo il ripristino aggiorna la pagina catalogo e controlla numero tracce, filtri e player.
+
 ### Report licenze
 
-Scarica un CSV con:
+Scarica un CSV o un HTML con:
 
 - id;
 - titolo;
@@ -515,28 +534,11 @@ Endpoint:
 
 ```text
 GET /api/admin/export/licenses.csv
+GET /api/admin/export/licenses.html
 ```
 
 Il CSV e' pensato per aprirsi bene anche in Excel.
-
-### Ripristino manuale backup
-
-Non esiste ancora un import automatico del backup dalla UI.
-Se devi ripristinare manualmente:
-
-1. ferma il container;
-2. conserva una copia dell'attuale `data/library.json`;
-3. prendi l'array `tracks` dal backup JSON;
-4. crea un file `data/library.json` con forma:
-
-```json
-{
-  "tracks": []
-}
-```
-
-5. inserisci dentro `tracks` le tracce del backup;
-6. riavvia il container.
+L'HTML e' piu' comodo per lettura, stampa o controllo rapido durante la consegna.
 
 ## 15. Dati persistenti
 
@@ -642,7 +644,9 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `GET` | `/api/admin/diagnostics` | Diagnostica Raspberry. |
 | `POST` | `/api/admin/youtube-import-state/reset` | Reset cursori YouTube. |
 | `GET` | `/api/admin/export/catalog.json` | Backup catalogo JSON. |
+| `POST` | `/api/admin/import/catalog-backup` | Ripristino catalogo da backup JSON. |
 | `GET` | `/api/admin/export/licenses.csv` | Report licenze CSV. |
+| `GET` | `/api/admin/export/licenses.html` | Report licenze HTML. |
 
 ## 18. Struttura del codice
 
@@ -661,7 +665,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `frontend/src/App.jsx` | Stato globale e collegamento componenti/API. |
 | `frontend/src/api/client.js` | Wrapper fetch JSON/download. |
 | `frontend/src/hooks/useCatalogPage.js` | Paginazione e fetch catalogo. |
-| `frontend/src/components/AdminPanel.jsx` | Utenti, reset scan, diagnostica, backup, report. |
+| `frontend/src/components/AdminPanel.jsx` | Utenti, reset scan, diagnostica, backup, ripristino e report. |
 | `frontend/src/components/DiscoveryPanel.jsx` | Import brani e playlist temporanea. |
 | `frontend/src/components/PlayerDock.jsx` | Player inferiore. |
 | `frontend/src/components/Catalog.jsx` | Griglia catalogo e filtri. |

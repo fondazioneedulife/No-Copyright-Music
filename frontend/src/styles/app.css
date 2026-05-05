@@ -966,6 +966,31 @@ body[data-theme="light"] .pagination .is-active {
   flex: 1 1 150px;
 }
 
+.file-button {
+  display: inline-flex;
+  flex: 1 1 150px;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border: 1px solid rgba(126, 252, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(126, 252, 255, 0.08);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 900;
+  text-align: center;
+}
+
+.file-button.is-disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.file-button input {
+  display: none;
+}
+
 .diagnostic-card {
   grid-column: 1 / -1;
   min-width: 0;
@@ -984,8 +1009,16 @@ body[data-theme="light"] .pagination .is-active {
   gap: 8px;
 }
 
+.diagnostic-health {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.diagnostic-health > div,
 .diagnostic-grid > div,
-.diagnostic-list > div {
+.diagnostic-list > div,
+.diagnostic-events > div {
   min-width: 0;
   padding: 10px;
   border: 1px solid var(--border);
@@ -993,9 +1026,25 @@ body[data-theme="light"] .pagination .is-active {
   background: rgba(0, 0, 0, 0.12);
 }
 
+.diagnostic-health > .is-ok {
+  border-color: rgba(84, 255, 177, 0.45);
+}
+
+.diagnostic-health > .is-warn {
+  border-color: rgba(255, 66, 85, 0.58);
+}
+
+.diagnostic-health strong,
+.diagnostic-health span,
+.diagnostic-health small,
 .diagnostic-grid span,
 .diagnostic-list span {
   display: block;
+}
+
+.diagnostic-health span,
+.diagnostic-grid span,
+.diagnostic-list span {
   color: var(--muted);
   font-size: 0.7rem;
   font-weight: 900;
@@ -1003,10 +1052,23 @@ body[data-theme="light"] .pagination .is-active {
   text-transform: uppercase;
 }
 
+.diagnostic-health > .is-ok span {
+  color: var(--success);
+}
+
+.diagnostic-health > .is-warn span {
+  color: var(--accent);
+}
+
 .diagnostic-grid strong,
 .diagnostic-grid small,
 .diagnostic-list strong,
-.diagnostic-list small {
+.diagnostic-list small,
+.diagnostic-health strong,
+.diagnostic-health small,
+.diagnostic-events strong,
+.diagnostic-events span,
+.diagnostic-events small {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1014,11 +1076,18 @@ body[data-theme="light"] .pagination .is-active {
 }
 
 .diagnostic-grid small,
-.diagnostic-list small {
+.diagnostic-list small,
+.diagnostic-health small,
+.diagnostic-events small {
   color: var(--muted);
 }
 
 .diagnostic-list {
+  display: grid;
+  gap: 8px;
+}
+
+.diagnostic-events {
   display: grid;
   gap: 8px;
 }
@@ -1841,6 +1910,7 @@ body[data-theme="light"] .playback-target.is-active {
   .form-grid,
   .hero-metrics,
   .archive-metrics,
+  .diagnostic-health,
   .diagnostic-grid,
   .diagnostic-head,
   .project-summary {

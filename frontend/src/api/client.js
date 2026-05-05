@@ -275,6 +275,18 @@ export function exportLicenseReport(token) {
   return downloadRequest("/api/admin/export/licenses.csv", token, "clearwave-license-report.csv");
 }
 
+export function exportLicenseReportHtml(token) {
+  return downloadRequest("/api/admin/export/licenses.html", token, "clearwave-license-report.html");
+}
+
+export function importCatalogBackup(token, backupPayload) {
+  return apiRequest("/api/admin/import/catalog-backup", {
+    method: "POST",
+    token,
+    body: backupPayload,
+  });
+}
+
 export function createTrack(token, trackPayload) {
   return apiRequest("/api/tracks", {
     method: "POST",

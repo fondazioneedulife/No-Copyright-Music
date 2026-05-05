@@ -7,6 +7,7 @@ import {
   deleteUser,
   exportCatalogBackup,
   exportLicenseReport,
+  exportLicenseReportHtml,
   fetchAdminDiagnostics,
   fetchDiscoveryProviders,
   fetchCurrentUser,
@@ -15,6 +16,7 @@ import {
   fetchUsers,
   importDiscoveryLink,
   importDiscoveryTrack,
+  importCatalogBackup,
   importSessionLink,
   login,
   logout,
@@ -841,6 +843,36 @@ export default function App() {
     }
   }
 
+  async function handleExportLicenseReportHtml() {
+    try {
+      const file = await exportLicenseReportHtml(token);
+      downloadBlob(file);
+      setAdminStatusType("success");
+      setAdminStatus(`Report licenze HTML esportato: ${file.filename}.`);
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Export report licenze HTML non riuscito.");
+    }
+  }
+
+  async function handleImportCatalogBackup(backupPayload) {
+    try {
+      const payload = await importCatalogBackup(token, backupPayload);
+      await refreshTracks();
+      setAdminStatusType("success");
+      setAdminStatus(
+        `Catalogo ripristinato: ${payload.importedCount || 0} tracce. Backup precedente: ${
+          payload.backupFile || "creato"
+        }.`
+      );
+      return payload;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Ripristino backup catalogo non riuscito.");
+      throw error;
+    }
+  }
+
   async function handleChangePassword(passwordPayload) {
     try {
       const payload = await changePassword(token, passwordPayload);
@@ -1410,6 +1442,8 @@ export default function App() {
                       onLoadDiagnostics={handleLoadAdminDiagnostics}
                       onExportCatalogBackup={handleExportCatalogBackup}
                       onExportLicenseReport={handleExportLicenseReport}
+                      onExportLicenseReportHtml={handleExportLicenseReportHtml}
+                      onImportCatalogBackup={handleImportCatalogBackup}
                       status={adminStatus}
                       statusType={adminStatusType}
                     />

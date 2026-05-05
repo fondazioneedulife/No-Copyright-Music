@@ -19,6 +19,52 @@ function commandSummary(result) {
   return firstDiagnosticLine(result.stderr) || result.error || "Errore";
 }
 
+function diagnosticHealthChecks(diagnostics) {
+  if (!diagnostics) {
+    return [];
+  }
+
+  const preflight = Array.isArray(diagnostics.audioPreflight) ? diagnostics.audioPreflight : [];
+  const audioOk = preflight.length === 0 || preflight.some((entry) => entry.ok);
+  return [
+    {
+      label: "Backend",
+      ok: Boolean(diagnostics.runtime?.revision),
+      detail: diagnostics.runtime?.revision || "Runtime non letto",
+    },
+    {
+      label: "mpv",
+      ok: Boolean(diagnostics.tools?.mpv?.ok),
+      detail: commandSummary(diagnostics.tools?.mpv),
+    },
+    {
+      label: "yt-dlp",
+      ok: Boolean(diagnostics.tools?.ytdlp?.ok),
+      detail: commandSummary(diagnostics.tools?.ytdlp),
+    },
+    {
+      label: "Audio",
+      ok: audioOk,
+      detail: audioOk ? "Almeno un output apribile" : "Nessun output apribile",
+    },
+    {
+      label: "YouTube API",
+      ok: Boolean(diagnostics.config?.hasYouTubeApiKey),
+      detail: diagnostics.config?.hasYouTubeApiKey ? "Configurata" : "Non configurata",
+    },
+    {
+      label: "Jamendo",
+      ok: Boolean(diagnostics.config?.hasJamendoClientId),
+      detail: diagnostics.config?.hasJamendoClientId ? "Configurata" : "Non configurata",
+    },
+    {
+      label: "Player",
+      ok: !diagnostics.player?.error,
+      detail: diagnostics.player?.error || "Nessun errore attivo",
+    },
+  ];
+}
+
 export function AdminPanel({
   users,
   currentUser,
@@ -29,6 +75,8 @@ export function AdminPanel({
   onLoadDiagnostics,
   onExportCatalogBackup,
   onExportLicenseReport,
+  onExportLicenseReportHtml,
+  onImportCatalogBackup,
   status,
   statusType = "success",
 }) {
@@ -45,6 +93,7 @@ export function AdminPanel({
   const [diagnosticsStatusType, setDiagnosticsStatusType] = useState("success");
   const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
   const [exporting, setExporting] = useState("");
+  const [importingBackup, setImportingBackup] = useState(false);
 
   async function handleCreate(event) {
     event.preventDefault();
@@ -130,7 +179,29 @@ export function AdminPanel({
     }
   }
 
+  async function handleImportBackupFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !onImportCatalogBackup) {
+      return;
+    }
+
+    setImportingBackup(true);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      await onImportCatalogBackup(parsed);
+    } catch (error) {
+      setDiagnosticsStatusType("error");
+      setDiagnosticsStatus(error.message || "Backup catalogo non leggibile.");
+    } finally {
+      setImportingBackup(false);
+    }
+  }
+
   const preflightResults = Array.isArray(diagnostics?.audioPreflight) ? diagnostics.audioPreflight : [];
+  const healthChecks = diagnosticHealthChecks(diagnostics);
+  const playerEvents = Array.isArray(diagnostics?.player?.events) ? diagnostics.player.events : [];
   const diagnosticTools = diagnostics
     ? [
         ["mpv", diagnostics.tools?.mpv],
@@ -224,8 +295,8 @@ export function AdminPanel({
             <p className="eyebrow">Backup</p>
             <h3>Export catalogo e licenze</h3>
             <p>
-              Scarica il catalogo completo in JSON e un report CSV con sorgente, licenza,
-              note diritti e stato commerciale delle tracce.
+              Scarica JSON, CSV o report HTML. Il ripristino da JSON salva prima una copia
+              automatica del catalogo corrente.
             </p>
           </div>
           <div className="admin-tool-actions">
@@ -243,6 +314,22 @@ export function AdminPanel({
             >
               {exporting === "licenses" ? "Esporto..." : "Report licenze"}
             </button>
+            <button
+              type="button"
+              onClick={() => handleExport("licenses-html", onExportLicenseReportHtml)}
+              disabled={exporting === "licenses-html"}
+            >
+              {exporting === "licenses-html" ? "Esporto..." : "Report HTML"}
+            </button>
+            <label className={`file-button ${importingBackup ? "is-disabled" : ""}`}>
+              {importingBackup ? "Importo..." : "Importa backup"}
+              <input
+                type="file"
+                accept="application/json,.json"
+                disabled={importingBackup}
+                onChange={handleImportBackupFile}
+              />
+            </label>
           </div>
         </article>
 
@@ -260,6 +347,18 @@ export function AdminPanel({
 
           {diagnosticsStatus ? (
             <p className={`status-banner is-${diagnosticsStatusType}`}>{diagnosticsStatus}</p>
+          ) : null}
+
+          {healthChecks.length > 0 ? (
+            <div className="diagnostic-health">
+              {healthChecks.map((entry) => (
+                <div key={entry.label} className={entry.ok ? "is-ok" : "is-warn"}>
+                  <strong>{entry.label}</strong>
+                  <span>{entry.ok ? "OK" : "ATTENZIONE"}</span>
+                  <small>{entry.detail}</small>
+                </div>
+              ))}
+            </div>
           ) : null}
 
           {diagnostics ? (
@@ -317,6 +416,19 @@ export function AdminPanel({
 
           {diagnostics?.alsa?.cards ? (
             <pre className="diagnostic-output">{diagnostics.alsa.cards}</pre>
+          ) : null}
+
+          {playerEvents.length > 0 ? (
+            <div className="diagnostic-events">
+              <p className="eyebrow">Ultimi eventi player</p>
+              {playerEvents.map((event) => (
+                <div key={event.id}>
+                  <strong>{event.type}</strong>
+                  <span>{event.message}</span>
+                  <small>{event.at}</small>
+                </div>
+              ))}
+            </div>
           ) : null}
         </article>
       </div>

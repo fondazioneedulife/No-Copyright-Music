@@ -60,7 +60,8 @@ All'inizio lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`. Se la diagnostic
 7. Prova play/pausa, next, prev, shuffle e repeat.
 8. Cambia volume con slider e input numerico, per esempio `30`, `60`, `85`.
 9. Importa un lotto da `120` tracce.
-10. Esporta `Backup catalogo` e `Report licenze`.
+10. Esporta `Backup catalogo`, `Report licenze` e `Report HTML`.
+11. Premi `Importa backup` solo se devi ripristinare: il backend salva prima una copia automatica del catalogo corrente.
 
 ## Import musica
 
@@ -84,7 +85,9 @@ Il reset `Reset scan YouTube` non cancella brani. Azzera solo i cursori di impor
 Nel pannello admin:
 
 - `Backup catalogo` scarica un JSON con tutte le tracce di `data/library.json`;
-- `Report licenze` scarica un CSV con fonte, autore, licenza, note diritti e stato commerciale.
+- `Importa backup` ripristina un JSON ClearWave e crea prima `data/library.backup-*.json`;
+- `Report licenze` scarica un CSV con fonte, autore, licenza, note diritti e stato commerciale;
+- `Report HTML` crea una versione leggibile/stampabile del report.
 
 Il report non sostituisce la verifica legale finale: serve a sapere da dove arrivano le tracce e quali prove conservare.
 
@@ -115,6 +118,6 @@ docker compose exec clearwave aplay -L
 - `docker-compose.yml`: servizio `clearwave`, porta, volumi e audio Raspberry.
 - `server.js`: API, import, player Raspberry e export admin.
 - `frontend/src/App.jsx`: stato React globale.
-- `frontend/src/components/AdminPanel.jsx`: utenti, diagnostica, reset scan, backup e report.
+- `frontend/src/components/AdminPanel.jsx`: utenti, diagnostica, reset scan, backup, ripristino e report.
 - `frontend/src/components/PlayerDock.jsx`: player inferiore e volume.
 - `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`: guida dettagliata audio Docker/Raspberry.
