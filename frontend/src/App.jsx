@@ -192,34 +192,6 @@ export default function App() {
   }, [volume, playbackTarget, token]);
 
   useEffect(() => {
-    // Aggiorna la coda lato Raspberry: se la pagina viene chiusa, il server ha gia' la prossima traccia.
-    if (playerMode !== "server" || !token || !activeTrack) {
-      return undefined;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      void setServerTrackContext(token, {
-        serverContext: serverPlaybackContextFor(activeTrack),
-      }).catch((error) => {
-        setPlayerNotice(error.message || "Contesto Raspberry non aggiornato.");
-      });
-    }, 220);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [
-    playerMode,
-    token,
-    activeTrack?.id,
-    queueIds,
-    repeatMode,
-    shuffleEnabled,
-    filteredTracks,
-    catalogTracks,
-    sessionTracks,
-    queuedTracks,
-  ]);
-
-  useEffect(() => {
     // Se l'uscita selezionata e' il Raspberry, teniamo la UI allineata anche dopo refresh o errori mpv.
     if (playbackTarget !== "server" || !token) {
       return undefined;
@@ -469,6 +441,34 @@ export default function App() {
       shuffleEnabled,
     };
   }
+
+  useEffect(() => {
+    // Aggiorna la coda lato Raspberry dopo che lista e filtri React sono gia' inizializzati.
+    if (playerMode !== "server" || !token || !activeTrack) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void setServerTrackContext(token, {
+        serverContext: serverPlaybackContextFor(activeTrack),
+      }).catch((error) => {
+        setPlayerNotice(error.message || "Contesto Raspberry non aggiornato.");
+      });
+    }, 220);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    playerMode,
+    token,
+    activeTrack?.id,
+    queueIds,
+    repeatMode,
+    shuffleEnabled,
+    filteredTracks,
+    catalogTracks,
+    sessionTracks,
+    queuedTracks,
+  ]);
 
   function sendEmbedCommand(func, args = []) {
     // I comandi YouTube rendono play, pausa, seek e volume immediati senza ricaricare l'iframe.
