@@ -105,16 +105,17 @@ Dopo il primo login cambia subito password da Impostazioni.
 
 Leggi in questo ordine:
 
-1. `docs/MAPPA_PROGETTO.md`: cosa contiene ogni file/cartella.
-2. `docs/ARCHITETTURA.md`: come funzionano backend, UI, storage, auth e provider.
-3. `docs/FLUSSI_OPERATIVI.md`: come usare l'app nelle operazioni reali.
-4. `docs/ENDPOINT_API.md`: elenco e contratto degli endpoint locali.
-5. `docs/CONFIGURAZIONE_API.md`: chiavi API, variabili ambiente e provider esterni.
-6. `docs/GUIDA_SVILUPPATORE.md`: regole pratiche per modificare codice e UI.
-7. `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`: checklist pratica per Raspberry, Docker, Git, ALSA e yt-dlp.
-8. `docs/GUIDA_CONSEGNA.md`: checklist finale per consegna, test, backup e report.
-9. `docs/DOCKER.md`: build e avvio del progetto in container.
-10. `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md`: riepilogo del lavoro fatto su React, player Raspberry e Docker.
+1. `docs/DOCUMENTAZIONE_COMPLETA.md`: manuale principale completo, dalla panoramica alla consegna.
+2. `docs/GUIDA_CONSEGNA.md`: checklist finale rapida per test, backup e report.
+3. `docs/MAPPA_PROGETTO.md`: cosa contiene ogni file/cartella.
+4. `docs/ARCHITETTURA.md`: come funzionano backend, UI, storage, auth e provider.
+5. `docs/FLUSSI_OPERATIVI.md`: come usare l'app nelle operazioni reali.
+6. `docs/ENDPOINT_API.md`: elenco e contratto degli endpoint locali.
+7. `docs/CONFIGURAZIONE_API.md`: chiavi API, variabili ambiente e provider esterni.
+8. `docs/GUIDA_SVILUPPATORE.md`: regole pratiche per modificare codice e UI.
+9. `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`: checklist pratica per Raspberry, Docker, Git, ALSA e yt-dlp.
+10. `docs/DOCKER.md`: build e avvio del progetto in container.
+11. `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md`: riepilogo del lavoro fatto su React, player Raspberry e Docker.
 
 ## Docker
 

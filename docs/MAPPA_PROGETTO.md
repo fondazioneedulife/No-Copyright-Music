@@ -152,6 +152,7 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | File | Quando leggerlo |
 | --- | --- |
 | `README.md` | Panoramica, avvio veloce e indice documentazione. |
+| `docs/DOCUMENTAZIONE_COMPLETA.md` | Manuale principale completo: installazione, uso, Raspberry, backup, API, codice e troubleshooting. |
 | `docs/ARCHITETTURA.md` | Spiegazione tecnica dei layer e dei flussi. |
 | `docs/MAPPA_PROGETTO.md` | Mappa file-per-file. |
 | `docs/FLUSSI_OPERATIVI.md` | Come usare l'app e cosa fare nei casi comuni. |

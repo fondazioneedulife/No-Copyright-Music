@@ -1,6 +1,7 @@
 # Guida consegna ClearWave
 
 Questa guida riassume i passaggi essenziali per portare ClearWave sul Raspberry, testarlo e lasciarlo pronto all'uso.
+Per il manuale completo del progetto leggi `docs/DOCUMENTAZIONE_COMPLETA.md`.
 
 ## Cosa consegnare
 
