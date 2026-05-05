@@ -153,6 +153,7 @@ Risposta:
 Avvia una traccia su `mpv` lato server.
 
 Gli avvii sono serializzati: se il browser invia piu' richieste `play` ravvicinate, il backend lascia vincere il comando piu' recente e non mantiene processi `mpv` sovrapposti.
+Quando React invia `serverContext`, il backend conserva anche la lista di riproduzione e puo' continuare alla traccia successiva anche se la pagina web viene chiusa.
 
 Body:
 
@@ -162,7 +163,12 @@ Body:
   "track": {},
   "startAt": 0,
   "volume": 0.75,
-  "volumePercent": 75
+  "volumePercent": 75,
+  "serverContext": {
+    "trackIds": ["track-id-1", "track-id-2"],
+    "repeatMode": "off",
+    "shuffleEnabled": false
+  }
 }
 ```
 
@@ -200,6 +206,23 @@ Body:
 
 `volume` va da `0` a `1`; `volumePercent` e' opzionale e va da `0` a `100`.
 Il backend accetta entrambi per evitare errori tra slider percentuale e valore normalizzato.
+
+### `POST /api/server-player/context`
+
+Aggiorna la coda lato Raspberry senza riavviare il brano corrente.
+La UI lo usa quando cambiano coda, shuffle o repeat, cosi' il backend mantiene la continuita' anche senza browser aperto.
+
+Body:
+
+```json
+{
+  "serverContext": {
+    "trackIds": ["track-id-1", "track-id-2"],
+    "repeatMode": "all",
+    "shuffleEnabled": true
+  }
+}
+```
 
 ### `POST /api/server-player/stop`
 

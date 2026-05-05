@@ -121,6 +121,7 @@ Il backend espone:
 - `/api/server-player/pause`;
 - `/api/server-player/seek`;
 - `/api/server-player/volume`;
+- `/api/server-player/context`;
 - `/api/server-player/stop`;
 - `/api/covers/jamendo/:trackId.jpg`;
 - `/api/providers/audius/:id/stream`;
@@ -131,6 +132,9 @@ Il player React ha due uscite:
 
 1. `Pi`: il browser manda comandi API e `server.js` avvia `mpv` sul Raspberry;
 2. `PC`: fallback browser con audio tag o iframe YouTube.
+
+In modalita' `Pi`, React invia anche il contesto della coda al backend.
+Questo rende il Raspberry autonomo: se la pagina viene chiusa, il brano in corso continua e il server puo' avviare il successivo quando `mpv` termina con codice `0`.
 
 Il backend sceglie la sorgente migliore:
 

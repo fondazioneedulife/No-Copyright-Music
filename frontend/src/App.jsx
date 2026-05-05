@@ -27,6 +27,7 @@ import {
   resetYouTubeImportState,
   searchDiscovery,
   seekServerTrack,
+  setServerTrackContext,
   setServerTrackVolume,
   stopServerTrack,
   storeToken,
@@ -189,6 +190,34 @@ export default function App() {
 
     return () => window.clearTimeout(serverVolumeTimerRef.current);
   }, [volume, playbackTarget, token]);
+
+  useEffect(() => {
+    // Aggiorna la coda lato Raspberry: se la pagina viene chiusa, il server ha gia' la prossima traccia.
+    if (playerMode !== "server" || !token || !activeTrack) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void setServerTrackContext(token, {
+        serverContext: serverPlaybackContextFor(activeTrack),
+      }).catch((error) => {
+        setPlayerNotice(error.message || "Contesto Raspberry non aggiornato.");
+      });
+    }, 220);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    playerMode,
+    token,
+    activeTrack?.id,
+    queueIds,
+    repeatMode,
+    shuffleEnabled,
+    filteredTracks,
+    catalogTracks,
+    sessionTracks,
+    queuedTracks,
+  ]);
 
   useEffect(() => {
     // Se l'uscita selezionata e' il Raspberry, teniamo la UI allineata anche dopo refresh o errori mpv.
@@ -403,10 +432,6 @@ export default function App() {
     () => queueIds.map((trackId) => knownTracks.find((track) => track.id === trackId)).filter(Boolean),
     [knownTracks, queueIds]
   );
-  const activeTrackInSession = useMemo(
-    () => sessionTracks.some((track) => track.id === activeTrack?.id),
-    [activeTrack?.id, sessionTracks]
-  );
   const noAttributionCount = useMemo(
     () => tracks.filter((track) => track.attributionRequired === false).length,
     [tracks]
@@ -426,6 +451,24 @@ export default function App() {
       ).size,
     [tracks]
   );
+
+  function playbackListForTrack(track = activeTrack) {
+    // Questa lista viene inviata anche al backend: cosi' il Raspberry continua se il browser si chiude.
+    const catalogPlaybackList = filteredTracks.length > 0 ? filteredTracks : catalogTracks;
+    const trackInSession = sessionTracks.some((sessionTrack) => sessionTrack.id === track?.id);
+    return queuedTracks.length > 0 ? queuedTracks : trackInSession ? sessionTracks : catalogPlaybackList;
+  }
+
+  function serverPlaybackContextFor(track = activeTrack) {
+    const list = playbackListForTrack(track);
+    const trackInSession = sessionTracks.some((sessionTrack) => sessionTrack.id === track?.id);
+    return {
+      trackIds: trackInSession ? [] : list.map((entry) => entry.id).filter(Boolean),
+      tracks: trackInSession ? list : [],
+      repeatMode,
+      shuffleEnabled,
+    };
+  }
 
   function sendEmbedCommand(func, args = []) {
     // I comandi YouTube rendono play, pausa, seek e volume immediati senza ricaricare l'iframe.
@@ -1007,7 +1050,7 @@ export default function App() {
         return;
       }
 
-      void playServerTrack(token, { track, startAt, volume })
+      void playServerTrack(token, { track, startAt, volume, serverContext: serverPlaybackContextFor(track) })
         .then((payload) => {
           if (playbackRequestRef.current !== requestId) {
             return;
@@ -1089,8 +1132,7 @@ export default function App() {
 
   function playAdjacent(direction, options = {}) {
     // Se stai ascoltando la playlist temporanea, prev/next restano in quella sessione.
-    const catalogPlaybackList = filteredTracks.length > 0 ? filteredTracks : catalogTracks;
-    const list = queuedTracks.length > 0 ? queuedTracks : activeTrackInSession ? sessionTracks : catalogPlaybackList;
+    const list = playbackListForTrack(activeTrack);
     if (list.length === 0) {
       return false;
     }
@@ -1335,7 +1377,7 @@ export default function App() {
     const timerId = window.setInterval(() => {
       const nextTime = syncEmbedClock();
       updateClock(nextTime, duration);
-      if (duration > 0 && nextTime >= duration - 0.35) {
+      if (playerMode !== "server" && duration > 0 && nextTime >= duration - 0.35) {
         handleEnded();
       }
     }, 500);

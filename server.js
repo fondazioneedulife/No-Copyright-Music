@@ -65,6 +65,13 @@ const serverPlayer = {
   playSequence: 0,
   playQueue: Promise.resolve(),
   events: [],
+  playbackContext: {
+    tracks: [],
+    index: -1,
+    repeatMode: "off",
+    shuffleEnabled: false,
+    updatedAt: "",
+  },
 };
 const {
   authUserFromRequest,
@@ -4618,6 +4625,13 @@ function serverPlayerStatus() {
     ytdlPath: serverPlayerYtdlPath,
     mpvMsgLevel: serverPlayerMpvMsgLevel,
     events: serverPlayer.events.slice(0, 20),
+    playbackContext: {
+      count: serverPlayer.playbackContext.tracks.length,
+      index: serverPlayer.playbackContext.index,
+      repeatMode: serverPlayer.playbackContext.repeatMode,
+      shuffleEnabled: serverPlayer.playbackContext.shuffleEnabled,
+      updatedAt: serverPlayer.playbackContext.updatedAt,
+    },
   };
 }
 
@@ -5126,6 +5140,23 @@ function stopServerPlayerForPayload(payload = {}) {
   }
 
   stopServerPlayerProcess();
+  serverPlayer.playbackContext = {
+    tracks: [],
+    index: -1,
+    repeatMode: "off",
+    shuffleEnabled: false,
+    updatedAt: new Date().toISOString(),
+  };
+  return serverPlayerStatus();
+}
+
+async function updateServerPlayerContextForPayload(req, payload = {}) {
+  const activeTrack = serverPlayer.activeTrack || payload?.track;
+  if (!activeTrack) {
+    return serverPlayerStatus();
+  }
+
+  await updateServerPlayerPlaybackContext(req, activeTrack, payload);
   return serverPlayerStatus();
 }
 
@@ -5223,6 +5254,11 @@ function sendMpvCommand(command) {
 }
 
 async function resolveServerPlayerTrack(req, payload) {
+  if (payload?.serverAutoplay && payload?.track) {
+    // Autoplay interno: il backend continua la coda anche quando il browser e' chiuso.
+    return attachComputedFields(payload.track);
+  }
+
   const user = requireAuthRequest(req);
   const trackId = firstString(payload?.trackId, payload?.track?.id);
   if (trackId) {
@@ -5265,6 +5301,127 @@ function serverPlayerVolumePercentFromPayload(payload = {}, fallbackPercent = 75
   return Math.round(Math.max(0, Math.min(100, Number(fallbackPercent) || 75)));
 }
 
+function normalizedServerRepeatMode(value) {
+  return value === "one" || value === "all" ? value : "off";
+}
+
+async function serverPlaybackContextTracks(payload = {}, user = null) {
+  const context = payload?.serverContext || payload?.playbackContext || {};
+  const requestedIds = Array.isArray(context.trackIds)
+    ? context.trackIds.map((id) => firstString(id)).filter(Boolean).slice(0, 5000)
+    : [];
+
+  if (requestedIds.length > 0) {
+    const library = await readLibrary();
+    const byId = new Map(library.map((track) => [firstString(track.id), attachComputedFields(track)]));
+    return requestedIds.map((trackId) => byId.get(trackId)).filter(Boolean);
+  }
+
+  if (user?.role === "admin" && Array.isArray(context.tracks)) {
+    // Solo admin puo' passare tracce temporanee complete; gli utenti normali usano id catalogo.
+    return context.tracks
+      .filter((track) => track && typeof track === "object" && !Array.isArray(track))
+      .slice(0, 500)
+      .map((track) => attachComputedFields(normalizeTrack(track)));
+  }
+
+  return [];
+}
+
+async function updateServerPlayerPlaybackContext(req, activeTrack, payload = {}) {
+  const user = req ? requireAuthRequest(req) : { role: "admin" };
+  const context = payload?.serverContext || payload?.playbackContext || {};
+  const tracks = await serverPlaybackContextTracks(payload, user);
+  const activeTrackId = firstString(activeTrack?.id);
+  let contextTracks = tracks;
+
+  if (activeTrackId && !contextTracks.some((track) => firstString(track.id) === activeTrackId)) {
+    contextTracks = [attachComputedFields(activeTrack), ...contextTracks];
+  }
+
+  if (contextTracks.length === 0 && activeTrack) {
+    contextTracks = [attachComputedFields(activeTrack)];
+  }
+
+  const index = Math.max(
+    0,
+    contextTracks.findIndex((track) => firstString(track.id) === activeTrackId)
+  );
+
+  serverPlayer.playbackContext = {
+    tracks: contextTracks,
+    index,
+    repeatMode: normalizedServerRepeatMode(context.repeatMode),
+    shuffleEnabled: Boolean(context.shuffleEnabled),
+    updatedAt: new Date().toISOString(),
+  };
+
+  recordServerPlayerEvent("context", `Contesto server aggiornato: ${contextTracks.length} tracce`, {
+    index,
+    repeatMode: serverPlayer.playbackContext.repeatMode,
+    shuffleEnabled: serverPlayer.playbackContext.shuffleEnabled,
+  });
+  return serverPlayer.playbackContext;
+}
+
+function nextServerPlaybackContextTrack() {
+  const context = serverPlayer.playbackContext;
+  const tracks = Array.isArray(context.tracks) ? context.tracks : [];
+  if (tracks.length === 0) {
+    return null;
+  }
+
+  if (context.repeatMode === "one") {
+    return tracks[Math.max(0, context.index)] || tracks[0];
+  }
+
+  let nextIndex = context.index + 1;
+  if (context.shuffleEnabled && tracks.length > 1) {
+    const currentIndex = Math.max(0, context.index);
+    do {
+      nextIndex = Math.floor(Math.random() * tracks.length);
+    } while (nextIndex === currentIndex);
+  }
+
+  if (nextIndex >= tracks.length) {
+    if (context.repeatMode !== "all") {
+      return null;
+    }
+    nextIndex = 0;
+  }
+
+  context.index = nextIndex;
+  context.updatedAt = new Date().toISOString();
+  return tracks[nextIndex] || null;
+}
+
+function scheduleServerPlayerAutoplay(previousRunId) {
+  setTimeout(() => {
+    if (serverPlayer.process || serverPlayer.runId !== previousRunId) {
+      return;
+    }
+
+    const nextTrack = nextServerPlaybackContextTrack();
+    if (!nextTrack) {
+      recordServerPlayerEvent("complete", "Coda server completata: nessuna traccia successiva.");
+      return;
+    }
+
+    recordServerPlayerEvent("autoplay", `Avvio automatico server: ${firstString(nextTrack.title, nextTrack.id)}`, {
+      runId: previousRunId,
+    });
+    void enqueueServerPlayerPlay(null, {
+      track: nextTrack,
+      startAt: 0,
+      volumePercent: serverPlayer.volume,
+      serverAutoplay: true,
+    }).catch((error) => {
+      serverPlayer.lastError = serverPlayerFriendlyError(error.message || error).slice(0, 400);
+      recordServerPlayerEvent("error", serverPlayer.lastError);
+    });
+  }, 350);
+}
+
 function enqueueServerPlayerPlay(req, payload) {
   // Serializza gli avvii mpv: se React manda piu' Play ravvicinati, vince solo l'ultimo comando.
   const playToken = serverPlayer.playSequence + 1;
@@ -5290,6 +5447,9 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
   }
 
   const track = await resolveServerPlayerTrack(req, payload);
+  if (!payload?.serverAutoplay) {
+    await updateServerPlayerPlaybackContext(req, track, payload);
+  }
   const source = await serverPlayerSourceForTrack(track);
   if (isServerPlayerPlaySuperseded(playToken)) {
     return serverPlayerStatus();
@@ -5417,6 +5577,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     });
     processRef.once("exit", (code) => {
       cleanupServerPlayerSocket(socketPath);
+      const shouldAutoplayNext = code === 0 && !serverPlayer.isStopping;
       if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
         console.log(
           `[server-player] mpv precedente chiuso per cambio traccia/comando (codice ${code ?? "n/d"})`
@@ -5463,6 +5624,10 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
         serverPlayer.isPaused = false;
         serverPlayer.startedAt = 0;
         serverPlayer.pausedAt = 0;
+      }
+
+      if (shouldAutoplayNext) {
+        scheduleServerPlayerAutoplay(runId);
       }
     });
 
@@ -5708,6 +5873,13 @@ async function requestHandler(req, res) {
       requireAuthRequest(req);
       const payload = await readJsonBody(req);
       json(res, 200, { player: await volumeServerPlayer(payload) });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/server-player/context") {
+      requireAuthRequest(req);
+      const payload = await readJsonBody(req);
+      json(res, 200, { player: await updateServerPlayerContextForPayload(req, payload) });
       return;
     }
 

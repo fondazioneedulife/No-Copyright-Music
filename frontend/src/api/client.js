@@ -248,6 +248,14 @@ export function setServerTrackVolume(token, volume) {
   });
 }
 
+export function setServerTrackContext(token, body = {}) {
+  return apiRequest("/api/server-player/context", {
+    method: "POST",
+    token,
+    body,
+  });
+}
+
 export function stopServerTrack(token, body = null) {
   return apiRequest("/api/server-player/stop", {
     method: "POST",

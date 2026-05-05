@@ -420,6 +420,7 @@ React chiama:
 /api/server-player/pause
 /api/server-player/seek
 /api/server-player/volume
+/api/server-player/context
 /api/server-player/stop
 /api/server-player/status
 ```
@@ -431,7 +432,11 @@ Il backend:
 3. prepara `mpv`;
 4. prova output ALSA;
 5. apre un socket IPC;
-6. invia comandi play/pausa/seek/volume.
+6. invia comandi play/pausa/seek/volume;
+7. conserva una coda lato server per continuare la riproduzione anche se la pagina web viene chiusa.
+
+Quando React avvia una traccia in modalita' `Pi`, manda anche `serverContext` con lista, repeat e shuffle.
+Se il browser viene chiuso, `mpv` resta attivo sul Raspberry e il backend puo' passare alla traccia successiva senza dipendere dal frontend.
 
 Il volume accetta sia formato normalizzato che percentuale:
 
@@ -631,6 +636,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `POST` | `/api/server-player/pause` | Pausa/riprendi. |
 | `POST` | `/api/server-player/seek` | Seek assoluto. |
 | `POST` | `/api/server-player/volume` | Volume. |
+| `POST` | `/api/server-player/context` | Aggiorna coda server per continuita' senza browser. |
 | `POST` | `/api/server-player/stop` | Stop. |
 
 ### Admin

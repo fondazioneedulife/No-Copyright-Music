@@ -57,11 +57,13 @@ All'inizio lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`. Se la diagnostic
 4. Controlla che `mpv`, `yt-dlp` e almeno un preflight audio siano `OK`.
 5. Avvia una traccia YouTube.
 6. Avvia una traccia Jamendo.
-7. Prova play/pausa, next, prev, shuffle e repeat.
-8. Cambia volume con slider e input numerico, per esempio `30`, `60`, `85`.
-9. Importa un lotto da `120` tracce.
-10. Esporta `Backup catalogo`, `Report licenze` e `Report HTML`.
-11. Premi `Importa backup` solo se devi ripristinare: il backend salva prima una copia automatica del catalogo corrente.
+7. Chiudi la pagina o il browser durante la riproduzione in modalita' `Pi`: la musica deve continuare dal Raspberry.
+8. Riapri la pagina e verifica che il player si riallinei allo stato del server.
+9. Prova play/pausa, next, prev, shuffle e repeat.
+10. Cambia volume con slider e input numerico, per esempio `30`, `60`, `85`.
+11. Importa un lotto da `120` tracce.
+12. Esporta `Backup catalogo`, `Report licenze` e `Report HTML`.
+13. Premi `Importa backup` solo se devi ripristinare: il backend salva prima una copia automatica del catalogo corrente.
 
 ## Import musica
 
