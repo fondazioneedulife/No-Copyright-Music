@@ -75,6 +75,7 @@ const serverPlayerCommand = process.env.CLEARWAVE_PLAYER_COMMAND || "mpv";
 - Canali whitelist per import permanente: NoCopyrightSounds (`UC_aEa8K-EOJ3D6gOs7HcyNg`), Infraction - No Copyright Music (`UCkRrhwhJ2Ia_ZlkTQ4XFWJA`), BreakingCopyright - Royalty Free Music (`UCUFDNffZtBGisDliMx12fYw`).
 - `Importa lotto` legge questi canali in modo progressivo: conserva il cursore in `data/youtube-import-state.json`, scansiona piu' video dei brani richiesti per superare duplicati gia' presenti, legge anche una selezione profonda di playlist pubbliche del canale e riparte dall'inizio se YouTube rifiuta un vecchio page token. La UI forza anche la riscan degli upload completati, per non trattare `completed` come "catalogo del canale esaurito".
 - La UI admin permette lotti da 120, 250 o 500 tracce: valori piu' alti leggono piu' risultati e consumano piu' quota YouTube.
+- Il pannello admin puo' azzerare lo stato import YouTube: viene creato un backup del file stato e il lotto successivo riparte dai canali whitelist dall'inizio.
 - Nota licenza: YouTube non permette download audio via Data API. ClearWave riproduce con embed interno e conserva metadata/link.
 
 ### Audius
@@ -151,6 +152,7 @@ $env:CLEARWAVE_AUTO_EXPAND = "0"
 ### `CLEARWAVE_SERVER_PLAYER`
 
 Se vale `1`, il backend espone il player Raspberry e puo' avviare `mpv`.
+La diagnostica admin `/api/admin/diagnostics` mostra versione `mpv`, versione `yt-dlp`, device ALSA, preflight audio e ultimo errore player senza mostrare segreti API.
 
 In Docker su Raspberry usa un solo file Compose:
 

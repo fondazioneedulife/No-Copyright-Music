@@ -462,6 +462,28 @@ Body tipico:
 
 La risposta include `youtubeProgress`, `skippedSummary` ed `errors`, cosi' la UI puo' spiegare se non sono entrati brani nuovi per duplicati, video troppo brevi, quota API o canali completati.
 
+### `POST /api/admin/youtube-import-state/reset`
+
+Solo admin. Azzera lo stato progressivo di `data/youtube-import-state.json` senza cancellare il catalogo.
+Prima del reset, se il file esiste, il backend crea un backup `youtube-import-state.backup-*.json` nella cartella `data`.
+Serve quando i cursori YouTube risultano vecchi, un canale e' stato segnato `completed` troppo presto o si vuole rileggere i canali whitelist dall'inizio.
+
+Risposta:
+
+```json
+{
+  "ok": true,
+  "resetAt": "2026-05-05T10:00:00.000Z",
+  "previousChannels": 3,
+  "backupFile": "youtube-import-state.backup-2026-05-05T10-00-00-000Z.json"
+}
+```
+
+### `GET /api/admin/diagnostics`
+
+Solo admin. Restituisce diagnostica runtime per Raspberry/audio: versione Node, revisione runtime, configurazione player, stato mpv corrente, versioni `mpv`/`yt-dlp`, device ALSA e risultati del preflight audio.
+Non espone valori segreti delle API: indica solo se le chiavi principali sono configurate.
+
 ### `POST /api/discovery/import-link`
 
 Solo admin. Importa da link esterno nel catalogo permanente, quando il link e' accettato.

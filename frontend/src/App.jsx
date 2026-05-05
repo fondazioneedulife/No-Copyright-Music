@@ -5,6 +5,7 @@ import {
   createTrack,
   createUser,
   deleteUser,
+  fetchAdminDiagnostics,
   fetchDiscoveryProviders,
   fetchCurrentUser,
   fetchServerPlayerStatus,
@@ -19,6 +20,7 @@ import {
   playServerTrack,
   readStoredToken,
   resetUserPassword,
+  resetYouTubeImportState,
   searchDiscovery,
   seekServerTrack,
   setServerTrackVolume,
@@ -753,6 +755,28 @@ export default function App() {
     }
   }
 
+  async function handleResetYouTubeImportState() {
+    try {
+      const payload = await resetYouTubeImportState(token);
+      setAdminStatusType("success");
+      setAdminStatus(
+        `Stato import YouTube azzerato. Canali precedenti: ${payload.previousChannels || 0}${
+          payload.backupFile ? `. Backup: ${payload.backupFile}` : ""
+        }.`
+      );
+      return payload;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Reset stato YouTube non riuscito.");
+      throw error;
+    }
+  }
+
+  async function handleLoadAdminDiagnostics() {
+    const payload = await fetchAdminDiagnostics(token);
+    return payload.diagnostics || null;
+  }
+
   async function handleChangePassword(passwordPayload) {
     try {
       const payload = await changePassword(token, passwordPayload);
@@ -1318,6 +1342,8 @@ export default function App() {
                       onCreateUser={handleCreateUser}
                       onDeleteUser={handleDeleteUser}
                       onResetUserPassword={handleResetUserPassword}
+                      onResetYouTubeImportState={handleResetYouTubeImportState}
+                      onLoadDiagnostics={handleLoadAdminDiagnostics}
                       status={adminStatus}
                       statusType={adminStatusType}
                     />

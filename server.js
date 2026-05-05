@@ -977,6 +977,28 @@ async function writeYouTubeImportState(state) {
   );
 }
 
+async function resetYouTubeImportState() {
+  // Reset controllato: prima crea un backup, poi azzera solo i cursori YouTube.
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  const previousState = await readYouTubeImportState();
+  const previousChannels = Object.keys(previousState.channels || {});
+  let backupFile = "";
+
+  if (fsSync.existsSync(YOUTUBE_IMPORT_STATE_FILE)) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    backupFile = path.join(DATA_DIR, `youtube-import-state.backup-${stamp}.json`);
+    await fs.copyFile(YOUTUBE_IMPORT_STATE_FILE, backupFile);
+  }
+
+  await writeYouTubeImportState({ channels: {} });
+  return {
+    ok: true,
+    resetAt: new Date().toISOString(),
+    previousChannels: previousChannels.length,
+    backupFile: backupFile ? path.basename(backupFile) : "",
+  };
+}
+
 async function ensureAssetStorage() {
   await fs.mkdir(COVERS_DIR, { recursive: true });
 }
@@ -4332,6 +4354,143 @@ function serverPlayerStatus() {
   };
 }
 
+function diagnosticCommandResult(command, args = [], timeoutMs = 3500) {
+  // Wrapper piccolo per diagnostica: raccoglie output breve senza bloccare il server.
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    let timeoutId = null;
+
+    const finish = (payload) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      resolve({
+        command,
+        args,
+        durationMs: Date.now() - startedAt,
+        stdout: stdout.trim().slice(0, 4000),
+        stderr: stderr.trim().slice(0, 4000),
+        ...payload,
+      });
+    };
+
+    let processRef;
+    try {
+      processRef = spawn(command, args, {
+        env: process.env,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (error) {
+      finish({ ok: false, error: error.message });
+      return;
+    }
+
+    timeoutId = setTimeout(() => {
+      try {
+        processRef.kill("SIGTERM");
+      } catch {
+        // Il comando puo' essere gia' terminato.
+      }
+      finish({ ok: false, error: `Timeout dopo ${timeoutMs}ms.` });
+    }, timeoutMs);
+
+    processRef.stdout.on("data", (chunk) => {
+      stdout += String(chunk || "");
+    });
+    processRef.stderr.on("data", (chunk) => {
+      stderr += String(chunk || "");
+    });
+    processRef.once("error", (error) => finish({ ok: false, error: error.message }));
+    processRef.once("exit", (code, signal) => {
+      finish({ ok: code === 0, code, signal, error: code === 0 ? "" : `Codice uscita ${code ?? signal ?? "n/d"}.` });
+    });
+  });
+}
+
+async function readDiagnosticTextFile(filePath) {
+  try {
+    return (await fs.readFile(filePath, "utf8")).trim().slice(0, 4000);
+  } catch (error) {
+    return error.code === "ENOENT" ? "" : `Errore lettura ${path.basename(filePath)}: ${error.message}`;
+  }
+}
+
+async function buildServerDiagnostics() {
+  const audioConfigs = serverPlayerAudioConfigs();
+  const preflightResults = [];
+
+  for (const config of audioConfigs) {
+    const result = await runServerPlayerAudioPreflight(config);
+    preflightResults.push({
+      label: config.label,
+      ok: result.ok,
+      message: result.message,
+      args: config.args,
+    });
+  }
+
+  const [mpv, ytdlp, aplayList, aplayNames, asoundCards] = await Promise.all([
+    diagnosticCommandResult(serverPlayerCommand, ["--version"], 3500),
+    diagnosticCommandResult(serverPlayerYtdlPath, ["--version"], 5000),
+    process.platform === "linux"
+      ? diagnosticCommandResult("aplay", ["-l"], 3500)
+      : Promise.resolve({ ok: false, command: "aplay", args: ["-l"], error: "Disponibile solo su Linux." }),
+    process.platform === "linux"
+      ? diagnosticCommandResult("aplay", ["-L"], 3500)
+      : Promise.resolve({ ok: false, command: "aplay", args: ["-L"], error: "Disponibile solo su Linux." }),
+    process.platform === "linux" ? readDiagnosticTextFile("/proc/asound/cards") : Promise.resolve(""),
+  ]);
+
+  return {
+    runtime: {
+      revision: SERVER_RUNTIME_REVISION,
+      node: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      hostname: os.hostname(),
+      uptimeSeconds: Math.round(process.uptime()),
+      pid: process.pid,
+    },
+    config: {
+      dataDir: DATA_DIR,
+      playerCommand: serverPlayerCommand,
+      audioOutput: serverPlayerAudioOutput || "auto",
+      audioDevice: serverPlayerAudioDevice || "auto",
+      alsaCard: serverPlayerAlsaCard || "auto",
+      audioPreflight: serverPlayerAudioPreflight,
+      audioPreflightTimeoutMs: serverPlayerAudioPreflightTimeoutMs,
+      ytdlPath: serverPlayerYtdlPath,
+      ytdlFormat: serverPlayerYtdlFormat,
+      mpvMsgLevel: serverPlayerMpvMsgLevel,
+      hasYouTubeApiKey: Boolean(youtubeApiKey),
+      hasJamendoClientId: Boolean(jamendoClientId),
+    },
+    player: serverPlayerStatus(),
+    audioConfigs: audioConfigs.map((config) => ({
+      label: config.label,
+      args: config.args,
+    })),
+    audioPreflight: preflightResults,
+    tools: {
+      mpv,
+      ytdlp,
+    },
+    alsa: {
+      cards: asoundCards,
+      listDevices: aplayList,
+      listNames: aplayNames,
+    },
+  };
+}
+
 function absoluteInternalUrl(requestPath) {
   const port = Number(process.env.PORT) || 3000;
   return `http://127.0.0.1:${port}${requestPath}`;
@@ -5231,6 +5390,18 @@ async function requestHandler(req, res) {
       requireAuthRequest(req);
       const payload = await readJsonBody(req);
       json(res, 200, { player: stopServerPlayerForPayload(payload) });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/admin/diagnostics") {
+      requireAdminRequest(req);
+      json(res, 200, { diagnostics: await buildServerDiagnostics() });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/admin/youtube-import-state/reset") {
+      requireAdminRequest(req);
+      json(res, 200, await resetYouTubeImportState());
       return;
     }
 

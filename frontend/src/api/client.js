@@ -215,6 +215,17 @@ export function stopServerTrack(token, body = null) {
   });
 }
 
+export function fetchAdminDiagnostics(token) {
+  return apiRequest("/api/admin/diagnostics", { token });
+}
+
+export function resetYouTubeImportState(token) {
+  return apiRequest("/api/admin/youtube-import-state/reset", {
+    method: "POST",
+    token,
+  });
+}
+
 export function createTrack(token, trackPayload) {
   return apiRequest("/api/tracks", {
     method: "POST",
