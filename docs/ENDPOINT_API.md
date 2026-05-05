@@ -161,7 +161,8 @@ Body:
   "trackId": "track-id",
   "track": {},
   "startAt": 0,
-  "volume": 0.75
+  "volume": 0.75,
+  "volumePercent": 75
 }
 ```
 
@@ -194,10 +195,11 @@ Body:
 Body:
 
 ```json
-{ "volume": 0.6 }
+{ "volume": 0.6, "volumePercent": 60 }
 ```
 
-`volume` va da `0` a `1`.
+`volume` va da `0` a `1`; `volumePercent` e' opzionale e va da `0` a `100`.
+Il backend accetta entrambi per evitare errori tra slider percentuale e valore normalizzato.
 
 ### `POST /api/server-player/stop`
 

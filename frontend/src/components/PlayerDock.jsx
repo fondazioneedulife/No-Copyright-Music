@@ -26,7 +26,13 @@ export function PlayerDock({
   const subtitle = activeTrack?.subtitle || "Apri una traccia dal catalogo React.";
   const targetLabel = playbackTarget === "server" ? "Pi" : "PC";
   const stateLabel = isPlaying ? "In riproduzione" : activeTrack ? "In pausa" : "Idle";
-  const handleVolumeInput = (event) => setVolume(Number(event.currentTarget.value) / 100);
+  const volumePercent = Math.max(0, Math.min(100, Math.round(Number(volume || 0) * 100)));
+  const handleVolumePercent = (value) => {
+    const numeric = Number(value);
+    const nextPercent = Number.isFinite(numeric) ? Math.max(0, Math.min(100, numeric)) : 0;
+    setVolume(nextPercent / 100);
+  };
+  const handleVolumeInput = (event) => handleVolumePercent(event.currentTarget.value);
 
   return (
     <footer className="player-dock">
@@ -103,15 +109,27 @@ export function PlayerDock({
         <label className="volume">
           Vol
           <input
+            className="volume-slider"
             aria-label="Volume player"
             type="range"
             min="0"
             max="100"
-            value={Math.round(volume * 100)}
+            value={volumePercent}
             onInput={handleVolumeInput}
             onChange={handleVolumeInput}
           />
-          <span>{Math.round(volume * 100)}%</span>
+          <input
+            className="volume-number"
+            aria-label="Volume player in percentuale"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            value={volumePercent}
+            onInput={handleVolumeInput}
+            onChange={handleVolumeInput}
+          />
+          <span>%</span>
         </label>
       </div>
     </footer>

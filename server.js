@@ -4973,6 +4973,23 @@ function isServerPlayerPlaySuperseded(playToken) {
   return playToken && playToken !== serverPlayer.playSequence;
 }
 
+function serverPlayerVolumePercentFromPayload(payload = {}, fallbackPercent = 75) {
+  // React invia 0..1, ma accettiamo anche 0..100 per evitare errori da client/diagnostica futuri.
+  const sourcePayload = payload || {};
+  const explicitPercent = Number(sourcePayload.volumePercent);
+  if (Number.isFinite(explicitPercent)) {
+    return Math.round(Math.max(0, Math.min(100, explicitPercent)));
+  }
+
+  const rawVolume = Number(sourcePayload.volume);
+  if (Number.isFinite(rawVolume)) {
+    const asPercent = rawVolume > 1 ? rawVolume : rawVolume * 100;
+    return Math.round(Math.max(0, Math.min(100, asPercent)));
+  }
+
+  return Math.round(Math.max(0, Math.min(100, Number(fallbackPercent) || 75)));
+}
+
 function enqueueServerPlayerPlay(req, payload) {
   // Serializza gli avvii mpv: se React manda piu' Play ravvicinati, vince solo l'ultimo comando.
   const playToken = serverPlayer.playSequence + 1;
@@ -5004,7 +5021,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
   }
 
   const startAt = Math.max(0, Number(payload?.startAt) || 0);
-  const volume = Math.round(Math.max(0, Math.min(1, Number(payload?.volume ?? serverPlayer.volume / 100))) * 100);
+  const volume = serverPlayerVolumePercentFromPayload(payload, serverPlayer.volume);
   const duration = parseDurationSeconds(track.duration || track.durationSeconds);
   const audioConfigs = serverPlayerAudioConfigs();
   const ytdlArgs = serverPlayerYtdlConfig(source);
@@ -5188,7 +5205,7 @@ async function seekServerPlayer(payload) {
 }
 
 async function volumeServerPlayer(payload) {
-  const volume = Math.round(Math.max(0, Math.min(1, Number(payload?.volume ?? 0.75))) * 100);
+  const volume = serverPlayerVolumePercentFromPayload(payload, serverPlayer.volume);
   serverPlayer.volume = volume;
   if (serverPlayer.process) {
     await sendMpvCommand(["set_property", "volume", volume]);

@@ -120,6 +120,15 @@ export function importDiscoveryTrack(token, track) {
 
 const bulkImportSizes = new Set([120, 250, 500]);
 
+function volumeBody(volume) {
+  const numeric = Number(volume);
+  const normalized = Number.isFinite(numeric) ? Math.max(0, Math.min(1, numeric)) : 0.75;
+  return {
+    volume: normalized,
+    volumePercent: Math.round(normalized * 100),
+  };
+}
+
 export function bulkImportDiscovery(token, options = {}) {
   const requestedMaxTracks = Number(options.maxTracks) || 120;
   const maxTracks = bulkImportSizes.has(requestedMaxTracks) ? requestedMaxTracks : 120;
@@ -178,7 +187,7 @@ export function playServerTrack(token, { track, startAt = 0, volume = 0.75 }) {
       track,
       trackId: track?.id,
       startAt,
-      volume,
+      ...volumeBody(volume),
     },
   });
 }
@@ -203,7 +212,7 @@ export function setServerTrackVolume(token, volume) {
   return apiRequest("/api/server-player/volume", {
     method: "POST",
     token,
-    body: { volume },
+    body: volumeBody(volume),
   });
 }
 

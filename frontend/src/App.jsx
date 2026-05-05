@@ -50,6 +50,15 @@ import {
   youtubeEmbedSourceFor,
 } from "./utils.js";
 
+function clampVolumeLevel(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 0.75;
+  }
+
+  return Math.max(0, Math.min(1, numeric));
+}
+
 export default function App() {
   // App contiene solo lo stato globale: i dettagli visivi sono nei componenti sotto components/.
   const audioRef = useRef(null);
@@ -118,6 +127,10 @@ export default function App() {
     setAuthStatus,
   });
 
+  function setPlayerVolume(nextVolume) {
+    setVolume(clampVolumeLevel(nextVolume));
+  }
+
   useEffect(() => {
     // Tema salvato nel browser per mantenere dark/light mode anche dopo il refresh.
     document.body.dataset.theme = theme;
@@ -135,11 +148,17 @@ export default function App() {
   }, [playbackTarget]);
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
+    const safeVolume = clampVolumeLevel(volume);
+    if (safeVolume !== volume) {
+      setVolume(safeVolume);
+      return undefined;
     }
 
-    sendEmbedVolume(volume);
+    if (audioRef.current) {
+      audioRef.current.volume = safeVolume;
+    }
+
+    sendEmbedVolume(safeVolume);
 
     if (!token || playbackTarget !== "server") {
       return undefined;
@@ -148,7 +167,7 @@ export default function App() {
     window.clearTimeout(serverVolumeTimerRef.current);
     serverVolumeTimerRef.current = window.setTimeout(() => {
       // Lo slider resta immediato, ma il Raspberry riceve meno comandi IPC e non si intasa.
-      void setServerTrackVolume(token, volume).catch((error) => {
+      void setServerTrackVolume(token, safeVolume).catch((error) => {
         setPlayerNotice(error.message || "Volume Raspberry non raggiungibile.");
       });
     }, 160);
@@ -174,6 +193,14 @@ export default function App() {
         serverRunIdRef.current = Number(player.runId || 0);
         const nextDuration = Number(player.duration || durationSecondsFor(activeTrack));
         const nextPosition = Math.max(0, Number(player.position) || 0);
+        const serverVolume = Number(player.volume);
+
+        if (Number.isFinite(serverVolume)) {
+          setVolume((currentVolume) => {
+            const nextVolume = clampVolumeLevel(serverVolume / 100);
+            return Math.abs(currentVolume - nextVolume) > 0.004 ? nextVolume : currentVolume;
+          });
+        }
 
         if (player.error) {
           setPlayerNotice(player.error);
@@ -1377,7 +1404,7 @@ export default function App() {
         currentTime={currentTime}
         duration={duration}
         volume={volume}
-        setVolume={setVolume}
+        setVolume={setPlayerVolume}
         playbackTarget={playbackTarget}
         playerNotice={playerNotice}
         shuffleEnabled={shuffleEnabled}

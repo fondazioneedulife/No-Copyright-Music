@@ -1670,7 +1670,7 @@ body[data-theme="light"] .transport button.is-active {
 }
 
 .progress-range::-webkit-slider-thumb,
-.volume input::-webkit-slider-thumb {
+.volume-slider::-webkit-slider-thumb {
   filter: drop-shadow(0 0 10px rgba(255, 47, 66, 0.42));
 }
 
@@ -1711,17 +1711,28 @@ body[data-theme="light"] .playback-target.is-active {
 .volume {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
 }
 
-.volume input {
+.volume-slider {
   width: 136px;
   min-height: auto;
   padding: 0;
   accent-color: var(--accent);
+}
+
+.volume-number {
+  width: 58px;
+  min-height: 34px;
+  padding: 0 8px;
+  text-align: right;
+}
+
+.volume span {
+  min-width: 14px;
 }
 
 .embedded-audio-frame {
