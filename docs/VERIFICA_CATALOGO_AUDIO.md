@@ -24,6 +24,28 @@ docker compose exec clearwave npm run check:tracks:probe
 `probe` usa `mpv --ao=null`: la traccia viene aperta davvero per alcuni secondi, ma non esce audio fisico dalle casse.
 Questo evita di disturbare mentre fai il controllo e verifica comunque se `mpv`, `yt-dlp`, Jamendo e gli stream diretti riescono a partire.
 
+## Check automatico
+
+Se vuoi che ClearWave controlli il catalogo da solo, abilita nel `.env`:
+
+```env
+CLEARWAVE_AUDIO_CHECK_ENABLED=1
+CLEARWAVE_AUDIO_CHECK_ON_START=1
+CLEARWAVE_AUDIO_CHECK_MODE=probe
+CLEARWAVE_AUDIO_CHECK_INTERVAL_HOURS=24
+CLEARWAVE_AUDIO_CHECK_CONCURRENCY=2
+```
+
+Poi ricrea il container:
+
+```bash
+docker compose down
+docker compose up -d --build
+```
+
+Il backend aspetta qualche secondo, lancia il controllo in background e poi lo ripete ogni 24 ore.
+L'app resta utilizzabile; dalla diagnostica admin puoi vedere se il controllo e' in corso e l'ultimo riepilogo `OK/KO`.
+
 ## Controllo rapido
 
 Per un test corto:

@@ -37,6 +37,11 @@ npm start
 | `CLEARWAVE_ENABLE_DEMOS` | `server.js` | Se `1`, reinserisce demo locali. In produzione tienilo `0`. |
 | `CLEARWAVE_AUTO_EXPAND` | `server.js` | Se `1`, prova un piccolo auto-import all'avvio. |
 | `CLEARWAVE_DOCKER_PRIVILEGED` | `docker-compose.yml` | Su Raspberry conviene `true` per dare al container accesso ai device audio host. |
+| `CLEARWAVE_AUDIO_CHECK_ENABLED` | `server.js` | Se `1`, abilita il controllo automatico catalogo in background. |
+| `CLEARWAVE_AUDIO_CHECK_ON_START` | `server.js` | Se `1`, lancia il primo controllo dopo l'avvio. |
+| `CLEARWAVE_AUDIO_CHECK_MODE` | `tools/check-library-audio.js` | Modalita `source`, `metadata` o `probe`; default `probe`. |
+| `CLEARWAVE_AUDIO_CHECK_INTERVAL_HOURS` | `server.js` | Ogni quante ore ripetere il controllo automatico, default `24`. |
+| `CLEARWAVE_AUDIO_CHECK_CONCURRENCY` | `tools/check-library-audio.js` | Numero controlli paralleli, default `2`. |
 | `CLEARWAVE_SERVER_PLAYER` | `server.js` | Se `1`, abilita il controllo `mpv` lato server/Raspberry. |
 | `CLEARWAVE_PLAYER_COMMAND` | `server.js` | Comando usato per il player server-side, default `mpv`. |
 | `CLEARWAVE_SERVER_VOLUME` | `server.js` | Volume iniziale del player Raspberry, 0-100. |
@@ -149,6 +154,18 @@ Per lavorare senza chiamate esterne usa:
 
 ```powershell
 $env:CLEARWAVE_AUTO_EXPAND = "0"
+```
+
+### `CLEARWAVE_AUDIO_CHECK_ENABLED`
+
+Se vale `1`, il backend avvia in background `tools/check-library-audio.js` senza bloccare l'app.
+Con le impostazioni predefinite fa un controllo `probe` dopo l'avvio e poi ogni 24 ore.
+I report finiscono in `data/reports/`.
+
+```env
+CLEARWAVE_AUDIO_CHECK_ENABLED=1
+CLEARWAVE_AUDIO_CHECK_MODE=probe
+CLEARWAVE_AUDIO_CHECK_INTERVAL_HOURS=24
 ```
 
 ### `CLEARWAVE_SERVER_PLAYER`

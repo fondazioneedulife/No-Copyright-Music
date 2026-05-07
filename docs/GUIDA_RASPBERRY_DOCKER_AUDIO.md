@@ -193,6 +193,7 @@ docker compose exec clearwave npm run check:tracks:probe
 ```
 
 Il controllo usa `mpv --ao=null`, quindi prova le sorgenti senza far uscire audio fisico. I report finiscono in `/app/data/reports/`; la guida completa e' in `docs/VERIFICA_CATALOGO_AUDIO.md`.
+Per farlo partire da solo, imposta `CLEARWAVE_AUDIO_CHECK_ENABLED=1` nel `.env`: il backend lo esegue in background e la diagnostica admin mostra l'ultimo esito.
 
 ## Errori comuni
 

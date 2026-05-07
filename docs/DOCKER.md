@@ -120,6 +120,17 @@ docker compose exec clearwave npm run check:tracks:probe
 Il comando non emette audio: usa `mpv --ao=null` e salva i report in `/app/data/reports/`.
 La guida completa e' in `docs/VERIFICA_CATALOGO_AUDIO.md`.
 
+Per renderlo automatico, abilita nel `.env`:
+
+```env
+CLEARWAVE_AUDIO_CHECK_ENABLED=1
+CLEARWAVE_AUDIO_CHECK_ON_START=1
+CLEARWAVE_AUDIO_CHECK_MODE=probe
+CLEARWAVE_AUDIO_CHECK_INTERVAL_HOURS=24
+```
+
+Il backend lancia il controllo in background: l'app resta utilizzabile e la diagnostica admin mostra ultimo esito e stato corrente.
+
 `docker-compose.yml` contiene gia' `privileged: ${CLEARWAVE_DOCKER_PRIVILEGED:-false}`. Su Raspberry conviene metterlo a `true`; su PC puoi lasciarlo `false`.
 
 Oppure con gli script npm:
@@ -149,6 +160,11 @@ Variabili principali:
 | `CLEARWAVE_AUTO_EXPAND` | Se `1`, prova import automatico all'avvio. |
 | `CLEARWAVE_DOCKER_PRIVILEGED` | Se `true`, il container puo' accedere ai device host audio del Raspberry. |
 | `CLEARWAVE_UPDATE_YTDLP_ON_START` | Se `1`, riscarica `yt-dlp` latest all'avvio del container. |
+| `CLEARWAVE_AUDIO_CHECK_ENABLED` | Se `1`, abilita il check automatico del catalogo in background. |
+| `CLEARWAVE_AUDIO_CHECK_ON_START` | Se `1`, esegue un check dopo l'avvio del backend. |
+| `CLEARWAVE_AUDIO_CHECK_MODE` | `source`, `metadata` o `probe`, default `probe`. |
+| `CLEARWAVE_AUDIO_CHECK_INTERVAL_HOURS` | Ore tra un check automatico e il successivo, default `24`. |
+| `CLEARWAVE_AUDIO_CHECK_CONCURRENCY` | Controlli paralleli, default `2` sul Raspberry. |
 | `CLEARWAVE_SERVER_PLAYER` | Se `1`, abilita il player backend per audio sul Raspberry. |
 | `CLEARWAVE_PLAYER_COMMAND` | Comando player server-side, default `mpv`. |
 | `CLEARWAVE_SERVER_VOLUME` | Volume iniziale del player server, 0-100. |

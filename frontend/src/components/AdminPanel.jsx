@@ -19,6 +19,23 @@ function commandSummary(result) {
   return firstDiagnosticLine(result.stderr) || result.error || "Errore";
 }
 
+function audioCheckSummary(audioCheck) {
+  if (!audioCheck?.enabled) {
+    return "Disattivato";
+  }
+  if (audioCheck.running) {
+    return "In corso";
+  }
+
+  const ok = audioCheck.lastSummary?.ok;
+  const failed = audioCheck.lastSummary?.failed;
+  if (Number.isFinite(ok) || Number.isFinite(failed)) {
+    return `OK ${ok ?? 0} / KO ${failed ?? 0}`;
+  }
+
+  return audioCheck.lastStartedAt ? "Ultimo report non letto" : "In attesa del primo giro";
+}
+
 function diagnosticHealthChecks(diagnostics) {
   if (!diagnostics) {
     return [];
@@ -61,6 +78,14 @@ function diagnosticHealthChecks(diagnostics) {
       label: "Player",
       ok: !diagnostics.player?.error,
       detail: diagnostics.player?.error || "Nessun errore attivo",
+    },
+    {
+      label: "Check catalogo",
+      ok:
+        !diagnostics.audioCheck?.enabled ||
+        diagnostics.audioCheck?.running ||
+        diagnostics.audioCheck?.lastExitCode === 0,
+      detail: audioCheckSummary(diagnostics.audioCheck),
     },
   ];
 }
@@ -388,6 +413,14 @@ export function AdminPanel({
                 <small>
                   mpv {diagnostics.player?.outputVolume ?? diagnostics.player?.volume ?? 0}% | gain x
                   {diagnostics.config?.serverVolumeGain ?? diagnostics.player?.volumeGain ?? 1}
+                </small>
+              </div>
+              <div>
+                <span>Check catalogo</span>
+                <strong>{audioCheckSummary(diagnostics.audioCheck)}</strong>
+                <small>
+                  {diagnostics.audioCheck?.config?.mode || "probe"} ogni{" "}
+                  {diagnostics.audioCheck?.config?.intervalHours ?? 0}h
                 </small>
               </div>
             </div>

@@ -511,7 +511,7 @@ Risposta:
 
 ### `GET /api/admin/diagnostics`
 
-Solo admin. Restituisce diagnostica runtime per Raspberry/audio: versione Node, revisione runtime, configurazione player, stato mpv corrente, versioni `mpv`/`yt-dlp`, device ALSA e risultati del preflight audio.
+Solo admin. Restituisce diagnostica runtime per Raspberry/audio: versione Node, revisione runtime, configurazione player, stato mpv corrente, versioni `mpv`/`yt-dlp`, device ALSA, risultati del preflight audio e stato del check automatico catalogo.
 Non espone valori segreti delle API: indica solo se le chiavi principali sono configurate.
 La risposta include anche gli ultimi eventi del player, utili per capire se una traccia e' partita, e' stata sostituita da un comando nuovo o e' terminata correttamente.
 

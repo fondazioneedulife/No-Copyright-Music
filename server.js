@@ -82,6 +82,33 @@ const serverPlayer = {
     updatedAt: "",
   },
 };
+const automaticAudioCheckConfig = {
+  enabled: process.env.CLEARWAVE_AUDIO_CHECK_ENABLED === "1",
+  onStart: process.env.CLEARWAVE_AUDIO_CHECK_ON_START !== "0",
+  mode: sanitizeAutomaticAudioCheckMode(process.env.CLEARWAVE_AUDIO_CHECK_MODE || "probe"),
+  provider: String(process.env.CLEARWAVE_AUDIO_CHECK_PROVIDER || "all").trim() || "all",
+  concurrency: boundedNumber(process.env.CLEARWAVE_AUDIO_CHECK_CONCURRENCY, 2, 1, 8),
+  timeoutMs: boundedNumber(process.env.CLEARWAVE_AUDIO_CHECK_TIMEOUT_MS, 30000, 3000, 180000),
+  sampleSeconds: boundedNumber(process.env.CLEARWAVE_AUDIO_CHECK_SAMPLE_SECONDS, 6, 1, 60),
+  limit: boundedNumber(process.env.CLEARWAVE_AUDIO_CHECK_LIMIT, 0, 0, 100000),
+  intervalHours: boundedNumber(process.env.CLEARWAVE_AUDIO_CHECK_INTERVAL_HOURS, 24, 0, 24 * 30),
+  startDelaySeconds: boundedNumber(process.env.CLEARWAVE_AUDIO_CHECK_START_DELAY_SECONDS, 45, 0, 3600),
+  onlyErrors: process.env.CLEARWAVE_AUDIO_CHECK_ONLY_ERRORS !== "0",
+  reportDir: process.env.CLEARWAVE_AUDIO_CHECK_REPORT_DIR || path.join(DATA_DIR, "reports"),
+};
+const automaticAudioCheckState = {
+  enabled: automaticAudioCheckConfig.enabled,
+  running: false,
+  lastStartedAt: "",
+  lastFinishedAt: "",
+  lastExitCode: null,
+  lastSignal: "",
+  lastError: "",
+  lastSummary: null,
+  lastReportJson: "",
+  lastReportCsv: "",
+  logTail: [],
+};
 const {
   authUserFromRequest,
   changeAuthPassword,
@@ -4722,6 +4749,220 @@ async function readDiagnosticTextFile(filePath) {
   }
 }
 
+function boundedNumber(value, fallback, min, max) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.max(min, Math.min(max, parsed));
+}
+
+function sanitizeAutomaticAudioCheckMode(value) {
+  const mode = String(value || "").trim().toLowerCase();
+  return ["source", "metadata", "probe"].includes(mode) ? mode : "probe";
+}
+
+function automaticAudioCheckArgs() {
+  const args = [
+    path.join(ROOT_DIR, "tools", "check-library-audio.js"),
+    "--mode",
+    automaticAudioCheckConfig.mode,
+    "--provider",
+    automaticAudioCheckConfig.provider,
+    "--concurrency",
+    String(automaticAudioCheckConfig.concurrency),
+    "--timeout-ms",
+    String(automaticAudioCheckConfig.timeoutMs),
+    "--sample-seconds",
+    String(automaticAudioCheckConfig.sampleSeconds),
+    "--report-dir",
+    automaticAudioCheckConfig.reportDir,
+  ];
+
+  if (automaticAudioCheckConfig.limit > 0) {
+    args.push("--limit", String(automaticAudioCheckConfig.limit));
+  }
+  if (automaticAudioCheckConfig.onlyErrors) {
+    args.push("--only-errors");
+  }
+
+  return args;
+}
+
+function appendAutomaticAudioCheckOutput(chunk) {
+  const lines = String(chunk || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    automaticAudioCheckState.logTail.push(line);
+    if (automaticAudioCheckState.logTail.length > 30) {
+      automaticAudioCheckState.logTail.shift();
+    }
+
+    const okMatch = line.match(/^\[check\]\s+OK:\s+(\d+)/i);
+    if (okMatch) {
+      automaticAudioCheckState.lastSummary = {
+        ...(automaticAudioCheckState.lastSummary || {}),
+        ok: Number(okMatch[1]),
+      };
+      continue;
+    }
+
+    const failedMatch = line.match(/^\[check\]\s+KO:\s+(\d+)/i);
+    if (failedMatch) {
+      automaticAudioCheckState.lastSummary = {
+        ...(automaticAudioCheckState.lastSummary || {}),
+        failed: Number(failedMatch[1]),
+      };
+      continue;
+    }
+
+    const reasonsMatch = line.match(/^\[check\]\s+Motivi:\s+(.+)$/i);
+    if (reasonsMatch) {
+      try {
+        automaticAudioCheckState.lastSummary = {
+          ...(automaticAudioCheckState.lastSummary || {}),
+          byReason: JSON.parse(reasonsMatch[1]),
+        };
+      } catch {
+        automaticAudioCheckState.lastSummary = {
+          ...(automaticAudioCheckState.lastSummary || {}),
+          reasonsText: reasonsMatch[1],
+        };
+      }
+      continue;
+    }
+
+    const jsonReportMatch = line.match(/^\[check\]\s+Report JSON:\s+(.+)$/i);
+    if (jsonReportMatch) {
+      automaticAudioCheckState.lastReportJson = jsonReportMatch[1];
+      continue;
+    }
+
+    const csvReportMatch = line.match(/^\[check\]\s+Report CSV:\s+(.+)$/i);
+    if (csvReportMatch) {
+      automaticAudioCheckState.lastReportCsv = csvReportMatch[1];
+    }
+  }
+}
+
+function automaticAudioCheckStatus() {
+  return {
+    ...automaticAudioCheckState,
+    config: {
+      mode: automaticAudioCheckConfig.mode,
+      provider: automaticAudioCheckConfig.provider,
+      concurrency: automaticAudioCheckConfig.concurrency,
+      timeoutMs: automaticAudioCheckConfig.timeoutMs,
+      sampleSeconds: automaticAudioCheckConfig.sampleSeconds,
+      limit: automaticAudioCheckConfig.limit,
+      intervalHours: automaticAudioCheckConfig.intervalHours,
+      startDelaySeconds: automaticAudioCheckConfig.startDelaySeconds,
+      onlyErrors: automaticAudioCheckConfig.onlyErrors,
+      reportDir: automaticAudioCheckConfig.reportDir,
+    },
+  };
+}
+
+function runAutomaticAudioCheck(reason = "scheduled") {
+  if (!automaticAudioCheckConfig.enabled) {
+    return;
+  }
+
+  if (automaticAudioCheckState.running) {
+    console.log(`[audio-check] Controllo gia' in corso, salto run ${reason}.`);
+    return;
+  }
+
+  automaticAudioCheckState.running = true;
+  automaticAudioCheckState.lastStartedAt = new Date().toISOString();
+  automaticAudioCheckState.lastFinishedAt = "";
+  automaticAudioCheckState.lastExitCode = null;
+  automaticAudioCheckState.lastSignal = "";
+  automaticAudioCheckState.lastError = "";
+  automaticAudioCheckState.lastSummary = null;
+  automaticAudioCheckState.lastReportJson = "";
+  automaticAudioCheckState.lastReportCsv = "";
+  automaticAudioCheckState.logTail = [];
+
+  const args = automaticAudioCheckArgs();
+  console.log(
+    `[audio-check] Avvio controllo catalogo automatico (${reason}): node ${args
+      .map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg))
+      .join(" ")}`
+  );
+
+  let processRef;
+  try {
+    processRef = spawn(process.execPath, args, {
+      env: {
+        ...process.env,
+        CLEARWAVE_DATA_DIR: DATA_DIR,
+        CLEARWAVE_UPLOADS_DIR: UPLOADS_DIR,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    automaticAudioCheckState.running = false;
+    automaticAudioCheckState.lastFinishedAt = new Date().toISOString();
+    automaticAudioCheckState.lastError = error.message || String(error);
+    console.error(`[audio-check] Avvio non riuscito: ${automaticAudioCheckState.lastError}`);
+    return;
+  }
+
+  processRef.stdout.on("data", appendAutomaticAudioCheckOutput);
+  processRef.stderr.on("data", appendAutomaticAudioCheckOutput);
+  processRef.once("error", (error) => {
+    automaticAudioCheckState.lastError = error.message || String(error);
+  });
+  processRef.once("close", (code, signal) => {
+    automaticAudioCheckState.running = false;
+    automaticAudioCheckState.lastFinishedAt = new Date().toISOString();
+    automaticAudioCheckState.lastExitCode = code;
+    automaticAudioCheckState.lastSignal = signal || "";
+    if (code !== 0 && !automaticAudioCheckState.lastError) {
+      automaticAudioCheckState.lastError = `Check terminato con codice ${code ?? signal ?? "n/d"}.`;
+    }
+
+    const summary = automaticAudioCheckState.lastSummary || {};
+    console.log(
+      `[audio-check] Fine controllo catalogo: codice=${code ?? signal ?? "n/d"}, ok=${summary.ok ?? "n/d"}, ko=${
+        summary.failed ?? "n/d"
+      }, report=${automaticAudioCheckState.lastReportJson || "n/d"}`
+    );
+  });
+}
+
+function scheduleAutomaticAudioChecks() {
+  if (!automaticAudioCheckConfig.enabled) {
+    return;
+  }
+
+  console.log(
+    `[audio-check] Automatico attivo: mode=${automaticAudioCheckConfig.mode}, provider=${
+      automaticAudioCheckConfig.provider
+    }, startDelay=${automaticAudioCheckConfig.startDelaySeconds}s, interval=${automaticAudioCheckConfig.intervalHours}h.`
+  );
+
+  if (automaticAudioCheckConfig.onStart) {
+    const startTimer = setTimeout(
+      () => runAutomaticAudioCheck("startup"),
+      automaticAudioCheckConfig.startDelaySeconds * 1000
+    );
+    startTimer.unref?.();
+  }
+
+  if (automaticAudioCheckConfig.intervalHours > 0) {
+    const intervalTimer = setInterval(
+      () => runAutomaticAudioCheck("interval"),
+      automaticAudioCheckConfig.intervalHours * 60 * 60 * 1000
+    );
+    intervalTimer.unref?.();
+  }
+}
+
 async function buildServerDiagnostics() {
   const audioConfigs = serverPlayerAudioConfigs();
   const preflightResults = [];
@@ -4775,6 +5016,7 @@ async function buildServerDiagnostics() {
       hasJamendoClientId: Boolean(jamendoClientId),
     },
     player: serverPlayerStatus(),
+    audioCheck: automaticAudioCheckStatus(),
     audioConfigs: audioConfigs.map((config) => ({
       label: config.label,
       args: config.args,
@@ -6307,6 +6549,8 @@ if (require.main === module) {
               });
           }, 800);
         }
+
+        scheduleAutomaticAudioChecks();
       });
     })
     .catch((error) => {

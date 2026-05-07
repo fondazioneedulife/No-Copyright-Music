@@ -506,6 +506,16 @@ Modalita disponibili:
 
 Guida dedicata: `docs/VERIFICA_CATALOGO_AUDIO.md`.
 
+Per renderlo automatico nel backend:
+
+```env
+CLEARWAVE_AUDIO_CHECK_ENABLED=1
+CLEARWAVE_AUDIO_CHECK_ON_START=1
+CLEARWAVE_AUDIO_CHECK_INTERVAL_HOURS=24
+```
+
+Il check parte in background, non blocca l'app e viene mostrato nella diagnostica admin.
+
 ## 15. Backup, export e report licenze
 
 Nel pannello admin sono disponibili export, ripristino e report leggibili.
@@ -600,6 +610,11 @@ Variabili principali:
 | `CLEARWAVE_ENABLE_DEMOS` | `0` | Se `1`, inserisce tracce demo. |
 | `CLEARWAVE_AUTO_EXPAND` | `0` | Se `1`, prova import automatico all'avvio. |
 | `CLEARWAVE_DOCKER_PRIVILEGED` | `false` | Su Raspberry consigliato `true`. |
+| `CLEARWAVE_AUDIO_CHECK_ENABLED` | `0` | Abilita il check automatico catalogo. |
+| `CLEARWAVE_AUDIO_CHECK_ON_START` | `1` | Avvia il primo check dopo lo startup. |
+| `CLEARWAVE_AUDIO_CHECK_MODE` | `probe` | Modalita `source`, `metadata` o `probe`. |
+| `CLEARWAVE_AUDIO_CHECK_INTERVAL_HOURS` | `24` | Intervallo tra check automatici. |
+| `CLEARWAVE_AUDIO_CHECK_CONCURRENCY` | `2` | Controlli paralleli. |
 | `CLEARWAVE_SERVER_PLAYER` | `1` | Abilita player server-side. |
 | `CLEARWAVE_PLAYER_COMMAND` | `mpv` | Comando player. |
 | `CLEARWAVE_SERVER_VOLUME` | `75` | Volume iniziale server. |
