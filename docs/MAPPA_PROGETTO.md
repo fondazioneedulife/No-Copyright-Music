@@ -140,6 +140,7 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | Percorso | Ruolo |
 | --- | --- |
 | `assets/covers/` | Copertine locali/fallback per generi musicali. |
+| `tools/check-library-audio.js` | Script CLI per verificare se le sorgenti del catalogo partono davvero. |
 | `uploads/audio/` | Audio caricati manualmente. Runtime, escluso da git. |
 | `uploads/licenses/` | Licenze, ricevute e allegati diritti. Runtime, escluso da git. |
 | `data/library.json` | Catalogo permanente. Runtime, escluso da git. |
@@ -160,6 +161,7 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `docs/CONFIGURAZIONE_API.md` | Chiavi API, variabili ambiente e provider. |
 | `docs/GUIDA_SVILUPPATORE.md` | Regole pratiche per modificare il codice. |
 | `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md` | Checklist operativa per Raspberry, Docker, Git, ALSA, mpv e yt-dlp. |
+| `docs/VERIFICA_CATALOGO_AUDIO.md` | Come controllare in batch quali tracce sono realmente riproducibili. |
 | `docs/GUIDA_CONSEGNA.md` | Guida rapida finale per installare, aggiornare, testare e consegnare ClearWave. |
 | `docs/DOCKER.md` | Build, avvio e gestione dei volumi Docker. |
 | `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md` | Rapporto sul porting React, player Raspberry e stato del lavoro. |

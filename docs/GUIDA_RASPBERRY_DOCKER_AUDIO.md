@@ -186,6 +186,14 @@ Nei log di avvio deve comparire:
 
 Se YouTube restituisce `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato uno stream compatibile. In quel caso ricrea il container e controlla `CLEARWAVE_YTDL_FORMAT`.
 
+Per verificare in batch quali tracce del catalogo partono davvero:
+
+```bash
+docker compose exec clearwave npm run check:tracks:probe
+```
+
+Il controllo usa `mpv --ao=null`, quindi prova le sorgenti senza far uscire audio fisico. I report finiscono in `/app/data/reports/`; la guida completa e' in `docs/VERIFICA_CATALOGO_AUDIO.md`.
+
 ## Errori comuni
 
 | Log/errore | Significato probabile | Cosa fare |

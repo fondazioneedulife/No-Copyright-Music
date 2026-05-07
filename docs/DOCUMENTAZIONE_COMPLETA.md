@@ -477,7 +477,36 @@ GET /api/admin/diagnostics
 
 La diagnostica non mostra chiavi API reali. Indica solo se sono configurate.
 
-## 14. Backup, export e report licenze
+## 14. Verifica catalogo audio
+
+ClearWave include uno script per controllare se le tracce del catalogo sono realmente apribili.
+Serve soprattutto su Raspberry, per trovare video YouTube bloccati, URL Jamendo scaduti, file caricati mancanti o stream che `mpv` non riesce a decodificare.
+
+Comando consigliato:
+
+```bash
+docker compose exec clearwave npm run check:tracks:probe
+```
+
+La modalita `probe` usa `mpv --ao=null`: prova l'avvio reale della sorgente per alcuni secondi, ma non emette audio fisico.
+I report vengono salvati in:
+
+```text
+/app/data/reports/library-audio-check-*.json
+/app/data/reports/library-audio-check-*.csv
+```
+
+Modalita disponibili:
+
+| Modalita | Cosa controlla | Quando usarla |
+| --- | --- | --- |
+| `source` | Solo presenza di una sorgente o file locale. | Controllo velocissimo senza rete. |
+| `metadata` | Risolve YouTube con `yt-dlp` e apre stream diretti con una richiesta corta. | Prima diagnosi rapida. |
+| `probe` | Avvia davvero `mpv` senza uscita audio. | Controllo piu' vicino alla riproduzione reale. |
+
+Guida dedicata: `docs/VERIFICA_CATALOGO_AUDIO.md`.
+
+## 15. Backup, export e report licenze
 
 Nel pannello admin sono disponibili export, ripristino e report leggibili.
 
@@ -546,7 +575,7 @@ GET /api/admin/export/licenses.html
 Il CSV e' pensato per aprirsi bene anche in Excel.
 L'HTML e' piu' comodo per lettura, stampa o controllo rapido durante la consegna.
 
-## 15. Dati persistenti
+## 16. Dati persistenti
 
 | Percorso | Descrizione | Git |
 | --- | --- | --- |
@@ -559,7 +588,7 @@ L'HTML e' piu' comodo per lettura, stampa o controllo rapido durante la consegna
 
 I dati runtime non devono essere committati.
 
-## 16. Variabili ambiente
+## 17. Variabili ambiente
 
 Variabili principali:
 
@@ -592,7 +621,7 @@ Variabili principali:
 
 Le chiavi reali non vanno mai scritte nel codice o committate.
 
-## 17. API principali
+## 18. API principali
 
 ### Sistema
 
@@ -657,7 +686,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `GET` | `/api/admin/export/licenses.csv` | Report licenze CSV. |
 | `GET` | `/api/admin/export/licenses.html` | Report licenze HTML. |
 
-## 18. Struttura del codice
+## 19. Struttura del codice
 
 ### Backend
 
@@ -691,7 +720,7 @@ http://localhost:3000/legacy
 Serve come fallback e riferimento storico.
 La UI principale da usare e consegnare e' React.
 
-## 19. Workflow Git e aggiornamento
+## 20. Workflow Git e aggiornamento
 
 ### Aggiornare dal Raspberry
 
@@ -730,7 +759,7 @@ cd ~/No-Copyright-Music
 git status
 ```
 
-## 20. Troubleshooting
+## 21. Troubleshooting
 
 ### Audio non esce dal Raspberry
 
@@ -811,7 +840,7 @@ Azioni:
 
 Il backend accetta sia `volume` 0..1 sia `volumePercent` 0..100.
 
-## 21. Checklist finale di consegna
+## 22. Checklist finale di consegna
 
 ### Codice
 
@@ -860,13 +889,14 @@ Il backend accetta sia `volume` 0..1 sia `volumePercent` 0..100.
 - Consegnare backup catalogo.
 - Consegnare report licenze.
 
-## 22. Documenti collegati
+## 23. Documenti collegati
 
 | Documento | Quando usarlo |
 | --- | --- |
 | `README.md` | Panoramica e avvio rapido. |
 | `docs/GUIDA_CONSEGNA.md` | Checklist breve di consegna. |
 | `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md` | Debug dettagliato Raspberry, Docker, ALSA, mpv, yt-dlp. |
+| `docs/VERIFICA_CATALOGO_AUDIO.md` | Controllo batch delle tracce realmente riproducibili. |
 | `docs/DOCKER.md` | Uso Docker e variabili container. |
 | `docs/ENDPOINT_API.md` | Contratto API locale. |
 | `docs/CONFIGURAZIONE_API.md` | Provider, chiavi API, variabili ambiente. |

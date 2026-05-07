@@ -39,6 +39,7 @@ COPY server.js app.js index.html styles.css ./
 COPY assets ./assets
 COPY docs ./docs
 COPY lib ./lib
+COPY tools ./tools
 COPY partials ./partials
 COPY src ./src
 COPY styles ./styles

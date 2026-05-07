@@ -111,6 +111,15 @@ Per controllare la versione dentro il container:
 docker compose exec clearwave yt-dlp --version
 ```
 
+Per controllare se le tracce del catalogo partono davvero, usa lo script incluso nel container:
+
+```bash
+docker compose exec clearwave npm run check:tracks:probe
+```
+
+Il comando non emette audio: usa `mpv --ao=null` e salva i report in `/app/data/reports/`.
+La guida completa e' in `docs/VERIFICA_CATALOGO_AUDIO.md`.
+
 `docker-compose.yml` contiene gia' `privileged: ${CLEARWAVE_DOCKER_PRIVILEGED:-false}`. Su Raspberry conviene metterlo a `true`; su PC puoi lasciarlo `false`.
 
 Oppure con gli script npm:

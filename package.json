@@ -10,6 +10,9 @@
     "dev:react": "npm --prefix frontend run dev",
     "build:react": "npm --prefix frontend run build",
     "preview:react": "npm --prefix frontend run preview",
+    "check:tracks": "node tools/check-library-audio.js --",
+    "check:tracks:quick": "node tools/check-library-audio.js --mode metadata --limit 50",
+    "check:tracks:probe": "node tools/check-library-audio.js --mode probe --concurrency 2 --sample-seconds 6 --timeout-ms 30000 --only-errors",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"

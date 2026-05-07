@@ -98,6 +98,7 @@ Dopo il primo login cambia subito password da Impostazioni.
 | `assets/` | Asset statici e copertine locali. |
 | `data/` | File runtime: catalogo, SQLite e stato import. |
 | `uploads/` | Audio e licenze caricati. |
+| `tools/` | Script operativi, incluso il controllo reale delle sorgenti audio del catalogo. |
 | `docs/` | Documentazione completa del progetto. |
 | `Dockerfile` | Immagine Docker multi-stage con build React e runtime Node. |
 | `docker-compose.yml` | Unico file Compose: avvio container, variabili ambiente e opzioni Raspberry audio. |
@@ -115,8 +116,9 @@ Leggi in questo ordine:
 7. `docs/CONFIGURAZIONE_API.md`: chiavi API, variabili ambiente e provider esterni.
 8. `docs/GUIDA_SVILUPPATORE.md`: regole pratiche per modificare codice e UI.
 9. `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`: checklist pratica per Raspberry, Docker, Git, ALSA e yt-dlp.
-10. `docs/DOCKER.md`: build e avvio del progetto in container.
-11. `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md`: riepilogo del lavoro fatto su React, player Raspberry e Docker.
+10. `docs/VERIFICA_CATALOGO_AUDIO.md`: controllo delle tracce che partono davvero con `yt-dlp` e `mpv`.
+11. `docs/DOCKER.md`: build e avvio del progetto in container.
+12. `docs/RAPPORTO_MIGRAZIONE_REACT_RASPBERRY.md`: riepilogo del lavoro fatto su React, player Raspberry e Docker.
 
 ## Docker
 
