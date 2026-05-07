@@ -177,6 +177,7 @@ Note:
 - `trackId` usa una traccia del catalogo permanente;
 - `track` serve per tracce temporanee e viene accettato solo da admin;
 - su Raspberry/Docker il comando consigliato e' `mpv` con `yt-dlp`.
+- se YouTube richiede login o conferma eta, il backend marca la traccia come non riproducibile e prova la successiva nella coda server.
 
 ### `POST /api/server-player/pause`
 

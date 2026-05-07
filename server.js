@@ -70,6 +70,7 @@ const serverPlayer = {
     index: -1,
     repeatMode: "off",
     shuffleEnabled: false,
+    skippedTrackIds: [],
     updatedAt: "",
   },
 };
@@ -2278,6 +2279,10 @@ function isLikelyShortVideo(item) {
   );
 }
 
+function isYouTubeAgeRestrictedItem(item) {
+  return firstString(item.contentDetails?.contentRating?.ytRating) === "ytAgeRestricted";
+}
+
 function mapYouTubeCuratedVideo(item, channel) {
   const videoId = youtubeVideoIdFromItem(item);
   const title = decodeHtmlEntities(firstString(item.snippet?.title, "YouTube curated track"));
@@ -2286,7 +2291,7 @@ function mapYouTubeCuratedVideo(item, channel) {
   const mood = inferMoodFromText([title, channelTitle, description].join(" "));
   const durationSeconds = parseIso8601Duration(item.contentDetails?.duration);
 
-  if (!videoId || isLikelyShortVideo(item) || durationSeconds < 120) {
+  if (!videoId || isYouTubeAgeRestrictedItem(item) || isLikelyShortVideo(item) || durationSeconds < 120) {
     return null;
   }
 
@@ -2338,7 +2343,7 @@ function mapYouTubeSessionVideo(item) {
   const mood = inferMoodFromText([title, channelTitle, description].join(" "));
   const durationSeconds = parseIso8601Duration(item.contentDetails?.duration);
 
-  if (!videoId || !item.youtubeDetailsFound || durationSeconds <= 0) {
+  if (!videoId || !item.youtubeDetailsFound || isYouTubeAgeRestrictedItem(item) || durationSeconds <= 0) {
     return null;
   }
 
@@ -4630,6 +4635,7 @@ function serverPlayerStatus() {
       index: serverPlayer.playbackContext.index,
       repeatMode: serverPlayer.playbackContext.repeatMode,
       shuffleEnabled: serverPlayer.playbackContext.shuffleEnabled,
+      skippedCount: serverPlayer.playbackContext.skippedTrackIds.length,
       updatedAt: serverPlayer.playbackContext.updatedAt,
     },
   };
@@ -5044,10 +5050,18 @@ function isServerPlayerErrorMessage(message) {
   );
 }
 
+function isGenericMpvRecognitionFailure(message) {
+  return /failed to recognize file format|youtube-dl failed: unexpected error/i.test(String(message || ""));
+}
+
 function serverPlayerFriendlyError(message) {
   const text = String(message || "").trim();
   if (!text) {
     return "";
+  }
+
+  if (/sign in to confirm your age|inappropriate for some users|use --cookies-from-browser|use --cookies/i.test(text)) {
+    return "YouTube richiede login/conferma eta per questo video. ClearWave lo salta automaticamente e passa alla traccia successiva della coda server.";
   }
 
   if (/Unknown error 524|Playback open error|Could not open\/initialize audio device/i.test(text)) {
@@ -5069,12 +5083,41 @@ function serverPlayerFriendlyError(message) {
   return text;
 }
 
+function rememberServerPlayerError(message) {
+  const friendly = serverPlayerFriendlyError(message).slice(0, 400);
+  if (!friendly) {
+    return "";
+  }
+
+  if (
+    isGenericMpvRecognitionFailure(message) &&
+    /login\/conferma eta|youtube richiede|video non disponibile|formato/i.test(serverPlayer.lastError)
+  ) {
+    return serverPlayer.lastError;
+  }
+
+  serverPlayer.lastError = friendly;
+  return friendly;
+}
+
+function isServerPlayerSkippablePlaybackFailure(message, code, source) {
+  const text = String(message || "");
+  const isYouTubeSource = /youtube\.com|youtu\.be/i.test(String(source || ""));
+  if (!isYouTubeSource || !code) {
+    return false;
+  }
+
+  return /login\/conferma eta|sign in to confirm your age|inappropriate for some users|video unavailable|private video|requested format is not available|failed to recognize file format|youtube-dl failed/i.test(
+    text
+  );
+}
+
 function serverPlayerExitMessage(code, track, source) {
   const title = firstString(track?.title, track?.name, track?.id, "traccia sconosciuta");
   const normalizedSource = String(source || "");
 
   if (code === 4 && /youtube\.com|youtu\.be/i.test(normalizedSource)) {
-    return `mpv ha saltato "${title}" con codice 4: sorgente YouTube non riproducibile, formato cambiato o video non disponibile. Se c'e' una coda, React puo' passare alla traccia successiva.`;
+    return `mpv ha saltato "${title}" con codice 4: sorgente YouTube non riproducibile, formato cambiato, video non disponibile o video che richiede login/eta. Il backend prova a passare alla traccia successiva.`;
   }
 
   if (code === 4 && /jamendo|storage\.jamendo/i.test(normalizedSource)) {
@@ -5145,6 +5188,7 @@ function stopServerPlayerForPayload(payload = {}) {
     index: -1,
     repeatMode: "off",
     shuffleEnabled: false,
+    skippedTrackIds: [],
     updatedAt: new Date().toISOString(),
   };
   return serverPlayerStatus();
@@ -5353,6 +5397,7 @@ async function updateServerPlayerPlaybackContext(req, activeTrack, payload = {})
     index,
     repeatMode: normalizedServerRepeatMode(context.repeatMode),
     shuffleEnabled: Boolean(context.shuffleEnabled),
+    skippedTrackIds: [],
     updatedAt: new Date().toISOString(),
   };
 
@@ -5364,52 +5409,87 @@ async function updateServerPlayerPlaybackContext(req, activeTrack, payload = {})
   return serverPlayer.playbackContext;
 }
 
-function nextServerPlaybackContextTrack() {
+function nextServerPlaybackContextTrack(options = {}) {
   const context = serverPlayer.playbackContext;
   const tracks = Array.isArray(context.tracks) ? context.tracks : [];
   if (tracks.length === 0) {
     return null;
   }
 
-  if (context.repeatMode === "one") {
+  const skipTrackId = firstString(options.skipTrackId);
+  const skippedTrackIds = new Set(Array.isArray(context.skippedTrackIds) ? context.skippedTrackIds : []);
+  if (skipTrackId) {
+    skippedTrackIds.add(skipTrackId);
+    context.skippedTrackIds = [...skippedTrackIds];
+  }
+
+  const isSkippedIndex = (index) => skippedTrackIds.has(firstString(tracks[index]?.id));
+  if (tracks.every((_, index) => isSkippedIndex(index))) {
+    return null;
+  }
+
+  if (!skipTrackId && context.repeatMode === "one" && !isSkippedIndex(Math.max(0, context.index))) {
     return tracks[Math.max(0, context.index)] || tracks[0];
   }
 
   let nextIndex = context.index + 1;
   if (context.shuffleEnabled && tracks.length > 1) {
     const currentIndex = Math.max(0, context.index);
+    let guard = 0;
     do {
       nextIndex = Math.floor(Math.random() * tracks.length);
-    } while (nextIndex === currentIndex);
+      guard += 1;
+    } while ((nextIndex === currentIndex || isSkippedIndex(nextIndex)) && guard < tracks.length * 2);
   }
 
-  if (nextIndex >= tracks.length) {
-    if (context.repeatMode !== "all") {
-      return null;
+  for (let guard = 0; guard < tracks.length; guard += 1) {
+    if (nextIndex >= tracks.length) {
+      if (context.repeatMode !== "all") {
+        return null;
+      }
+      nextIndex = 0;
     }
-    nextIndex = 0;
+
+    if (!isSkippedIndex(nextIndex)) {
+      context.index = nextIndex;
+      context.updatedAt = new Date().toISOString();
+      return tracks[nextIndex] || null;
+    }
+
+    nextIndex += 1;
   }
 
-  context.index = nextIndex;
-  context.updatedAt = new Date().toISOString();
-  return tracks[nextIndex] || null;
+  return null;
 }
 
-function scheduleServerPlayerAutoplay(previousRunId) {
+function scheduleServerPlayerAutoplay(previousRunId, options = {}) {
   setTimeout(() => {
     if (serverPlayer.process || serverPlayer.runId !== previousRunId) {
       return;
     }
 
-    const nextTrack = nextServerPlaybackContextTrack();
+    const nextTrack = nextServerPlaybackContextTrack({ skipTrackId: options.skipTrackId });
     if (!nextTrack) {
-      recordServerPlayerEvent("complete", "Coda server completata: nessuna traccia successiva.");
+      recordServerPlayerEvent(
+        options.reason === "skip" ? "skip" : "complete",
+        options.reason === "skip"
+          ? "Traccia non riproducibile saltata, ma non ci sono altre tracce disponibili."
+          : "Coda server completata: nessuna traccia successiva."
+      );
       return;
     }
 
-    recordServerPlayerEvent("autoplay", `Avvio automatico server: ${firstString(nextTrack.title, nextTrack.id)}`, {
-      runId: previousRunId,
-    });
+    recordServerPlayerEvent(
+      options.reason === "skip" ? "skip" : "autoplay",
+      `${options.reason === "skip" ? "Salto traccia non riproducibile, prossima" : "Avvio automatico server"}: ${firstString(
+        nextTrack.title,
+        nextTrack.id
+      )}`,
+      {
+        runId: previousRunId,
+        failedTrackId: options.skipTrackId || "",
+      }
+    );
     void enqueueServerPlayerPlay(null, {
       track: nextTrack,
       startAt: 0,
@@ -5555,8 +5635,8 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
       const message = String(chunk || "").trim();
       if (message) {
         if (isServerPlayerErrorMessage(message)) {
-          serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
-          recordServerPlayerEvent("error", serverPlayer.lastError, { runId, stream: "stdout" });
+          const rememberedError = rememberServerPlayerError(message);
+          recordServerPlayerEvent("error", rememberedError, { runId, stream: "stdout" });
         }
         console.log(`[server-player] mpv stdout: ${message}`);
       }
@@ -5569,8 +5649,8 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
       const message = String(chunk || "").trim();
       if (message) {
         if (isServerPlayerErrorMessage(message)) {
-          serverPlayer.lastError = serverPlayerFriendlyError(message).slice(0, 400);
-          recordServerPlayerEvent("error", serverPlayer.lastError, { runId, stream: "stderr" });
+          const rememberedError = rememberServerPlayerError(message);
+          recordServerPlayerEvent("error", rememberedError, { runId, stream: "stderr" });
         }
         console.log(`[server-player] mpv stderr: ${message}`);
       }
@@ -5591,6 +5671,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
 
       if (code && !serverPlayer.isStopping) {
         const exitMessage = serverPlayerFriendlyError(firstString(serverPlayer.lastError, serverPlayerExitMessage(code, track, source)));
+        const shouldSkipFailure = isServerPlayerSkippablePlaybackFailure(exitMessage, code, source);
         serverPlayer.lastError = exitMessage.slice(0, 400);
         serverPlayer.lastExitCode = code;
         serverPlayer.lastFailedTrack = {
@@ -5603,6 +5684,13 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
           code,
           trackId: firstString(track?.id),
         });
+        if (shouldSkipFailure) {
+          recordServerPlayerEvent("skip", `Traccia YouTube saltata automaticamente: ${firstString(track?.title, track?.id)}`, {
+            runId,
+            code,
+            trackId: firstString(track?.id),
+          });
+        }
       } else {
         const completedTitle = firstString(track?.title, track?.name, "traccia");
         console.log(
@@ -5626,8 +5714,12 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
         serverPlayer.pausedAt = 0;
       }
 
-      if (shouldAutoplayNext) {
-        scheduleServerPlayerAutoplay(runId);
+      const shouldSkipFailure = code && !serverPlayer.isStopping && isServerPlayerSkippablePlaybackFailure(serverPlayer.lastError, code, source);
+      if (shouldAutoplayNext || shouldSkipFailure) {
+        scheduleServerPlayerAutoplay(runId, {
+          reason: shouldSkipFailure ? "skip" : "complete",
+          skipTrackId: shouldSkipFailure ? firstString(track?.id) : "",
+        });
       }
     });
 

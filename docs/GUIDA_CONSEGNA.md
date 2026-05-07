@@ -99,6 +99,7 @@ Il report non sostituisce la verifica legale finale: serve a sapere da dove arri
 | --- | --- | --- |
 | `Playback open error` | ALSA non apre il device audio | Usa diagnostica admin, poi prova `ALSA_CARD` o `CLEARWAVE_AUDIO_DEVICE`. |
 | `Requested format is not available` | YouTube/yt-dlp non trova uno stream compatibile | Ricostruisci senza cache e controlla `yt-dlp --version`. |
+| `Sign in to confirm your age` | YouTube richiede login/conferma eta per quel video | Normale per alcuni video: ClearWave lo salta e prova il prossimo brano. |
 | `mpv precedente chiuso per cambio traccia/comando` | Un nuovo comando ha sostituito il vecchio mpv | Non e' un errore se la traccia successiva parte. |
 | `mpv ha completato ... codice 0` | Traccia terminata correttamente | Normale. |
 | Importa poche tracce | Molti duplicati o filtri durata/licenza | Usa lotto piu' grande o reset scan YouTube. |

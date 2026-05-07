@@ -437,6 +437,7 @@ Il backend:
 
 Quando React avvia una traccia in modalita' `Pi`, manda anche `serverContext` con lista, repeat e shuffle.
 Se il browser viene chiuso, `mpv` resta attivo sul Raspberry e il backend puo' passare alla traccia successiva senza dipendere dal frontend.
+Se YouTube blocca un video con richiesta login/conferma eta, il backend non chiede cookie al Raspberry: registra l'errore, salta quella traccia e prova la successiva nella coda server.
 
 Il volume accetta sia formato normalizzato che percentuale:
 
