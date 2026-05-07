@@ -574,6 +574,8 @@ Variabili principali:
 | `CLEARWAVE_SERVER_PLAYER` | `1` | Abilita player server-side. |
 | `CLEARWAVE_PLAYER_COMMAND` | `mpv` | Comando player. |
 | `CLEARWAVE_SERVER_VOLUME` | `75` | Volume iniziale server. |
+| `CLEARWAVE_SERVER_VOLUME_GAIN` | `1.15` | Compensa il volume Raspberry/ALSA rispetto al browser. |
+| `CLEARWAVE_SERVER_VOLUME_MAX` | `130` | Volume massimo mpv dopo il gain. |
 | `CLEARWAVE_AUDIO_OUTPUT` | `alsa` | Output mpv. |
 | `CLEARWAVE_AUDIO_DEVICE` | vuoto | Device mpv esplicito. |
 | `CLEARWAVE_AUDIO_PREFLIGHT` | `1` | Test silenzioso device audio. |

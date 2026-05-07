@@ -40,6 +40,8 @@ npm start
 | `CLEARWAVE_SERVER_PLAYER` | `server.js` | Se `1`, abilita il controllo `mpv` lato server/Raspberry. |
 | `CLEARWAVE_PLAYER_COMMAND` | `server.js` | Comando usato per il player server-side, default `mpv`. |
 | `CLEARWAVE_SERVER_VOLUME` | `server.js` | Volume iniziale del player Raspberry, 0-100. |
+| `CLEARWAVE_SERVER_VOLUME_GAIN` | `server.js` | Moltiplicatore volume mpv per compensare Raspberry/ALSA rispetto al browser, default `1.15`. |
+| `CLEARWAVE_SERVER_VOLUME_MAX` | `server.js` | Massimo volume mpv dopo il gain, default `130`. |
 | `CLEARWAVE_AUDIO_OUTPUT` | `server.js` | Output mpv, default `alsa`. |
 | `CLEARWAVE_AUDIO_DEVICE` | `server.js` | Device mpv completo, per esempio `alsa/sysdefault:CARD=1` o `alsa/default`. |
 | `CLEARWAVE_AUDIO_PREFLIGHT` | `server.js` | Se `1`, prova in silenzio il device ALSA prima di avviare la canzone. |

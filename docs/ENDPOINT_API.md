@@ -138,6 +138,9 @@ Risposta:
     "position": 0,
     "duration": 0,
     "volume": 75,
+    "outputVolume": 86,
+    "volumeGain": 1.15,
+    "volumeMax": 130,
     "audioOutput": "alsa",
     "audioPreflight": true,
     "lastExitCode": null,
@@ -207,6 +210,7 @@ Body:
 
 `volume` va da `0` a `1`; `volumePercent` e' opzionale e va da `0` a `100`.
 Il backend accetta entrambi per evitare errori tra slider percentuale e valore normalizzato.
+Su Raspberry il backend puo' applicare `CLEARWAVE_SERVER_VOLUME_GAIN`: per esempio `volumePercent: 55` con gain `1.15` viene inviato a mpv come circa `63`, pur restando `55` nella UI.
 
 ### `POST /api/server-player/context`
 

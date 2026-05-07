@@ -385,7 +385,10 @@ export function AdminPanel({
               <div>
                 <span>Volume server</span>
                 <strong>{diagnostics.player?.volume ?? 0}%</strong>
-                <small>preflight {diagnostics.config?.audioPreflight ? "attivo" : "disattivo"}</small>
+                <small>
+                  mpv {diagnostics.player?.outputVolume ?? diagnostics.player?.volume ?? 0}% | gain x
+                  {diagnostics.config?.serverVolumeGain ?? diagnostics.player?.volumeGain ?? 1}
+                </small>
               </div>
             </div>
           ) : null}

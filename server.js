@@ -47,6 +47,14 @@ const serverPlayerAudioPreflightTimeoutMs = Math.max(
   700,
   Number(process.env.CLEARWAVE_AUDIO_PREFLIGHT_TIMEOUT_MS || 2500) || 2500
 );
+const serverPlayerVolumeGain = Math.max(
+  0.5,
+  Math.min(2, Number(process.env.CLEARWAVE_SERVER_VOLUME_GAIN || 1.15) || 1.15)
+);
+const serverPlayerVolumeMax = Math.max(
+  100,
+  Math.min(180, Number(process.env.CLEARWAVE_SERVER_VOLUME_MAX || 130) || 130)
+);
 const serverPlayer = {
   // Stato del player lato Raspberry: React diventa telecomando, l'audio esce dal server.
   process: null,
@@ -4607,6 +4615,7 @@ function currentServerPlayerPosition() {
 
 function serverPlayerStatus() {
   const position = currentServerPlayerPosition();
+  const mpvVolume = serverPlayerMpvVolumePercent(serverPlayer.volume);
   return {
     available: process.env.CLEARWAVE_SERVER_PLAYER !== "0",
     command: serverPlayerCommand,
@@ -4620,6 +4629,9 @@ function serverPlayerStatus() {
     progress:
       serverPlayer.duration > 0 ? Math.min(100, (position / serverPlayer.duration) * 100) : 0,
     volume: Math.max(0, Math.min(100, serverPlayer.volume)),
+    outputVolume: mpvVolume,
+    volumeGain: serverPlayerVolumeGain,
+    volumeMax: serverPlayerVolumeMax,
     audioOutput: serverPlayerAudioOutput,
     audioDevice: serverPlayerAudioDevice,
     alsaCard: serverPlayerAlsaCard,
@@ -4754,6 +4766,8 @@ async function buildServerDiagnostics() {
       alsaCard: serverPlayerAlsaCard || "auto",
       audioPreflight: serverPlayerAudioPreflight,
       audioPreflightTimeoutMs: serverPlayerAudioPreflightTimeoutMs,
+      serverVolumeGain: serverPlayerVolumeGain,
+      serverVolumeMax: serverPlayerVolumeMax,
       ytdlPath: serverPlayerYtdlPath,
       ytdlFormat: serverPlayerYtdlFormat,
       mpvMsgLevel: serverPlayerMpvMsgLevel,
@@ -5345,6 +5359,12 @@ function serverPlayerVolumePercentFromPayload(payload = {}, fallbackPercent = 75
   return Math.round(Math.max(0, Math.min(100, Number(fallbackPercent) || 75)));
 }
 
+function serverPlayerMpvVolumePercent(userVolumePercent) {
+  // Lo slider resta 0..100, ma sul Raspberry compensiamo la catena ALSA/mpv spesso piu' bassa del browser YouTube.
+  const userVolume = Math.max(0, Math.min(100, Number(userVolumePercent) || 0));
+  return Math.round(Math.max(0, Math.min(serverPlayerVolumeMax, userVolume * serverPlayerVolumeGain)));
+}
+
 function normalizedServerRepeatMode(value) {
   return value === "one" || value === "all" ? value : "off";
 }
@@ -5537,6 +5557,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
 
   const startAt = Math.max(0, Number(payload?.startAt) || 0);
   const volume = serverPlayerVolumePercentFromPayload(payload, serverPlayer.volume);
+  const mpvVolume = serverPlayerMpvVolumePercent(volume);
   const duration = parseDurationSeconds(track.duration || track.durationSeconds);
   const audioConfigs = serverPlayerAudioConfigs();
   const ytdlArgs = serverPlayerYtdlConfig(source);
@@ -5551,7 +5572,8 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     ...ytdlArgs,
     "--cache=yes",
     `--msg-level=${serverPlayerMpvMsgLevel}`,
-    `--volume=${volume}`,
+    `--volume-max=${serverPlayerVolumeMax}`,
+    `--volume=${mpvVolume}`,
   ];
 
   if (startAt > 0) {
@@ -5599,6 +5621,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
       audio: attemptLabel,
       sourceType: serverPlayerNeedsYtdl(source) ? "youtube" : "direct",
       volume,
+      mpvVolume,
     });
 
     let processRef;
@@ -5770,11 +5793,16 @@ async function seekServerPlayer(payload) {
 
 async function volumeServerPlayer(payload) {
   const volume = serverPlayerVolumePercentFromPayload(payload, serverPlayer.volume);
+  const mpvVolume = serverPlayerMpvVolumePercent(volume);
   serverPlayer.volume = volume;
   if (serverPlayer.process) {
-    await sendMpvCommand(["set_property", "volume", volume]);
+    await sendMpvCommand(["set_property", "volume", mpvVolume]);
   }
-  recordServerPlayerEvent("volume", `Volume server ${volume}%`, { volume });
+  recordServerPlayerEvent("volume", `Volume server ${volume}% (mpv ${mpvVolume}%)`, {
+    volume,
+    mpvVolume,
+    gain: serverPlayerVolumeGain,
+  });
   return serverPlayerStatus();
 }
 

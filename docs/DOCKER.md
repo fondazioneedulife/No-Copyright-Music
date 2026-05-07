@@ -143,6 +143,8 @@ Variabili principali:
 | `CLEARWAVE_SERVER_PLAYER` | Se `1`, abilita il player backend per audio sul Raspberry. |
 | `CLEARWAVE_PLAYER_COMMAND` | Comando player server-side, default `mpv`. |
 | `CLEARWAVE_SERVER_VOLUME` | Volume iniziale del player server, 0-100. |
+| `CLEARWAVE_SERVER_VOLUME_GAIN` | Gain applicato a mpv: `55` in UI con default `1.15` diventa circa `63` lato mpv. |
+| `CLEARWAVE_SERVER_VOLUME_MAX` | Limite massimo mpv dopo il gain, default `130`. |
 | `CLEARWAVE_AUDIO_OUTPUT` | Output mpv, default `alsa`. |
 | `CLEARWAVE_AUDIO_DEVICE` | Device mpv completo, es. `alsa/sysdefault:CARD=1` o `alsa/default`. |
 | `CLEARWAVE_AUDIO_PREFLIGHT` | Se `1`, testa in silenzio il device ALSA prima di avviare la canzone. |
