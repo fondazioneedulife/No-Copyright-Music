@@ -12,6 +12,8 @@
   --muted: #c7a5ad;
   --accent: #ff2f42;
   --accent-2: #ff7a45;
+  --accent-active-border: rgba(255, 118, 84, 0.95);
+  --accent-glow: rgba(255, 47, 66, 0.42);
   --success: #8fffd1;
   --shadow: 0 26px 90px rgba(0, 0, 0, 0.55);
   --sidebar-width: 230px;
@@ -34,6 +36,8 @@ body[data-theme="light"] {
   --muted: #abd4db;
   --accent: #7efcff;
   --accent-2: #21dfff;
+  --accent-active-border: rgba(126, 252, 255, 0.92);
+  --accent-glow: rgba(126, 252, 255, 0.36);
   --success: #b8ffe8;
   color-scheme: dark;
 }
@@ -1672,11 +1676,11 @@ body[data-theme="light"] .pagination .is-active {
 
 .transport button.is-active {
   color: #fff;
-  border-color: rgba(255, 118, 84, 0.95);
-  background: linear-gradient(135deg, #ff2f42, #ff7a45);
+  border-color: var(--accent-active-border);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08) inset,
-    0 0 24px rgba(255, 47, 66, 0.42);
+    0 0 24px var(--accent-glow);
   transform: translateY(-1px) scale(1.04);
 }
 
@@ -1751,7 +1755,7 @@ body[data-theme="light"] .transport button.is-active {
 
 .progress-range::-webkit-slider-thumb,
 .volume-slider::-webkit-slider-thumb {
-  filter: drop-shadow(0 0 10px rgba(255, 47, 66, 0.42));
+  filter: drop-shadow(0 0 10px var(--accent-glow));
 }
 
 .volume-cluster {
@@ -1774,9 +1778,9 @@ body[data-theme="light"] .transport button.is-active {
 
 .playback-target.is-active {
   color: #fff;
-  border-color: rgba(255, 118, 84, 0.95);
-  background: linear-gradient(135deg, rgba(255, 47, 66, 0.92), rgba(255, 122, 69, 0.78));
-  box-shadow: 0 0 20px rgba(255, 47, 66, 0.3);
+  border-color: var(--accent-active-border);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 20px var(--accent-glow);
 }
 
 body[data-theme="light"] .playback-target.is-active {
