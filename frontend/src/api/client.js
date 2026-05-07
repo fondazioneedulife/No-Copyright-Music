@@ -1,4 +1,6 @@
 const tokenStorageKey = "clearwave-auth-token";
+const backendOfflineMessage =
+  "Backend non raggiungibile. Su PC avvia npm start; su Raspberry controlla docker compose ps/logs.";
 
 export function readStoredToken() {
   // Il token e' solo locale al browser: non contiene password e viene rimosso al logout.
@@ -33,7 +35,7 @@ export async function apiRequest(path, options = {}) {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new Error("Backend locale non raggiungibile. Avvia il server con npm start.");
+    throw new Error(backendOfflineMessage);
   }
 
   const text = await response.text();
@@ -54,7 +56,7 @@ export async function apiRequest(path, options = {}) {
     throw new Error(
       payload.error ||
         (backendOffline
-          ? "Backend locale non raggiungibile. Avvia il server con npm start."
+          ? backendOfflineMessage
           : "Richiesta non riuscita.")
     );
   }
@@ -75,7 +77,7 @@ export async function downloadRequest(path, token, fallbackName) {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
   } catch {
-    throw new Error("Backend locale non raggiungibile. Avvia il server con npm start.");
+    throw new Error(backendOfflineMessage);
   }
 
   if (!response.ok) {

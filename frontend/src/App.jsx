@@ -75,6 +75,15 @@ function downloadBlob({ blob, filename }) {
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
+function playerConnectionMessage(error, fallback) {
+  const message = error?.message || "";
+  if (/backend.*non raggiungibile/i.test(message)) {
+    return "Connessione UI/backend momentaneamente persa. Se il Raspberry sta gia' suonando, la musica continua.";
+  }
+
+  return message || fallback;
+}
+
 export default function App() {
   // App contiene solo lo stato globale: i dettagli visivi sono nei componenti sotto components/.
   const audioRef = useRef(null);
@@ -184,7 +193,7 @@ export default function App() {
     serverVolumeTimerRef.current = window.setTimeout(() => {
       // Lo slider resta immediato, ma il Raspberry riceve meno comandi IPC e non si intasa.
       void setServerTrackVolume(token, safeVolume).catch((error) => {
-        setPlayerNotice(error.message || "Volume Raspberry non raggiungibile.");
+        setPlayerNotice(playerConnectionMessage(error, "Volume Raspberry non raggiungibile."));
       });
     }, 160);
 
@@ -218,11 +227,7 @@ export default function App() {
           });
         }
 
-        if (player.error) {
-          setPlayerNotice(player.error);
-        } else if (!player.activeTrack) {
-          setPlayerNotice("");
-        }
+        setPlayerNotice(player.error || "");
 
         if (!player.activeTrack) {
           // Se non c'e' nulla sul Raspberry, azzeriamo solo una sessione server gia' attiva.
@@ -251,7 +256,7 @@ export default function App() {
         }
       } catch (error) {
         if (!cancelled) {
-          setPlayerNotice(error.message || "Player Raspberry non raggiungibile.");
+          setPlayerNotice(playerConnectionMessage(error, "Player Raspberry non raggiungibile."));
         }
       }
     }
@@ -452,7 +457,7 @@ export default function App() {
       void setServerTrackContext(token, {
         serverContext: serverPlaybackContextFor(activeTrack),
       }).catch((error) => {
-        setPlayerNotice(error.message || "Contesto Raspberry non aggiornato.");
+        setPlayerNotice(playerConnectionMessage(error, "Contesto Raspberry non aggiornato."));
       });
     }, 220);
 
@@ -975,7 +980,7 @@ export default function App() {
       if (token) {
         void pauseServerTrack(token, true).catch((error) => {
           if (playbackRequestRef.current === requestId) {
-            setPlayerNotice(error.message || "Pausa Raspberry non riuscita.");
+            setPlayerNotice(playerConnectionMessage(error, "Pausa Raspberry non riuscita."));
           }
         });
       }
@@ -1045,7 +1050,7 @@ export default function App() {
             embedClockRef.current = { baseTime: startAt, startedAt: 0 };
             setIsPlaying(false);
             setPlayerMode("idle");
-            setPlayerNotice(error.message || "Resume Raspberry non riuscito.");
+            setPlayerNotice(playerConnectionMessage(error, "Resume Raspberry non riuscito."));
           });
         return;
       }
@@ -1071,7 +1076,7 @@ export default function App() {
           embedClockRef.current = { baseTime: startAt, startedAt: 0 };
           setIsPlaying(false);
           setPlayerMode("idle");
-          setPlayerNotice(error.message || "Player Raspberry non raggiungibile.");
+          setPlayerNotice(playerConnectionMessage(error, "Player Raspberry non raggiungibile."));
         });
       return;
     }
@@ -1315,7 +1320,7 @@ export default function App() {
       embedClockRef.current = { baseTime: nextTime, startedAt: isPlaying ? performance.now() : 0 };
       if (token) {
         void seekServerTrack(token, nextTime).catch((error) => {
-          setPlayerNotice(error.message || "Seek Raspberry non riuscito.");
+          setPlayerNotice(playerConnectionMessage(error, "Seek Raspberry non riuscito."));
         });
       }
     }
