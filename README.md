@@ -168,6 +168,14 @@ Se nei log vedi `Playback open error` o `Unknown error 524`, il problema e' ALSA
 
 Per debug rapido sul Raspberry usa `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`: contiene i comandi per capire se stai usando codice vecchio, se Docker vede ALSA e se `yt-dlp` e' aggiornato.
 
+Se YouTube blocca molte tracce con login/eta/anti-bot, dal PC Windows dove sei gia' loggato su YouTube puoi caricare i cookie in modo assistito:
+
+```powershell
+.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin
+```
+
+Lo script usa `yt-dlp --cookies-from-browser`, invia il file all'endpoint admin di ClearWave e cancella il file temporaneo dal PC.
+
 ## Backend in breve
 
 `server.js` espone:

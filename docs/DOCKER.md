@@ -208,6 +208,25 @@ Procedura consigliata dalla UI:
 
 Il backend salva il file nel volume persistente `data/youtube-cookies.txt`; nel container il percorso diventa `/app/data/youtube-cookies.txt` e viene usato automaticamente dal prossimo play YouTube.
 
+Procedura automatica da PC Windows:
+
+```powershell
+cd "C:\Users\Riccardo\Documents\New project"
+.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin
+```
+
+Lo script usa `yt-dlp --cookies-from-browser`, esporta i cookie dal browser gia' loggato e li invia all'endpoint admin `/api/admin/youtube-cookies`. Se usi Edge:
+
+```powershell
+.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser edge -Username admin
+```
+
+Se `yt-dlp` non e' installato sul PC:
+
+```powershell
+winget install yt-dlp.yt-dlp
+```
+
 Procedura manuale via SSH:
 
 ```bash

@@ -143,6 +143,7 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | --- | --- |
 | `assets/covers/` | Copertine locali/fallback per generi musicali. |
 | `tools/check-library-audio.js` | Script CLI per verificare se le sorgenti del catalogo partono davvero. |
+| `tools/export-upload-youtube-cookies.ps1` | Helper Windows per esportare cookie YouTube dal browser con `yt-dlp` e caricarli nel backend. |
 | `uploads/audio/` | Audio caricati manualmente. Runtime, escluso da git. |
 | `uploads/licenses/` | Licenze, ricevute e allegati diritti. Runtime, escluso da git. |
 | `data/library.json` | Catalogo permanente. Runtime, escluso da git. |

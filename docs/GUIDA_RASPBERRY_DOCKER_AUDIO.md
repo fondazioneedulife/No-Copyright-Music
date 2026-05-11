@@ -195,6 +195,31 @@ docker compose exec clearwave npm run check:tracks:probe
 Il controllo usa `mpv --ao=null`, quindi prova le sorgenti senza far uscire audio fisico. I report finiscono in `/app/data/reports/`; la guida completa e' in `docs/VERIFICA_CATALOGO_AUDIO.md`.
 Per farlo partire da solo, imposta `CLEARWAVE_AUDIO_CHECK_ENABLED=1` nel `.env`: il backend lo esegue in background e la diagnostica admin mostra l'ultimo esito.
 
+## Cookie YouTube automatici da PC Windows
+
+Se molte tracce YouTube chiedono login, eta o anti-bot, puoi caricare i cookie in modo assistito senza copiare file a mano.
+
+Sul PC dove sei loggato su YouTube:
+
+```powershell
+cd "C:\Users\Riccardo\Documents\New project"
+.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin
+```
+
+Lo script:
+
+1. usa `yt-dlp --cookies-from-browser chrome`;
+2. crea un `cookies.txt` temporaneo;
+3. fa login admin su ClearWave;
+4. carica il file nel backend;
+5. elimina il file temporaneo dal PC, salvo opzione `-KeepFile`.
+
+Per Edge usa `-Browser edge`. Se manca `yt-dlp`, installalo con:
+
+```powershell
+winget install yt-dlp.yt-dlp
+```
+
 ## Errori comuni
 
 | Log/errore | Significato probabile | Cosa fare |
