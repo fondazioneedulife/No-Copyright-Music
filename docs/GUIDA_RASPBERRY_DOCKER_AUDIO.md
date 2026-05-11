@@ -209,7 +209,7 @@ cd "C:\Users\Riccardo\Documents\New project"
 Lo script:
 
 1. usa `yt-dlp --cookies-from-browser chrome`;
-2. se Chrome risponde con DPAPI, passa automaticamente al fallback Chrome DevTools locale;
+2. se Chrome risponde con DPAPI o blocca DevTools, apre la pagina dell'estensione Chrome e aspetta il file `cookies.txt`;
 3. crea un `cookies.txt` temporaneo;
 4. fa login admin su ClearWave;
 5. carica il file nel backend;
@@ -223,7 +223,7 @@ winget install yt-dlp.yt-dlp
 
 Dopo una nuova installazione puo' servire riaprire PowerShell. Lo script prova anche il percorso winget standard; se serve puoi forzarlo con `-YtDlpPath`.
 Se `yt-dlp` risponde `Could not copy Chrome cookie database`, rilancia con `-CloseBrowser`: lo script chiude il browser scelto per sbloccare il file cookie prima dell'export.
-Se risponde `Failed to decrypt with DPAPI`, lo script prova il fallback Chrome DevTools. Se anche quello fallisce, esporta `youtube-cookies.txt` con estensione Chrome e passa `-ExistingCookieFile`.
+Se risponde `Failed to decrypt with DPAPI`, segui il prompt: esporta `youtube-cookies.txt` con l'estensione Chrome e premi Invio. In alternativa passa direttamente `-ExistingCookieFile`.
 
 ## Errori comuni
 

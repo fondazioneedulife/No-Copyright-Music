@@ -217,6 +217,70 @@ function ConvertTo-NetscapeCookieText {
   return ($lines -join "`n") + "`n"
 }
 
+function Find-RecentChromeCookieExport {
+  $folders = @(
+    (Join-Path $env:USERPROFILE "Downloads"),
+    (Join-Path $env:USERPROFILE "Desktop")
+  )
+
+  $candidates = @()
+  foreach ($folder in $folders) {
+    if (Test-Path -LiteralPath $folder) {
+      $candidates += Get-ChildItem -LiteralPath $folder -File -ErrorAction SilentlyContinue |
+        Where-Object {
+          $_.Extension -eq ".txt" -and
+          ($_.Name -match "cookie|youtube|google") -and
+          $_.LastWriteTime -gt (Get-Date).AddHours(-2)
+        }
+    }
+  }
+
+  return $candidates | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+}
+
+function Request-ChromeCookieExportFile {
+  $extensionUrl = "https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc"
+  $youtubeUrl = "https://www.youtube.com"
+  $chromePath = Resolve-ChromePath
+
+  Write-Host ""
+  Write-Host "Chrome non ha permesso l'export automatico dei cookie." -ForegroundColor Yellow
+  Write-Host "Uso il fallback Google Chrome con esportazione file, poi carico il file su ClearWave."
+  Write-Host "1. Installa/usa l'estensione Get cookies.txt LOCALLY."
+  Write-Host "2. Apri YouTube loggato."
+  Write-Host "3. Esporta in formato Netscape e salva il file nei Download o sul Desktop."
+  Write-Host "4. Torna qui e premi Invio."
+
+  if ($chromePath) {
+    Start-Process -FilePath $chromePath -ArgumentList $extensionUrl | Out-Null
+    Start-Sleep -Seconds 1
+    Start-Process -FilePath $chromePath -ArgumentList $youtubeUrl | Out-Null
+  } else {
+    Start-Process $extensionUrl | Out-Null
+    Start-Process $youtubeUrl | Out-Null
+  }
+
+  while ($true) {
+    $manualPath = Read-Host "Premi Invio dopo l'export, oppure incolla qui il percorso del file cookies.txt"
+    if ($manualPath) {
+      $cleanPath = $manualPath.Trim().Trim('"')
+      if (Test-Path -LiteralPath $cleanPath) {
+        return (Resolve-Path -LiteralPath $cleanPath).Path
+      }
+      Write-Host "File non trovato: $cleanPath" -ForegroundColor Yellow
+      continue
+    }
+
+    $recentFile = Find-RecentChromeCookieExport
+    if ($recentFile) {
+      Write-Host "File trovato: $($recentFile.FullName)"
+      return $recentFile.FullName
+    }
+
+    Write-Host "Non trovo un cookies.txt recente in Download/Desktop. Esporta il file e premi di nuovo Invio." -ForegroundColor Yellow
+  }
+}
+
 function Export-ChromeCookiesWithDevTools {
   param(
     [string]$TargetFile,
@@ -255,13 +319,13 @@ function Export-ChromeCookiesWithDevTools {
 
   if (-not $targets) {
     Stop-BrowserForCookieExport "chrome"
-    Stop-WithMessage "Chrome DevTools non raggiungibile. Riprova chiudendo Chrome manualmente prima dello script."
+    return Request-ChromeCookieExportFile
   }
 
   $pageTarget = $targets | Where-Object { $_.type -eq "page" -and $_.webSocketDebuggerUrl } | Select-Object -First 1
   if (-not $pageTarget) {
     Stop-BrowserForCookieExport "chrome"
-    Stop-WithMessage "Chrome DevTools non ha esposto una pagina leggibile."
+    return Request-ChromeCookieExportFile
   }
 
   try {
@@ -270,9 +334,10 @@ function Export-ChromeCookiesWithDevTools {
     $cookies = @($result.cookies)
     $cookieText = ConvertTo-NetscapeCookieText $cookies
     if ($cookieText -notmatch "youtube\.com|google\.com") {
-      Stop-WithMessage "Chrome DevTools non ha trovato cookie YouTube/Google. Apri Chrome, fai login su YouTube e rilancia."
+      return Request-ChromeCookieExportFile
     }
     Set-Content -LiteralPath $TargetFile -Value $cookieText -Encoding UTF8
+    return $TargetFile
   } finally {
     Stop-BrowserForCookieExport "chrome"
   }
@@ -284,8 +349,10 @@ if (-not $ytDlpCommand -and -not $ExistingCookieFile -and $Browser -ne "chrome")
 }
 
 $baseUrl = $ClearWaveUrl.TrimEnd("/")
+$shouldDeleteCookieFile = $false
 if (-not $CookieFile) {
   $CookieFile = Join-Path $env:TEMP ("clearwave-youtube-cookies-{0}.txt" -f (Get-Date -Format "yyyyMMddHHmmss"))
+  $shouldDeleteCookieFile = -not $KeepFile
 }
 
 Write-Host "ClearWave: $baseUrl"
@@ -305,7 +372,11 @@ if ($ExistingCookieFile) {
   }
 
   if (-not $ytDlpCommand -and $Browser -eq "chrome") {
-    Export-ChromeCookiesWithDevTools -TargetFile $CookieFile
+    $exportedCookieFile = Export-ChromeCookiesWithDevTools -TargetFile $CookieFile
+    if ($exportedCookieFile -and $exportedCookieFile -ne $CookieFile) {
+      $CookieFile = $exportedCookieFile
+      $shouldDeleteCookieFile = $false
+    }
   } else {
     Write-Host "Esporto cookie YouTube dal browser..."
 
@@ -333,7 +404,11 @@ if ($ExistingCookieFile) {
       $outputText = $ytDlpOutput -join "`n"
       if ($Browser -eq "chrome" -and $outputText -match "Could not copy .*cookie database|Failed to decrypt with DPAPI") {
         Write-Host "yt-dlp non riesce a leggere Chrome. Provo fallback Chrome DevTools..." -ForegroundColor Yellow
-        Export-ChromeCookiesWithDevTools -TargetFile $CookieFile
+        $exportedCookieFile = Export-ChromeCookiesWithDevTools -TargetFile $CookieFile
+        if ($exportedCookieFile -and $exportedCookieFile -ne $CookieFile) {
+          $CookieFile = $exportedCookieFile
+          $shouldDeleteCookieFile = $false
+        }
       } elseif ($outputText -match "Could not copy .*cookie database") {
         Stop-WithMessage "Il browser sta bloccando il database cookie. Rilancia con -CloseBrowser oppure chiudilo completamente e riprova."
       } elseif ($outputText -match "Failed to decrypt with DPAPI") {
@@ -400,7 +475,7 @@ try {
     $password = $null
   }
 
-  if (-not $ExistingCookieFile -and -not $KeepFile -and (Test-Path -LiteralPath $CookieFile)) {
+  if ($shouldDeleteCookieFile -and (Test-Path -LiteralPath $CookieFile)) {
     Remove-Item -LiteralPath $CookieFile -Force -ErrorAction SilentlyContinue
   }
 }

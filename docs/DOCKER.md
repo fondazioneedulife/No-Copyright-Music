@@ -215,7 +215,7 @@ cd "C:\Users\Riccardo\Documents\New project"
 .\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin
 ```
 
-Lo script prova prima `yt-dlp --cookies-from-browser chrome`; se Chrome risponde con errore DPAPI, usa automaticamente un fallback DevTools locale: apre Chrome, legge i cookie tramite Chrome stesso e li invia all'endpoint admin `/api/admin/youtube-cookies`.
+Lo script prova prima `yt-dlp --cookies-from-browser chrome`; se Chrome risponde con errore DPAPI o blocca DevTools, apre la pagina dell'estensione Chrome e ti chiede di esportare un solo `cookies.txt`. Appena premi Invio, lo script cerca il file in Download/Desktop e lo invia all'endpoint admin `/api/admin/youtube-cookies`.
 
 Se `yt-dlp` non e' installato sul PC:
 
@@ -235,7 +235,7 @@ Se compare `Could not copy Chrome cookie database`, Chrome e' ancora aperto o ha
 .\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin -CloseBrowser
 ```
 
-Se compare `Failed to decrypt with DPAPI`, lo script prova automaticamente il fallback Chrome DevTools. Se anche quello fallisce, esporta `cookies.txt` con un'estensione Chrome e fallo caricare dallo script:
+Se preferisci esportare il file tu, puoi saltare ogni tentativo automatico e farlo caricare direttamente:
 
 ```powershell
 .\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Username admin -ExistingCookieFile "$env:USERPROFILE\Desktop\youtube-cookies.txt"
