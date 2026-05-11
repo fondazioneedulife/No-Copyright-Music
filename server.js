@@ -5116,17 +5116,23 @@ function isGenericMpvRecognitionFailure(message) {
   return /failed to recognize file format|youtube-dl failed: unexpected error/i.test(String(message || ""));
 }
 
+function isYouTubeAuthChallengeMessage(message) {
+  return /sign in to confirm|not a bot|inappropriate for some users|use --cookies-from-browser|use --cookies|cookies-from-browser/i.test(
+    String(message || "")
+  );
+}
+
 function serverPlayerFriendlyError(message) {
   const text = String(message || "").trim();
   if (!text) {
     return "";
   }
 
-  if (/sign in to confirm your age|inappropriate for some users|use --cookies-from-browser|use --cookies/i.test(text)) {
+  if (isYouTubeAuthChallengeMessage(text)) {
     if (serverPlayerYtdlCookiesFile && !ytdlCookiesFileIfAvailable()) {
       return "Cookie YouTube non trovato nel container: traccia saltata.";
     }
-    return "YouTube login/eta: traccia saltata. Configura cookie o sostituiscila.";
+    return "YouTube login/bot: traccia saltata. Configura cookie o sostituiscila.";
   }
 
   if (/Unknown error 524|Playback open error|Could not open\/initialize audio device/i.test(text)) {
@@ -5148,6 +5154,14 @@ function serverPlayerFriendlyError(message) {
   return text;
 }
 
+function serverPlayerLogMessage(message) {
+  const text = String(message || "").trim();
+  if (isYouTubeAuthChallengeMessage(text)) {
+    return serverPlayerFriendlyError(text);
+  }
+  return text.length > 1000 ? `${text.slice(0, 997)}...` : text;
+}
+
 function rememberServerPlayerError(message) {
   const friendly = serverPlayerFriendlyError(message).slice(0, 400);
   if (!friendly) {
@@ -5156,7 +5170,7 @@ function rememberServerPlayerError(message) {
 
   if (
     isGenericMpvRecognitionFailure(message) &&
-    /login\/conferma eta|youtube richiede|video non disponibile|formato/i.test(serverPlayer.lastError)
+    /youtube.*(?:login|eta|bot)|cookie youtube|video non disponibile|formato|traccia saltata/i.test(serverPlayer.lastError)
   ) {
     return serverPlayer.lastError;
   }
@@ -5172,7 +5186,7 @@ function isServerPlayerSkippablePlaybackFailure(message, code, source) {
     return false;
   }
 
-  return /login\/conferma eta|sign in to confirm your age|inappropriate for some users|video unavailable|private video|requested format is not available|failed to recognize file format|youtube-dl failed/i.test(
+  return /login\/conferma eta|youtube.*(?:login|eta|bot)|sign in to confirm|not a bot|inappropriate for some users|use --cookies|video unavailable|private video|requested format is not available|failed to recognize file format|youtube-dl failed/i.test(
     text
   );
 }
@@ -5182,7 +5196,7 @@ function serverPlayerExitMessage(code, track, source) {
   const normalizedSource = String(source || "");
 
   if (code === 4 && /youtube\.com|youtu\.be/i.test(normalizedSource)) {
-    return `mpv ha saltato "${title}" con codice 4: sorgente YouTube non riproducibile, formato cambiato, video non disponibile o video che richiede login/eta. Il backend prova a passare alla traccia successiva.`;
+    return `mpv ha saltato "${title}" con codice 4: sorgente YouTube non riproducibile, formato cambiato, video non disponibile o richiesta login/bot. Il backend prova a passare alla traccia successiva.`;
   }
 
   if (code === 4 && /jamendo|storage\.jamendo/i.test(normalizedSource)) {
@@ -5712,7 +5726,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
           const rememberedError = rememberServerPlayerError(message);
           recordServerPlayerEvent("error", rememberedError, { runId, stream: "stdout" });
         }
-        console.log(`[server-player] mpv stdout: ${message}`);
+        console.log(`[server-player] mpv stdout: ${serverPlayerLogMessage(message)}`);
       }
     });
     processRef.stderr.on("data", (chunk) => {
@@ -5726,7 +5740,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
           const rememberedError = rememberServerPlayerError(message);
           recordServerPlayerEvent("error", rememberedError, { runId, stream: "stderr" });
         }
-        console.log(`[server-player] mpv stderr: ${message}`);
+        console.log(`[server-player] mpv stderr: ${serverPlayerLogMessage(message)}`);
       }
     });
     processRef.once("exit", (code) => {

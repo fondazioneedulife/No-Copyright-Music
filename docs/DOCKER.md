@@ -187,12 +187,13 @@ Variabili principali:
 
 Non inserire chiavi reali nel `Dockerfile` o nel codice.
 
-## YouTube con richiesta login/eta
+## YouTube con richiesta login/eta/bot
 
-Alcuni video YouTube richiedono una sessione autenticata anche se sono pubblici. In quel caso nei log puoi vedere:
+Alcuni video YouTube richiedono una sessione autenticata o una verifica anti-bot anche se sono pubblici. In quel caso nei log puoi vedere:
 
 ```text
 Sign in to confirm your age
+Sign in to confirm you're not a bot
 Use --cookies-from-browser or --cookies
 ```
 

@@ -538,7 +538,7 @@ function classifyFailure(message, code, timedOut) {
   if (timedOut || /timeout|timed out/i.test(text)) {
     return "timeout";
   }
-  if (/sign in to confirm your age|inappropriate for some users|cookies-from-browser|use --cookies/i.test(text)) {
+  if (/sign in to confirm|not a bot|inappropriate for some users|cookies-from-browser|use --cookies/i.test(text)) {
     return "youtube-age-or-login";
   }
   if (/private video|video unavailable|removed|not available|copyright/i.test(text)) {

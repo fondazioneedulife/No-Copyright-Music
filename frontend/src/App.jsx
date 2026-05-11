@@ -71,7 +71,7 @@ function compactPlayerNotice(message) {
     return "";
   }
 
-  if (/youtube.*(?:login|eta|age)|cookie youtube|sign in to confirm/i.test(text)) {
+  if (/youtube.*(?:login|eta|age|bot)|cookie youtube|sign in to confirm|not a bot/i.test(text)) {
     return "YouTube bloccata: traccia saltata. Vedi Admin.";
   }
 
