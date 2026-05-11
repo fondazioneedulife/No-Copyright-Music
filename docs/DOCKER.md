@@ -233,6 +233,12 @@ Se lo hai appena installato e PowerShell dice ancora `yt-dlp non trovato`, chiud
 .\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin -YtDlpPath "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\yt-dlp.yt-dlp_Microsoft.Winget.Source_8wekyb3d8bbwe\yt-dlp.exe"
 ```
 
+Se compare `Could not copy Chrome cookie database`, Chrome/Edge e' ancora aperto o ha processi in background. Rilancia con chiusura automatica del browser:
+
+```powershell
+.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin -CloseBrowser
+```
+
 Procedura manuale via SSH:
 
 ```bash

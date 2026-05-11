@@ -5,6 +5,7 @@ param(
   [string]$Username = "admin",
   [string]$YtDlpPath = "",
   [string]$CookieFile = "",
+  [switch]$CloseBrowser,
   [switch]$KeepFile
 )
 
@@ -68,6 +69,33 @@ function Resolve-YtDlpPath {
   return ""
 }
 
+function Browser-ProcessNames {
+  param([string]$BrowserName)
+
+  switch ($BrowserName) {
+    "chrome" { return @("chrome") }
+    "edge" { return @("msedge") }
+    "firefox" { return @("firefox") }
+    "brave" { return @("brave") }
+    "chromium" { return @("chromium") }
+    default { return @($BrowserName) }
+  }
+}
+
+function Stop-BrowserForCookieExport {
+  param([string]$BrowserName)
+
+  $processNames = Browser-ProcessNames $BrowserName
+  foreach ($processName in $processNames) {
+    $processes = Get-Process -Name $processName -ErrorAction SilentlyContinue
+    if ($processes) {
+      Write-Host "Chiudo $processName per sbloccare il database cookie..."
+      $processes | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
+  }
+  Start-Sleep -Seconds 2
+}
+
 $ytDlpCommand = Resolve-YtDlpPath $YtDlpPath
 if (-not $ytDlpCommand) {
   Stop-WithMessage "yt-dlp non trovato. Installa con winget install yt-dlp.yt-dlp, poi riapri PowerShell e rilancia lo script."
@@ -81,6 +109,11 @@ if (-not $CookieFile) {
 Write-Host "ClearWave: $baseUrl"
 Write-Host "Browser: $Browser"
 Write-Host "yt-dlp: $ytDlpCommand"
+
+if ($CloseBrowser) {
+  Stop-BrowserForCookieExport $Browser
+}
+
 Write-Host "Esporto cookie YouTube dal browser..."
 
 $testVideoUrl = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
@@ -93,9 +126,15 @@ $ytDlpArgs = @(
   $testVideoUrl
 )
 
-& $ytDlpCommand @ytDlpArgs
-if ($LASTEXITCODE -ne 0) {
-  Stop-WithMessage "Export cookie non riuscito. Chiudi il browser, riaprilo su YouTube loggato e rilancia lo script."
+$ytDlpOutput = & $ytDlpCommand @ytDlpArgs 2>&1
+$ytDlpExitCode = $LASTEXITCODE
+$ytDlpOutput | ForEach-Object { Write-Host $_ }
+if ($ytDlpExitCode -ne 0) {
+  $outputText = $ytDlpOutput -join "`n"
+  if ($outputText -match "Could not copy .*cookie database") {
+    Stop-WithMessage "Chrome/Edge sta bloccando il database cookie. Rilancia con -CloseBrowser oppure chiudi completamente il browser e riprova."
+  }
+  Stop-WithMessage "Export cookie non riuscito. Verifica di essere loggato su YouTube nello stesso browser scelto."
 }
 
 if (-not (Test-Path -LiteralPath $CookieFile)) {
