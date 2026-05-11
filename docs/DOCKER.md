@@ -239,6 +239,19 @@ Se compare `Could not copy Chrome cookie database`, Chrome/Edge e' ancora aperto
 .\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin -CloseBrowser
 ```
 
+Se compare `Failed to decrypt with DPAPI`, Windows/Chrome non permette a `yt-dlp` di decifrare quei cookie. Prova Edge o Firefox:
+
+```powershell
+.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser edge -Username admin -CloseBrowser
+.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser firefox -Username admin -CloseBrowser
+```
+
+Oppure esporta `cookies.txt` con un'estensione e fallo caricare dallo script:
+
+```powershell
+.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Username admin -ExistingCookieFile "$env:USERPROFILE\Desktop\youtube-cookies.txt"
+```
+
 Procedura manuale via SSH:
 
 ```bash

@@ -222,6 +222,7 @@ winget install yt-dlp.yt-dlp
 
 Dopo una nuova installazione puo' servire riaprire PowerShell. Lo script prova anche il percorso winget standard; se serve puoi forzarlo con `-YtDlpPath`.
 Se `yt-dlp` risponde `Could not copy Chrome cookie database`, rilancia con `-CloseBrowser`: lo script chiude il browser scelto per sbloccare il file cookie prima dell'export.
+Se risponde `Failed to decrypt with DPAPI`, prova `-Browser edge` o `-Browser firefox`; in alternativa esporta `youtube-cookies.txt` con estensione browser e passa `-ExistingCookieFile`.
 
 ## Errori comuni
 

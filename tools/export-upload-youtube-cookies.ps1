@@ -5,6 +5,7 @@ param(
   [string]$Username = "admin",
   [string]$YtDlpPath = "",
   [string]$CookieFile = "",
+  [string]$ExistingCookieFile = "",
   [switch]$CloseBrowser,
   [switch]$KeepFile
 )
@@ -110,31 +111,50 @@ Write-Host "ClearWave: $baseUrl"
 Write-Host "Browser: $Browser"
 Write-Host "yt-dlp: $ytDlpCommand"
 
-if ($CloseBrowser) {
-  Stop-BrowserForCookieExport $Browser
-}
-
-Write-Host "Esporto cookie YouTube dal browser..."
-
-$testVideoUrl = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
-$ytDlpArgs = @(
-  "--cookies-from-browser",
-  $Browser,
-  "--cookies",
-  $CookieFile,
-  "--simulate",
-  $testVideoUrl
-)
-
-$ytDlpOutput = & $ytDlpCommand @ytDlpArgs 2>&1
-$ytDlpExitCode = $LASTEXITCODE
-$ytDlpOutput | ForEach-Object { Write-Host $_ }
-if ($ytDlpExitCode -ne 0) {
-  $outputText = $ytDlpOutput -join "`n"
-  if ($outputText -match "Could not copy .*cookie database") {
-    Stop-WithMessage "Chrome/Edge sta bloccando il database cookie. Rilancia con -CloseBrowser oppure chiudi completamente il browser e riprova."
+if ($ExistingCookieFile) {
+  if (-not (Test-Path -LiteralPath $ExistingCookieFile)) {
+    Stop-WithMessage "File cookie esistente non trovato: $ExistingCookieFile"
   }
-  Stop-WithMessage "Export cookie non riuscito. Verifica di essere loggato su YouTube nello stesso browser scelto."
+
+  Write-Host "Uso file cookie gia' esportato: $ExistingCookieFile"
+  $CookieFile = (Resolve-Path -LiteralPath $ExistingCookieFile).Path
+} else {
+  if ($CloseBrowser) {
+    Stop-BrowserForCookieExport $Browser
+  }
+
+  Write-Host "Esporto cookie YouTube dal browser..."
+
+  $testVideoUrl = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+  $ytDlpArgs = @(
+    "--cookies-from-browser",
+    $Browser,
+    "--cookies",
+    $CookieFile,
+    "--simulate",
+    $testVideoUrl
+  )
+
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    $ytDlpOutput = & $ytDlpCommand @ytDlpArgs 2>&1
+    $ytDlpExitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+
+  $ytDlpOutput | ForEach-Object { Write-Host $_ }
+  if ($ytDlpExitCode -ne 0) {
+    $outputText = $ytDlpOutput -join "`n"
+    if ($outputText -match "Could not copy .*cookie database") {
+      Stop-WithMessage "Chrome/Edge sta bloccando il database cookie. Rilancia con -CloseBrowser oppure chiudi completamente il browser e riprova."
+    }
+    if ($outputText -match "Failed to decrypt with DPAPI") {
+      Stop-WithMessage "Windows non ha permesso a yt-dlp di decifrare i cookie Chrome. Prova prima -Browser edge, poi -Browser firefox. Se fallisce ancora, esporta cookies.txt con l'estensione e rilancia con -ExistingCookieFile."
+    }
+    Stop-WithMessage "Export cookie non riuscito. Verifica di essere loggato su YouTube nello stesso browser scelto."
+  }
 }
 
 if (-not (Test-Path -LiteralPath $CookieFile)) {
@@ -192,7 +212,7 @@ try {
     $password = $null
   }
 
-  if (-not $KeepFile -and (Test-Path -LiteralPath $CookieFile)) {
+  if (-not $ExistingCookieFile -and -not $KeepFile -and (Test-Path -LiteralPath $CookieFile)) {
     Remove-Item -LiteralPath $CookieFile -Force -ErrorAction SilentlyContinue
   }
 }
