@@ -178,6 +178,7 @@ Variabili principali:
 | `CLEARWAVE_YTDL_PATH` | Binario `yt-dlp` usato dal hook YouTube di `mpv`. |
 | `CLEARWAVE_YTDL_FORMAT` | Formato richiesto a YouTube; default audio-only per Raspberry. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | File cookie YouTube Netscape dentro al container, opzionale per video che richiedono login/conferma eta. |
+| `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | Massimo di tracce YouTube/login ricontrollate dal pulsante admin in un giro, default `80`. |
 | `CLEARWAVE_MPV_MSG_LEVEL` | Livello log `mpv`, default `all=warn,ytdl_hook=info` per vedere avvisi e risoluzione YouTube. |
 | `JAMENDO_CLIENT_ID` | Discovery/import Jamendo. |
 | `YOUTUBE_API_KEY` | Discovery/import canali YouTube whitelist. |
@@ -221,6 +222,8 @@ docker compose up -d --force-recreate
 ```
 
 Il file `data/youtube-cookies.txt` non va mai committato: contiene una sessione privata.
+
+Dal pannello admin puoi poi usare `Ricontrolla login YouTube`. Il backend legge gli ultimi report in `data/reports`, prende solo le tracce con motivo `youtube-age-or-login`, le ricontrolla con i cookie configurati e aggiorna `data/audio-replacement-list.json` con le tracce da sostituire se anche il ricontrollo fallisce.
 
 ## Dati persistenti
 

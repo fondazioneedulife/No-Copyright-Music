@@ -44,6 +44,7 @@ Moduli backend estratti:
 | Modulo | Ruolo |
 | --- | --- |
 | `lib/audio-check-service.js` | Configura, schedula e monitora il check automatico del catalogo audio. |
+| `lib/audio-replacement-service.js` | Ricontrolla gli errori YouTube/login e mantiene la lista runtime delle tracce da sostituire. |
 | `lib/auth-service.js` | SQLite utenti, hash password, token sessione, ruoli admin/user e cambio password. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione server-side di `GET /api/tracks`. |
 

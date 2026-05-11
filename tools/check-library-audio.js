@@ -52,6 +52,8 @@ function parseArgs(argv) {
     ytdlPath: DEFAULT_YTDL_PATH,
     ytdlFormat: DEFAULT_YTDL_FORMAT,
     ytdlCookiesFile: DEFAULT_YTDL_COOKIES_FILE,
+    ids: [],
+    idSet: new Set(),
     verbose: false,
     onlyErrors: false,
     csv: true,
@@ -121,6 +123,12 @@ function parseArgs(argv) {
       case "ytdl-cookies":
         options.ytdlCookiesFile = nextValue();
         break;
+      case "ids":
+        options.ids = nextValue()
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean);
+        break;
       case "verbose":
         options.verbose = true;
         break;
@@ -158,6 +166,7 @@ function parseArgs(argv) {
       .map((entry) => entry.trim().toLowerCase())
       .filter(Boolean)
   );
+  options.idSet = new Set(options.ids);
   return options;
 }
 
@@ -187,6 +196,7 @@ Opzioni utili:
   --timeout-ms 30000
   --sample-seconds 6
   --ytdl-cookies /app/data/youtube-cookies.txt
+  --ids track-a,track-b
   --only-errors
   --fail-on-broken
 `);
@@ -678,6 +688,7 @@ async function runChecks(tracks, options) {
   const selected = tracks
     .map((track, index) => ({ track, index, provider: providerForTrack(track) }))
     .filter((entry) => providerAllowed(entry.provider, options.providerSet))
+    .filter((entry) => options.idSet.size === 0 || options.idSet.has(firstString(entry.track.id)))
     .slice(options.offset, options.limit ? options.offset + options.limit : undefined);
 
   const results = new Array(selected.length);
@@ -747,6 +758,7 @@ async function main() {
       ytdlFormat: options.ytdlFormat,
       ytdlCookiesConfigured: Boolean(options.ytdlCookiesFile),
       ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable(options)),
+      ids: options.ids,
     },
     results,
   };

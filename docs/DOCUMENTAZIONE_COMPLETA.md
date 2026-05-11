@@ -696,6 +696,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `DELETE` | `/api/users/:username` | Elimina utente. |
 | `POST` | `/api/users/:username/reset-password` | Reset password. |
 | `GET` | `/api/admin/diagnostics` | Diagnostica Raspberry. |
+| `POST` | `/api/admin/audio-check/youtube-login-recheck` | Ricontrollo mirato errori YouTube/login e lista tracce da sostituire. |
 | `POST` | `/api/admin/youtube-import-state/reset` | Reset cursori YouTube. |
 | `GET` | `/api/admin/export/catalog.json` | Backup catalogo JSON. |
 | `POST` | `/api/admin/import/catalog-backup` | Ripristino catalogo da backup JSON. |
@@ -710,6 +711,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | --- | --- |
 | `server.js` | Router HTTP, API, storage, import, player, export. |
 | `lib/audio-check-service.js` | Check automatico catalogo audio: configurazione, schedule, stato diagnostica. |
+| `lib/audio-replacement-service.js` | Ricontrollo mirato degli errori YouTube/login e lista tracce da sostituire. |
 | `lib/auth-service.js` | SQLite utenti, password, token, ruoli. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione catalogo. |
 

@@ -516,6 +516,30 @@ Risposta:
 Solo admin. Restituisce diagnostica runtime per Raspberry/audio: versione Node, revisione runtime, configurazione player, stato mpv corrente, versioni `mpv`/`yt-dlp`, device ALSA, risultati del preflight audio e stato del check automatico catalogo.
 Non espone valori segreti delle API: indica solo se le chiavi principali sono configurate.
 La risposta include anche gli ultimi eventi del player, utili per capire se una traccia e' partita, e' stata sostituita da un comando nuovo o e' terminata correttamente.
+Include anche `replacementList`, cioe' la lista runtime delle tracce da sostituire generata dai ricontrolli audio.
+
+### `POST /api/admin/audio-check/youtube-login-recheck`
+
+Solo admin. Legge gli ultimi report audio in `data/reports`, seleziona le tracce YouTube con errore `youtube-age-or-login`, le ricontrolla con `yt-dlp`/`mpv` e con `CLEARWAVE_YTDL_COOKIES_FILE` se configurato, poi aggiorna `data/audio-replacement-list.json`.
+
+Risposta:
+
+```json
+{
+  "ok": true,
+  "message": "Ricontrollo completato: 2 tracce da sostituire.",
+  "candidates": 5,
+  "checked": 5,
+  "reportJson": "library-audio-check-2026-05-11T10-00-00-000Z.json",
+  "replacementList": {
+    "summary": {
+      "replaceCount": 2,
+      "waitingForCookies": 0
+    },
+    "items": []
+  }
+}
+```
 
 ### `GET /api/admin/export/catalog.json`
 

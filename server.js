@@ -6,6 +6,7 @@ const fsSync = require("node:fs");
 const fs = require("node:fs/promises");
 const { spawn } = require("node:child_process");
 const { createAutomaticAudioCheckService } = require("./lib/audio-check-service");
+const { createAudioReplacementService } = require("./lib/audio-replacement-service");
 const { createAuthService } = require("./lib/auth-service");
 const { catalogPageResponse } = require("./lib/catalog-page");
 
@@ -25,6 +26,8 @@ const LICENSES_DIR = path.join(UPLOADS_DIR, "licenses");
 const LIBRARY_FILE = path.join(DATA_DIR, "library.json");
 const AUTH_DB_FILE = path.join(DATA_DIR, "clearwave-auth.sqlite");
 const YOUTUBE_IMPORT_STATE_FILE = path.join(DATA_DIR, "youtube-import-state.json");
+const AUDIO_REPLACEMENT_FILE = path.join(DATA_DIR, "audio-replacement-list.json");
+const AUDIO_CHECK_REPORTS_DIR = process.env.CLEARWAVE_AUDIO_CHECK_REPORT_DIR || path.join(DATA_DIR, "reports");
 const publicFiles = new Set(["/index.html", "/styles.css", "/app.js"]);
 const SERVER_RUNTIME_REVISION = "raspberry-audio-queue-2026-04-29";
 
@@ -88,6 +91,18 @@ const automaticAudioCheck = createAutomaticAudioCheckService({
   rootDir: ROOT_DIR,
   dataDir: DATA_DIR,
   uploadsDir: UPLOADS_DIR,
+});
+const audioReplacementService = createAudioReplacementService({
+  rootDir: ROOT_DIR,
+  dataDir: DATA_DIR,
+  reportsDir: AUDIO_CHECK_REPORTS_DIR,
+  replacementFile: AUDIO_REPLACEMENT_FILE,
+  readLibrary,
+  getYtdlCookiesFile: ytdlCookiesFileIfAvailable,
+  getLastPlayerFailure: () => ({
+    track: serverPlayer.lastFailedTrack,
+    error: serverPlayer.lastError,
+  }),
 });
 const {
   authUserFromRequest,
@@ -4802,6 +4817,7 @@ async function buildServerDiagnostics() {
     },
     player: serverPlayerStatus(),
     audioCheck: automaticAudioCheck.status(),
+    replacementList: await audioReplacementService.readList(),
     audioConfigs: audioConfigs.map((config) => ({
       label: config.label,
       args: config.args,
@@ -6048,6 +6064,13 @@ async function requestHandler(req, res) {
     if (req.method === "GET" && pathname === "/api/admin/diagnostics") {
       requireAdminRequest(req);
       json(res, 200, { diagnostics: await buildServerDiagnostics() });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/admin/audio-check/youtube-login-recheck") {
+      requireAdminRequest(req);
+      const result = await audioReplacementService.recheckYouTubeLoginFailures();
+      json(res, 200, { ...result, diagnostics: await buildServerDiagnostics() });
       return;
     }
 

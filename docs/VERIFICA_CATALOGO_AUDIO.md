@@ -127,3 +127,4 @@ Il JSON contiene:
 - `probe` verifica l'avvio reale, non ascolta tutta la canzone fino alla fine. Se vuoi essere piu' severo aumenta `--sample-seconds`.
 - Per Jamendo lo script prova a ottenere un link fresco quando `JAMENDO_CLIENT_ID` e' configurato.
 - Il report non cancella automaticamente le tracce rotte: prima controlla gli errori, poi decidi cosa rimuovere o reimportare.
+- Dal pannello admin puoi usare `Ricontrolla login YouTube`: legge gli ultimi report, ricontrolla solo le tracce `youtube-age-or-login` e aggiorna `data/audio-replacement-list.json` con le tracce da sostituire.

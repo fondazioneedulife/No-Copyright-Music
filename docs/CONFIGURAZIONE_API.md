@@ -53,6 +53,7 @@ npm start
 | `CLEARWAVE_AUDIO_PREFLIGHT_TIMEOUT_MS` | `server.js` | Timeout del probe audio ALSA, default `2500`. |
 | `ALSA_CARD` | Docker/Raspberry | Scheda audio ALSA opzionale. Se vuota usa il default ALSA del Raspberry. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | `server.js` | File cookie YouTube Netscape nel container, opzionale per video con login/conferma eta. |
+| `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | `lib/audio-replacement-service.js` | Numero massimo di tracce YouTube/login ricontrollate dal pulsante admin, default `80`. |
 | `CLEARWAVE_MPV_MSG_LEVEL` | `server.js` | Livello log passato a `mpv`, default `all=warn,ytdl_hook=info`. |
 | `PORT` | `server.js` | Porta del server, default `3000`. |
 

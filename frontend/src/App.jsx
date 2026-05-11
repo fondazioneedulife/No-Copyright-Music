@@ -23,6 +23,7 @@ import {
   pauseServerTrack,
   playServerTrack,
   readStoredToken,
+  recheckYouTubeLoginFailures,
   resetUserPassword,
   resetYouTubeImportState,
   searchDiscovery,
@@ -867,6 +868,23 @@ export default function App() {
     return payload.diagnostics || null;
   }
 
+  async function handleRecheckYouTubeLoginFailures() {
+    try {
+      const payload = await recheckYouTubeLoginFailures(token);
+      setAdminStatusType("success");
+      setAdminStatus(
+        `${payload.message || "Ricontrollo YouTube completato"}${
+          payload.reportJson ? ` Report: ${payload.reportJson}.` : ""
+        }`
+      );
+      return payload;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Ricontrollo YouTube non riuscito.");
+      throw error;
+    }
+  }
+
   async function handleExportCatalogBackup() {
     try {
       const file = await exportCatalogBackup(token);
@@ -1487,6 +1505,7 @@ export default function App() {
                       onResetUserPassword={handleResetUserPassword}
                       onResetYouTubeImportState={handleResetYouTubeImportState}
                       onLoadDiagnostics={handleLoadAdminDiagnostics}
+                      onRecheckYouTubeLoginFailures={handleRecheckYouTubeLoginFailures}
                       onExportCatalogBackup={handleExportCatalogBackup}
                       onExportLicenseReport={handleExportLicenseReport}
                       onExportLicenseReportHtml={handleExportLicenseReportHtml}

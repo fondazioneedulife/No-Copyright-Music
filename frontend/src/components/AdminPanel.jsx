@@ -98,6 +98,7 @@ export function AdminPanel({
   onResetUserPassword,
   onResetYouTubeImportState,
   onLoadDiagnostics,
+  onRecheckYouTubeLoginFailures,
   onExportCatalogBackup,
   onExportLicenseReport,
   onExportLicenseReportHtml,
@@ -117,6 +118,7 @@ export function AdminPanel({
   const [diagnosticsStatus, setDiagnosticsStatus] = useState("");
   const [diagnosticsStatusType, setDiagnosticsStatusType] = useState("success");
   const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
+  const [recheckingYouTubeLogin, setRecheckingYouTubeLogin] = useState(false);
   const [exporting, setExporting] = useState("");
   const [importingBackup, setImportingBackup] = useState(false);
 
@@ -195,6 +197,29 @@ export function AdminPanel({
     }
   }
 
+  async function handleRecheckYouTubeLoginFailures() {
+    if (!onRecheckYouTubeLoginFailures) {
+      return;
+    }
+
+    setRecheckingYouTubeLogin(true);
+    setDiagnosticsStatusType("success");
+    setDiagnosticsStatus("Ricontrollo tracce YouTube con errore login in corso...");
+    try {
+      const payload = await onRecheckYouTubeLoginFailures();
+      if (payload.diagnostics) {
+        setDiagnostics(payload.diagnostics);
+      }
+      setDiagnosticsStatusType("success");
+      setDiagnosticsStatus(payload.message || "Ricontrollo completato.");
+    } catch (error) {
+      setDiagnosticsStatusType("error");
+      setDiagnosticsStatus(error.message || "Ricontrollo non riuscito.");
+    } finally {
+      setRecheckingYouTubeLogin(false);
+    }
+  }
+
   async function handleExport(type, action) {
     setExporting(type);
     try {
@@ -234,6 +259,8 @@ export function AdminPanel({
         ["aplay -l", diagnostics.alsa?.listDevices],
       ]
     : [];
+  const replacementList = diagnostics?.replacementList || null;
+  const replacementItems = Array.isArray(replacementList?.items) ? replacementList.items : [];
 
   return (
     <section className="panel admin-panel">
@@ -365,9 +392,19 @@ export function AdminPanel({
               <h3>Diagnostica audio/server</h3>
               <p>Controlla mpv, yt-dlp, ALSA, configurazione player e ultimo errore noto.</p>
             </div>
-            <button type="button" onClick={handleLoadDiagnostics} disabled={loadingDiagnostics}>
-              {loadingDiagnostics ? "Controllo..." : "Aggiorna diagnostica"}
-            </button>
+            <div className="admin-tool-actions">
+              <button type="button" onClick={handleLoadDiagnostics} disabled={loadingDiagnostics}>
+                {loadingDiagnostics ? "Controllo..." : "Aggiorna diagnostica"}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleRecheckYouTubeLoginFailures}
+                disabled={recheckingYouTubeLogin}
+              >
+                {recheckingYouTubeLogin ? "Ricontrollo..." : "Ricontrolla login YouTube"}
+              </button>
+            </div>
           </div>
 
           {diagnosticsStatus ? (
@@ -460,6 +497,29 @@ export function AdminPanel({
                   <span className={entry.ok ? "is-ok" : "is-error"}>{entry.ok ? "OK" : "NO"}</span>
                   <strong>{entry.label}</strong>
                   <small>{entry.message || entry.args?.join(" ") || "Device apribile"}</small>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {replacementList ? (
+            <div className="diagnostic-events">
+              <p className="eyebrow">Tracce da sostituire</p>
+              <div>
+                <strong>{replacementList.summary?.replaceCount ?? replacementItems.length} candidate</strong>
+                <span>
+                  Controllate {replacementList.summary?.checked ?? 0}
+                  {replacementList.summary?.waitingForCookies
+                    ? `, ${replacementList.summary.waitingForCookies} ancora in attesa cookie`
+                    : ""}
+                </span>
+                <small>{replacementList.updatedAt || "Nessun ricontrollo eseguito"}</small>
+              </div>
+              {replacementItems.slice(0, 12).map((item) => (
+                <div key={`${item.id}-${item.checkedAt}`}>
+                  <strong>{item.title}</strong>
+                  <span>{item.reason}</span>
+                  <small>{item.message}</small>
                 </div>
               ))}
             </div>

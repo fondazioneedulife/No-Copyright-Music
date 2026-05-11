@@ -270,6 +270,13 @@ export function fetchAdminDiagnostics(token) {
   return apiRequest("/api/admin/diagnostics", { token });
 }
 
+export function recheckYouTubeLoginFailures(token) {
+  return apiRequest("/api/admin/audio-check/youtube-login-recheck", {
+    method: "POST",
+    token,
+  });
+}
+
 export function resetYouTubeImportState(token) {
   return apiRequest("/api/admin/youtube-import-state/reset", {
     method: "POST",
