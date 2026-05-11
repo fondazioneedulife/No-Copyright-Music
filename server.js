@@ -28,6 +28,7 @@ const AUTH_DB_FILE = path.join(DATA_DIR, "clearwave-auth.sqlite");
 const YOUTUBE_IMPORT_STATE_FILE = path.join(DATA_DIR, "youtube-import-state.json");
 const AUDIO_REPLACEMENT_FILE = path.join(DATA_DIR, "audio-replacement-list.json");
 const AUDIO_CHECK_REPORTS_DIR = process.env.CLEARWAVE_AUDIO_CHECK_REPORT_DIR || path.join(DATA_DIR, "reports");
+const DEFAULT_YTDL_COOKIES_FILE = path.join(DATA_DIR, "youtube-cookies.txt");
 const publicFiles = new Set(["/index.html", "/styles.css", "/app.js"]);
 const SERVER_RUNTIME_REVISION = "raspberry-audio-queue-2026-04-29";
 
@@ -45,7 +46,8 @@ const serverPlayerYtdlPath = String(process.env.CLEARWAVE_YTDL_PATH || "/usr/bin
 const serverPlayerYtdlFormat = String(
   process.env.CLEARWAVE_YTDL_FORMAT || "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
 ).trim();
-const serverPlayerYtdlCookiesFile = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
+const serverPlayerYtdlCookiesFileFromEnv = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
+const serverPlayerYtdlCookiesFile = serverPlayerYtdlCookiesFileFromEnv || DEFAULT_YTDL_COOKIES_FILE;
 const serverPlayerMpvMsgLevel = String(process.env.CLEARWAVE_MPV_MSG_LEVEL || "all=warn,ytdl_hook=info").trim();
 const serverPlayerAudioPreflight = process.env.CLEARWAVE_AUDIO_PREFLIGHT !== "0";
 const serverPlayerAudioPreflightTimeoutMs = Math.max(
@@ -3316,11 +3318,97 @@ function ytDlpCommand() {
   return firstString(serverPlayerYtdlPath, "yt-dlp");
 }
 
+function ytdlCookiesConfigured() {
+  // Se l'env non e' impostato, il Raspberry usa automaticamente data/youtube-cookies.txt quando esiste.
+  return Boolean(serverPlayerYtdlCookiesFileFromEnv || fsSync.existsSync(DEFAULT_YTDL_COOKIES_FILE));
+}
+
 function ytdlCookiesFileIfAvailable() {
-  if (!serverPlayerYtdlCookiesFile) {
-    return "";
-  }
   return fsSync.existsSync(serverPlayerYtdlCookiesFile) ? serverPlayerYtdlCookiesFile : "";
+}
+
+function ytdlCookieStatus() {
+  const availableFile = ytdlCookiesFileIfAvailable();
+  return {
+    configured: ytdlCookiesConfigured(),
+    available: Boolean(availableFile),
+    path: serverPlayerYtdlCookiesFile,
+    source: serverPlayerYtdlCookiesFileFromEnv ? "env" : "default",
+  };
+}
+
+function ytdlCookiesUploadTargetFile() {
+  const dataRoot = path.resolve(DATA_DIR);
+  const targetFile = path.resolve(serverPlayerYtdlCookiesFile || DEFAULT_YTDL_COOKIES_FILE);
+  if (targetFile !== dataRoot && !targetFile.startsWith(`${dataRoot}${path.sep}`)) {
+    throw httpError(
+      400,
+      "Il percorso cookie configurato non e' dentro la cartella data. Copia il file manualmente o usa /app/data/youtube-cookies.txt."
+    );
+  }
+  return targetFile;
+}
+
+function normalizeUploadedYtdlCookies(rawText) {
+  const text = String(rawText || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+  const byteLength = Buffer.byteLength(text, "utf8");
+
+  if (!text) {
+    throw httpError(400, "File cookie vuoto.");
+  }
+
+  if (byteLength > 8 * 1024 * 1024) {
+    throw httpError(413, "File cookie troppo grande.");
+  }
+
+  const hasYouTubeCookie = text.split("\n").some((line) => {
+    const cleanLine = line.trim();
+    if (!cleanLine) {
+      return false;
+    }
+
+    const cookieLine = cleanLine.startsWith("#HttpOnly_") ? cleanLine.slice("#HttpOnly_".length) : cleanLine;
+    if (cookieLine.startsWith("#")) {
+      return false;
+    }
+
+    const columns = cookieLine.split("\t");
+    if (columns.length < 7) {
+      return false;
+    }
+
+    return /(^|\.)youtube\.com$|(^|\.)google\.com$|(^|\.)youtube-nocookie\.com$/i.test(columns[0].trim());
+  });
+
+  if (!hasYouTubeCookie) {
+    throw httpError(
+      400,
+      "Il file deve essere un cookies.txt Netscape e contenere cookie YouTube/Google esportati da una sessione autorizzata."
+    );
+  }
+
+  return `${text}\n`;
+}
+
+async function installYtdlCookies(payload = {}) {
+  // Salva il cookies.txt nel volume data: il contenuto non viene mai loggato o restituito alla UI.
+  const normalized = normalizeUploadedYtdlCookies(payload.cookiesText);
+  const targetFile = ytdlCookiesUploadTargetFile();
+  await fs.mkdir(path.dirname(targetFile), { recursive: true });
+  const tempFile = `${targetFile}.tmp-${process.pid}-${Date.now()}`;
+  await fs.writeFile(tempFile, normalized, { mode: 0o600 });
+  try {
+    await fs.chmod(tempFile, 0o600);
+  } catch {
+    // chmod non e' disponibile su tutti i filesystem Windows, Docker lo gestisce su Linux.
+  }
+  await fs.rename(tempFile, targetFile);
+
+  return {
+    ok: true,
+    message: "Cookie YouTube installati. Il prossimo play usa la sessione autorizzata.",
+    cookies: ytdlCookieStatus(),
+  };
 }
 
 function appendYtDlpCookieArgs(args) {
@@ -4677,7 +4765,7 @@ function serverPlayerStatus() {
     lastFailedTrack: serverPlayer.lastFailedTrack,
     ytdlFormat: serverPlayerYtdlFormat,
     ytdlPath: serverPlayerYtdlPath,
-    ytdlCookiesConfigured: Boolean(serverPlayerYtdlCookiesFile),
+    ytdlCookiesConfigured: ytdlCookiesConfigured(),
     ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable()),
     mpvMsgLevel: serverPlayerMpvMsgLevel,
     events: serverPlayer.events.slice(0, 20),
@@ -4764,6 +4852,7 @@ async function readDiagnosticTextFile(filePath) {
 async function buildServerDiagnostics() {
   const audioConfigs = serverPlayerAudioConfigs();
   const preflightResults = [];
+  const cookies = ytdlCookieStatus();
 
   for (const config of audioConfigs) {
     const result = await runServerPlayerAudioPreflight(config);
@@ -4809,8 +4898,10 @@ async function buildServerDiagnostics() {
       serverVolumeMax: serverPlayerVolumeMax,
       ytdlPath: serverPlayerYtdlPath,
       ytdlFormat: serverPlayerYtdlFormat,
-      ytdlCookiesConfigured: Boolean(serverPlayerYtdlCookiesFile),
-      ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable()),
+      ytdlCookiesConfigured: cookies.configured,
+      ytdlCookiesAvailable: cookies.available,
+      ytdlCookiesPath: cookies.path,
+      ytdlCookiesSource: cookies.source,
       mpvMsgLevel: serverPlayerMpvMsgLevel,
       hasYouTubeApiKey: Boolean(youtubeApiKey),
       hasJamendoClientId: Boolean(jamendoClientId),
@@ -5129,7 +5220,7 @@ function serverPlayerFriendlyError(message) {
   }
 
   if (isYouTubeAuthChallengeMessage(text)) {
-    if (serverPlayerYtdlCookiesFile && !ytdlCookiesFileIfAvailable()) {
+    if (ytdlCookiesConfigured() && !ytdlCookiesFileIfAvailable()) {
       return "Cookie YouTube non trovato nel container: traccia saltata.";
     }
     return "YouTube login/bot: traccia saltata. Configura cookie o sostituiscila.";
@@ -6088,6 +6179,14 @@ async function requestHandler(req, res) {
       return;
     }
 
+    if (req.method === "POST" && pathname === "/api/admin/youtube-cookies") {
+      requireAdminRequest(req);
+      const payload = await readJsonBody(req);
+      const result = await installYtdlCookies(payload);
+      json(res, 200, { ...result, diagnostics: await buildServerDiagnostics() });
+      return;
+    }
+
     if (req.method === "POST" && pathname === "/api/admin/youtube-import-state/reset") {
       requireAdminRequest(req);
       json(res, 200, await resetYouTubeImportState());
@@ -6338,6 +6437,7 @@ if (require.main === module) {
   ensureStorage()
     .then(() => {
       createAppServer().listen(port, () => {
+        const cookies = ytdlCookieStatus();
         console.log(`ClearWave Library attiva su http://localhost:${port}`);
         console.log(
           `[server-player] Runtime ${SERVER_RUNTIME_REVISION}: queue=on, preflight=${
@@ -6347,6 +6447,15 @@ if (require.main === module) {
           }, fallback=${serverPlayerAudioConfigs()
             .map((config) => config.label)
             .join(" -> ")}`
+        );
+        console.log(
+          `[server-player] Cookie YouTube: ${
+            cookies.available
+              ? `attivi (${cookies.source})`
+              : cookies.configured
+                ? `configurati ma non leggibili: ${cookies.path}`
+                : `non configurati, percorso automatico: ${DEFAULT_YTDL_COOKIES_FILE}`
+          }`
         );
 
         if (process.env.CLEARWAVE_AUTO_EXPAND === "1") {

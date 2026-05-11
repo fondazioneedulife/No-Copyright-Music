@@ -43,6 +43,8 @@ function diagnosticHealthChecks(diagnostics) {
 
   const preflight = Array.isArray(diagnostics.audioPreflight) ? diagnostics.audioPreflight : [];
   const audioOk = preflight.length === 0 || preflight.some((entry) => entry.ok);
+  const youtubeCookiesAvailable = Boolean(diagnostics.config?.ytdlCookiesAvailable);
+  const youtubeCookiesConfigured = Boolean(diagnostics.config?.ytdlCookiesConfigured);
   return [
     {
       label: "Backend",
@@ -68,6 +70,15 @@ function diagnosticHealthChecks(diagnostics) {
       label: "YouTube API",
       ok: Boolean(diagnostics.config?.hasYouTubeApiKey),
       detail: diagnostics.config?.hasYouTubeApiKey ? "Configurata" : "Non configurata",
+    },
+    {
+      label: "Cookie YouTube",
+      ok: youtubeCookiesAvailable,
+      detail: youtubeCookiesAvailable
+        ? "Attivi"
+        : youtubeCookiesConfigured
+          ? "File configurato ma non leggibile"
+          : "Carica cookies.txt",
     },
     {
       label: "Jamendo",
@@ -99,6 +110,7 @@ export function AdminPanel({
   onResetYouTubeImportState,
   onLoadDiagnostics,
   onRecheckYouTubeLoginFailures,
+  onUploadYouTubeCookies,
   onExportCatalogBackup,
   onExportLicenseReport,
   onExportLicenseReportHtml,
@@ -119,6 +131,7 @@ export function AdminPanel({
   const [diagnosticsStatusType, setDiagnosticsStatusType] = useState("success");
   const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
   const [recheckingYouTubeLogin, setRecheckingYouTubeLogin] = useState(false);
+  const [uploadingYouTubeCookies, setUploadingYouTubeCookies] = useState(false);
   const [exporting, setExporting] = useState("");
   const [importingBackup, setImportingBackup] = useState(false);
 
@@ -217,6 +230,31 @@ export function AdminPanel({
       setDiagnosticsStatus(error.message || "Ricontrollo non riuscito.");
     } finally {
       setRecheckingYouTubeLogin(false);
+    }
+  }
+
+  async function handleUploadYouTubeCookiesFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !onUploadYouTubeCookies) {
+      return;
+    }
+
+    setUploadingYouTubeCookies(true);
+    setDiagnosticsStatusType("success");
+    setDiagnosticsStatus("Installazione cookie YouTube in corso...");
+    try {
+      const payload = await onUploadYouTubeCookies(await file.text());
+      if (payload.diagnostics) {
+        setDiagnostics(payload.diagnostics);
+      }
+      setDiagnosticsStatusType("success");
+      setDiagnosticsStatus(payload.message || "Cookie YouTube installati.");
+    } catch (error) {
+      setDiagnosticsStatusType("error");
+      setDiagnosticsStatus(error.message || "Cookie YouTube non validi.");
+    } finally {
+      setUploadingYouTubeCookies(false);
     }
   }
 
@@ -404,6 +442,15 @@ export function AdminPanel({
               >
                 {recheckingYouTubeLogin ? "Ricontrollo..." : "Ricontrolla login YouTube"}
               </button>
+              <label className={`file-button ${uploadingYouTubeCookies ? "is-disabled" : ""}`}>
+                {uploadingYouTubeCookies ? "Carico..." : "Carica cookies.txt"}
+                <input
+                  type="file"
+                  accept=".txt,text/plain"
+                  disabled={uploadingYouTubeCookies}
+                  onChange={handleUploadYouTubeCookiesFile}
+                />
+              </label>
             </div>
           </div>
 
@@ -470,9 +517,11 @@ export function AdminPanel({
                       : "Non configurati"}
                 </strong>
                 <small>
-                  {diagnostics.config?.ytdlCookiesConfigured
-                    ? "Percorso cookie yt-dlp configurato"
-                    : "Nessun percorso cookie yt-dlp"}
+                  {diagnostics.config?.ytdlCookiesAvailable
+                    ? `${diagnostics.config?.ytdlCookiesSource || "file"} | ${diagnostics.config?.ytdlCookiesPath || ""}`
+                    : diagnostics.config?.ytdlCookiesConfigured
+                      ? `Non leggibile: ${diagnostics.config?.ytdlCookiesPath || "percorso mancante"}`
+                      : `Auto: ${diagnostics.config?.ytdlCookiesPath || "data/youtube-cookies.txt"}`}
                 </small>
               </div>
             </div>

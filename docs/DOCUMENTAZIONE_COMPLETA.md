@@ -627,7 +627,7 @@ Variabili principali:
 | `ALSA_CARD` | vuoto | Scheda ALSA preferita. |
 | `CLEARWAVE_YTDL_PATH` | `/usr/bin/yt-dlp` | Binario yt-dlp. |
 | `CLEARWAVE_YTDL_FORMAT` | audio-only | Formato YouTube richiesto. |
-| `CLEARWAVE_YTDL_COOKIES_FILE` | vuoto | File cookie YouTube Netscape nel container, opzionale per video con login/conferma eta. |
+| `CLEARWAVE_YTDL_COOKIES_FILE` | vuoto | File cookie YouTube Netscape nel container. Se vuoto, ClearWave usa automaticamente `/app/data/youtube-cookies.txt` quando esiste. |
 | `CLEARWAVE_MPV_MSG_LEVEL` | `all=warn,ytdl_hook=info` | Verbosita' log mpv. |
 | `CLEARWAVE_UPDATE_YTDLP_ON_START` | `1` | Aggiorna yt-dlp all'avvio. |
 | `JAMENDO_CLIENT_ID` | vuoto | Import Jamendo. |
@@ -697,6 +697,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `POST` | `/api/users/:username/reset-password` | Reset password. |
 | `GET` | `/api/admin/diagnostics` | Diagnostica Raspberry. |
 | `POST` | `/api/admin/audio-check/youtube-login-recheck` | Ricontrollo mirato errori YouTube/login e lista tracce da sostituire. |
+| `POST` | `/api/admin/youtube-cookies` | Upload admin di `cookies.txt` Netscape in `data/youtube-cookies.txt`, senza restituire il contenuto del file. |
 | `POST` | `/api/admin/youtube-import-state/reset` | Reset cursori YouTube. |
 | `GET` | `/api/admin/export/catalog.json` | Backup catalogo JSON. |
 | `POST` | `/api/admin/import/catalog-backup` | Ripristino catalogo da backup JSON. |

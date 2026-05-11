@@ -277,6 +277,14 @@ export function recheckYouTubeLoginFailures(token) {
   });
 }
 
+export function uploadYouTubeCookies(token, cookiesText) {
+  return apiRequest("/api/admin/youtube-cookies", {
+    method: "POST",
+    token,
+    body: { cookiesText },
+  });
+}
+
 export function resetYouTubeImportState(token) {
   return apiRequest("/api/admin/youtube-import-state/reset", {
     method: "POST",

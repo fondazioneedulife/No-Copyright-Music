@@ -199,7 +199,16 @@ Use --cookies-from-browser or --cookies
 
 ClearWave non aggira il controllo: puo' usare un file cookie esportato da un account YouTube autorizzato, se l'uso e' consentito dalle policy del servizio e dal progetto.
 
-Procedura consigliata:
+Procedura consigliata dalla UI:
+
+1. Esporta i cookie YouTube in formato Netscape da un account autorizzato.
+2. Entra come admin in ClearWave.
+3. Apri `Impostazioni` -> `Diagnostica audio/server`.
+4. Usa `Carica cookies.txt`.
+
+Il backend salva il file nel volume persistente `data/youtube-cookies.txt`; nel container il percorso diventa `/app/data/youtube-cookies.txt` e viene usato automaticamente dal prossimo play YouTube.
+
+Procedura manuale via SSH:
 
 ```bash
 # Sul tuo PC esporta i cookie YouTube in formato Netscape e porta il file sul Raspberry.
@@ -208,13 +217,13 @@ cp youtube-cookies.txt ~/No-Copyright-Music/data/youtube-cookies.txt
 chmod 600 ~/No-Copyright-Music/data/youtube-cookies.txt
 ```
 
-Nel `.env` del Raspberry aggiungi:
+Non serve impostare variabili se usi il percorso standard. Nel `.env` del Raspberry aggiungi la variabile solo se vuoi un percorso diverso:
 
 ```bash
 CLEARWAVE_YTDL_COOKIES_FILE=/app/data/youtube-cookies.txt
 ```
 
-Poi ricrea il container:
+Poi ricrea il container solo se hai cambiato `.env`; se hai caricato il file dalla UI basta riprovare la traccia o usare il ricontrollo admin:
 
 ```bash
 docker compose down
@@ -224,7 +233,7 @@ docker compose up -d --force-recreate
 
 Il file `data/youtube-cookies.txt` non va mai committato: contiene una sessione privata.
 
-Dal pannello admin puoi poi usare `Ricontrolla login YouTube`. Il backend legge gli ultimi report in `data/reports`, prende solo le tracce con motivo `youtube-age-or-login`, le ricontrolla con i cookie configurati e aggiorna `data/audio-replacement-list.json` con le tracce da sostituire se anche il ricontrollo fallisce.
+Dal pannello admin puoi poi usare `Ricontrolla login YouTube`. Il backend legge gli ultimi report in `data/reports`, prende solo le tracce con motivo `youtube-age-or-login`, le ricontrolla con i cookie disponibili e aggiorna `data/audio-replacement-list.json` con le tracce da sostituire se anche il ricontrollo fallisce.
 
 ## Dati persistenti
 

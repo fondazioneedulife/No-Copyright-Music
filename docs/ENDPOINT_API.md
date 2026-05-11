@@ -541,6 +541,33 @@ Risposta:
 }
 ```
 
+### `POST /api/admin/youtube-cookies`
+
+Solo admin. Riceve un file `cookies.txt` Netscape esportato da una sessione YouTube autorizzata e lo salva in `data/youtube-cookies.txt`, cioe' il percorso automatico usato dal player Docker/Raspberry. Il backend valida che il testo contenga cookie YouTube/Google, ma non restituisce mai il contenuto del file.
+
+Body:
+
+```json
+{
+  "cookiesText": "# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t..."
+}
+```
+
+Risposta:
+
+```json
+{
+  "ok": true,
+  "message": "Cookie YouTube installati. Il prossimo play usa la sessione autorizzata.",
+  "cookies": {
+    "configured": true,
+    "available": true,
+    "path": "/app/data/youtube-cookies.txt",
+    "source": "default"
+  }
+}
+```
+
 ### `GET /api/admin/export/catalog.json`
 
 Solo admin. Scarica un backup JSON del catalogo permanente.

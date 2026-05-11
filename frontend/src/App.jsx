@@ -32,6 +32,7 @@ import {
   setServerTrackVolume,
   stopServerTrack,
   storeToken,
+  uploadYouTubeCookies,
 } from "./api/client.js";
 import { AdminPanel } from "./components/AdminPanel.jsx";
 import { AuthGate } from "./components/AuthGate.jsx";
@@ -898,6 +899,19 @@ export default function App() {
     }
   }
 
+  async function handleUploadYouTubeCookies(cookiesText) {
+    try {
+      const payload = await uploadYouTubeCookies(token, cookiesText);
+      setAdminStatusType("success");
+      setAdminStatus(payload.message || "Cookie YouTube installati.");
+      return payload;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Installazione cookie YouTube non riuscita.");
+      throw error;
+    }
+  }
+
   async function handleExportCatalogBackup() {
     try {
       const file = await exportCatalogBackup(token);
@@ -1519,6 +1533,7 @@ export default function App() {
                       onResetYouTubeImportState={handleResetYouTubeImportState}
                       onLoadDiagnostics={handleLoadAdminDiagnostics}
                       onRecheckYouTubeLoginFailures={handleRecheckYouTubeLoginFailures}
+                      onUploadYouTubeCookies={handleUploadYouTubeCookies}
                       onExportCatalogBackup={handleExportCatalogBackup}
                       onExportLicenseReport={handleExportLicenseReport}
                       onExportLicenseReportHtml={handleExportLicenseReportHtml}
