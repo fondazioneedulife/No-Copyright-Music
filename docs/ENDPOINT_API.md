@@ -146,6 +146,8 @@ Risposta:
     "lastExitCode": null,
     "lastFailedTrack": null,
     "ytdlPath": "/usr/bin/yt-dlp",
+    "ytdlCookiesConfigured": false,
+    "ytdlCookiesAvailable": false,
     "mpvMsgLevel": "all=warn,ytdl_hook=info"
   }
 }

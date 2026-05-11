@@ -423,6 +423,21 @@ export function AdminPanel({
                   {diagnostics.audioCheck?.config?.intervalHours ?? 0}h
                 </small>
               </div>
+              <div>
+                <span>Cookie YouTube</span>
+                <strong>
+                  {diagnostics.config?.ytdlCookiesAvailable
+                    ? "Attivi"
+                    : diagnostics.config?.ytdlCookiesConfigured
+                      ? "File mancante"
+                      : "Non configurati"}
+                </strong>
+                <small>
+                  {diagnostics.config?.ytdlCookiesConfigured
+                    ? "Percorso cookie yt-dlp configurato"
+                    : "Nessun percorso cookie yt-dlp"}
+                </small>
+              </div>
             </div>
           ) : null}
 

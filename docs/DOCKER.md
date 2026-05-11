@@ -177,6 +177,7 @@ Variabili principali:
 | `ALSA_CARD` | Scheda audio ALSA usata dal container Raspberry. |
 | `CLEARWAVE_YTDL_PATH` | Binario `yt-dlp` usato dal hook YouTube di `mpv`. |
 | `CLEARWAVE_YTDL_FORMAT` | Formato richiesto a YouTube; default audio-only per Raspberry. |
+| `CLEARWAVE_YTDL_COOKIES_FILE` | File cookie YouTube Netscape dentro al container, opzionale per video che richiedono login/conferma eta. |
 | `CLEARWAVE_MPV_MSG_LEVEL` | Livello log `mpv`, default `all=warn,ytdl_hook=info` per vedere avvisi e risoluzione YouTube. |
 | `JAMENDO_CLIENT_ID` | Discovery/import Jamendo. |
 | `YOUTUBE_API_KEY` | Discovery/import canali YouTube whitelist. |
@@ -184,6 +185,42 @@ Variabili principali:
 | `THEAUDIODB_API_KEY` | Metadata TheAudioDB. |
 
 Non inserire chiavi reali nel `Dockerfile` o nel codice.
+
+## YouTube con richiesta login/eta
+
+Alcuni video YouTube richiedono una sessione autenticata anche se sono pubblici. In quel caso nei log puoi vedere:
+
+```text
+Sign in to confirm your age
+Use --cookies-from-browser or --cookies
+```
+
+ClearWave non aggira il controllo: puo' usare un file cookie esportato da un account YouTube autorizzato, se l'uso e' consentito dalle policy del servizio e dal progetto.
+
+Procedura consigliata:
+
+```bash
+# Sul tuo PC esporta i cookie YouTube in formato Netscape e porta il file sul Raspberry.
+# Poi salvalo nel progetto, cartella data:
+cp youtube-cookies.txt ~/No-Copyright-Music/data/youtube-cookies.txt
+chmod 600 ~/No-Copyright-Music/data/youtube-cookies.txt
+```
+
+Nel `.env` del Raspberry aggiungi:
+
+```bash
+CLEARWAVE_YTDL_COOKIES_FILE=/app/data/youtube-cookies.txt
+```
+
+Poi ricrea il container:
+
+```bash
+docker compose down
+docker compose build --no-cache clearwave
+docker compose up -d --force-recreate
+```
+
+Il file `data/youtube-cookies.txt` non va mai committato: contiene una sessione privata.
 
 ## Dati persistenti
 

@@ -45,6 +45,7 @@ set_env CLEARWAVE_AUDIO_OUTPUT alsa
 set_env CLEARWAVE_AUDIO_PREFLIGHT 1
 set_env CLEARWAVE_YTDL_PATH /usr/bin/yt-dlp
 set_env CLEARWAVE_YTDL_FORMAT "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
+set_env CLEARWAVE_YTDL_COOKIES_FILE ""
 set_env CLEARWAVE_MPV_MSG_LEVEL "all=warn,ytdl_hook=info"
 
 # Gain volume server: mantiene lo slider 0..100 ma alza leggermente mpv/ALSA.

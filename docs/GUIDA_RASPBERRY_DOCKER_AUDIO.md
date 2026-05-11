@@ -204,6 +204,7 @@ Per farlo partire da solo, imposta `CLEARWAVE_AUDIO_CHECK_ENABLED=1` nel `.env`:
 | Socket `/tmp/clearwave-mpv-1.sock` senza `tentativo` | Player vecchio | Ricostruisci immagine o verifica che Docker usi la cartella giusta |
 | `Playback open error` / `Unknown error 524` | ALSA non apre quel device | Lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`, poi usa `aplay -l` |
 | `Requested format is not available` | Problema YouTube/formato, non device audio | Verifica `yt-dlp --version` e `CLEARWAVE_YTDL_FORMAT` |
+| `Sign in to confirm your age` | YouTube richiede una sessione autenticata | Esporta cookie YouTube autorizzati e imposta `CLEARWAVE_YTDL_COOKIES_FILE=/app/data/youtube-cookies.txt` |
 | Playlist importata con 1 solo brano | Link radio/mix `RD...` oppure Data API ha visto solo il video corrente | Usa un link `playlist?list=...`; per playlist normali il backend prova anche `yt-dlp` se la API restituisce solo 1 brano |
 | `mpv precedente chiuso per cambio traccia/comando` | Un nuovo play ha sostituito il processo mpv precedente | Non e' un errore finale: vuol dire che React/server hanno cambiato brano o comando prima che il vecchio processo chiudesse |
 | `mpv ha completato "... " correttamente (codice 0)` | La traccia e' finita o mpv ha chiuso normalmente | Non e' un errore. Se succede dopo pochi secondi, controlla durata reale della sorgente o eventuali click/skip dalla UI |

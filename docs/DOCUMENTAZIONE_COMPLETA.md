@@ -627,6 +627,7 @@ Variabili principali:
 | `ALSA_CARD` | vuoto | Scheda ALSA preferita. |
 | `CLEARWAVE_YTDL_PATH` | `/usr/bin/yt-dlp` | Binario yt-dlp. |
 | `CLEARWAVE_YTDL_FORMAT` | audio-only | Formato YouTube richiesto. |
+| `CLEARWAVE_YTDL_COOKIES_FILE` | vuoto | File cookie YouTube Netscape nel container, opzionale per video con login/conferma eta. |
 | `CLEARWAVE_MPV_MSG_LEVEL` | `all=warn,ytdl_hook=info` | Verbosita' log mpv. |
 | `CLEARWAVE_UPDATE_YTDLP_ON_START` | `1` | Aggiorna yt-dlp all'avvio. |
 | `JAMENDO_CLIENT_ID` | vuoto | Import Jamendo. |

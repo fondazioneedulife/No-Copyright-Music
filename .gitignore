@@ -9,6 +9,7 @@ start-local.ps1
 !.env.example
 data/library.json
 data/youtube-import-state.json
+data/*cookies*
 data/*.sqlite
 data/*.sqlite-*
 uploads/audio/*

@@ -42,6 +42,7 @@ const serverPlayerYtdlPath = String(process.env.CLEARWAVE_YTDL_PATH || "/usr/bin
 const serverPlayerYtdlFormat = String(
   process.env.CLEARWAVE_YTDL_FORMAT || "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
 ).trim();
+const serverPlayerYtdlCookiesFile = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
 const serverPlayerMpvMsgLevel = String(process.env.CLEARWAVE_MPV_MSG_LEVEL || "all=warn,ytdl_hook=info").trim();
 const serverPlayerAudioPreflight = process.env.CLEARWAVE_AUDIO_PREFLIGHT !== "0";
 const serverPlayerAudioPreflightTimeoutMs = Math.max(
@@ -3300,6 +3301,21 @@ function ytDlpCommand() {
   return firstString(serverPlayerYtdlPath, "yt-dlp");
 }
 
+function ytdlCookiesFileIfAvailable() {
+  if (!serverPlayerYtdlCookiesFile) {
+    return "";
+  }
+  return fsSync.existsSync(serverPlayerYtdlCookiesFile) ? serverPlayerYtdlCookiesFile : "";
+}
+
+function appendYtDlpCookieArgs(args) {
+  const cookiesFile = ytdlCookiesFileIfAvailable();
+  if (cookiesFile) {
+    args.push("--cookies", cookiesFile);
+  }
+  return args;
+}
+
 function ytDlpPlaylistUrl(playlistId) {
   return `https://www.youtube.com/playlist?list=${encodeURIComponent(playlistId)}`;
 }
@@ -3417,14 +3433,14 @@ async function fetchYouTubeSessionPlaylistWithYtDlp(playlistId, maxTracks) {
   }
 
   const safeLimit = Math.max(1, Math.min(SESSION_IMPORT_MAX_TRACKS, Number(maxTracks) || 300));
-  const payload = await runYtDlpJson([
+  const payload = await runYtDlpJson(appendYtDlpCookieArgs([
     "--flat-playlist",
     "--dump-single-json",
     "--no-warnings",
     "--playlist-end",
     String(safeLimit),
     ytDlpPlaylistUrl(playlistId),
-  ]);
+  ]));
   const entries = Array.isArray(payload.entries) ? payload.entries.filter(Boolean) : [];
   const mapped = entries.map(mapYtDlpSessionEntry).filter(Boolean).slice(0, safeLimit);
 
@@ -4646,6 +4662,8 @@ function serverPlayerStatus() {
     lastFailedTrack: serverPlayer.lastFailedTrack,
     ytdlFormat: serverPlayerYtdlFormat,
     ytdlPath: serverPlayerYtdlPath,
+    ytdlCookiesConfigured: Boolean(serverPlayerYtdlCookiesFile),
+    ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable()),
     mpvMsgLevel: serverPlayerMpvMsgLevel,
     events: serverPlayer.events.slice(0, 20),
     playbackContext: {
@@ -4776,6 +4794,8 @@ async function buildServerDiagnostics() {
       serverVolumeMax: serverPlayerVolumeMax,
       ytdlPath: serverPlayerYtdlPath,
       ytdlFormat: serverPlayerYtdlFormat,
+      ytdlCookiesConfigured: Boolean(serverPlayerYtdlCookiesFile),
+      ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable()),
       mpvMsgLevel: serverPlayerMpvMsgLevel,
       hasYouTubeApiKey: Boolean(youtubeApiKey),
       hasJamendoClientId: Boolean(jamendoClientId),
@@ -5062,6 +5082,11 @@ function serverPlayerYtdlConfig(source) {
     args.push(`--script-opts=ytdl_hook-ytdl_path=${serverPlayerYtdlPath}`);
   }
 
+  const cookiesFile = ytdlCookiesFileIfAvailable();
+  if (cookiesFile) {
+    args.push(`--ytdl-raw-options=cookies=${cookiesFile}`);
+  }
+
   return args;
 }
 
@@ -5082,7 +5107,10 @@ function serverPlayerFriendlyError(message) {
   }
 
   if (/sign in to confirm your age|inappropriate for some users|use --cookies-from-browser|use --cookies/i.test(text)) {
-    return "YouTube richiede login/conferma eta per questo video. ClearWave lo salta automaticamente e passa alla traccia successiva della coda server.";
+    if (serverPlayerYtdlCookiesFile && !ytdlCookiesFileIfAvailable()) {
+      return "YouTube richiede login/conferma eta per questo video, ma CLEARWAVE_YTDL_COOKIES_FILE punta a un file cookie non trovato nel container.";
+    }
+    return "YouTube richiede login/conferma eta per questo video. Configura CLEARWAVE_YTDL_COOKIES_FILE con cookie YouTube validi oppure sostituisci la traccia.";
   }
 
   if (/Unknown error 524|Playback open error|Could not open\/initialize audio device/i.test(text)) {

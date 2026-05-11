@@ -13,6 +13,7 @@ const DEFAULT_SERVER_BASE_URL =
 const DEFAULT_YTDL_PATH = process.env.CLEARWAVE_YTDL_PATH || "/usr/bin/yt-dlp";
 const DEFAULT_YTDL_FORMAT =
   process.env.CLEARWAVE_YTDL_FORMAT || "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best";
+const DEFAULT_YTDL_COOKIES_FILE = process.env.CLEARWAVE_YTDL_COOKIES_FILE || "";
 
 function firstString(...values) {
   for (const value of values) {
@@ -50,6 +51,7 @@ function parseArgs(argv) {
     serverBaseUrl: DEFAULT_SERVER_BASE_URL,
     ytdlPath: DEFAULT_YTDL_PATH,
     ytdlFormat: DEFAULT_YTDL_FORMAT,
+    ytdlCookiesFile: DEFAULT_YTDL_COOKIES_FILE,
     verbose: false,
     onlyErrors: false,
     csv: true,
@@ -116,6 +118,9 @@ function parseArgs(argv) {
       case "ytdl-format":
         options.ytdlFormat = nextValue();
         break;
+      case "ytdl-cookies":
+        options.ytdlCookiesFile = nextValue();
+        break;
       case "verbose":
         options.verbose = true;
         break;
@@ -156,6 +161,11 @@ function parseArgs(argv) {
   return options;
 }
 
+function ytdlCookiesFileIfAvailable(options) {
+  const cookiesFile = String(options.ytdlCookiesFile || "").trim();
+  return cookiesFile && fsSync.existsSync(cookiesFile) ? cookiesFile : "";
+}
+
 function printHelp() {
   console.log(`ClearWave catalog audio check
 
@@ -176,6 +186,7 @@ Opzioni utili:
   --concurrency 1..8
   --timeout-ms 30000
   --sample-seconds 6
+  --ytdl-cookies /app/data/youtube-cookies.txt
   --only-errors
   --fail-on-broken
 `);
@@ -458,6 +469,10 @@ async function checkWithYtDlp(source, options) {
   if (options.ytdlFormat) {
     args.push("-f", options.ytdlFormat);
   }
+  const cookiesFile = ytdlCookiesFileIfAvailable(options);
+  if (cookiesFile) {
+    args.push("--cookies", cookiesFile);
+  }
   args.push(source);
   const result = await runCommand(options.ytdlPath, args, options.timeoutMs);
   return {
@@ -488,6 +503,10 @@ async function checkWithMpv(source, sourceKind, options) {
     }
     if (options.ytdlPath) {
       args.push(`--script-opts=ytdl_hook-ytdl_path=${options.ytdlPath}`);
+    }
+    const cookiesFile = ytdlCookiesFileIfAvailable(options);
+    if (cookiesFile) {
+      args.push(`--ytdl-raw-options=cookies=${cookiesFile}`);
     }
   } else {
     args.push("--ytdl=no");
@@ -726,6 +745,8 @@ async function main() {
       serverBaseUrl: options.serverBaseUrl,
       ytdlPath: options.ytdlPath,
       ytdlFormat: options.ytdlFormat,
+      ytdlCookiesConfigured: Boolean(options.ytdlCookiesFile),
+      ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable(options)),
     },
     results,
   };

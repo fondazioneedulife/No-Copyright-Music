@@ -111,7 +111,7 @@ Il JSON contiene:
 
 | Motivo | Significato | Cosa fare |
 | --- | --- | --- |
-| `youtube-age-or-login` | YouTube richiede login, cookie o conferma eta. | Togli la traccia dal catalogo o sostituiscila con una sorgente pubblica. |
+| `youtube-age-or-login` | YouTube richiede login, cookie o conferma eta. | Configura `CLEARWAVE_YTDL_COOKIES_FILE` con cookie validi oppure sostituisci la traccia con una sorgente pubblica. |
 | `youtube-unavailable` | Video rimosso, privato, non disponibile o bloccato. | Sostituisci il brano. |
 | `youtube-format` | `yt-dlp` non trova un formato audio compatibile. | Controlla versione `yt-dlp` e `CLEARWAVE_YTDL_FORMAT`. |
 | `forbidden` | Stream vietato o URL firmato non piu' valido. | Per Jamendo controlla `JAMENDO_CLIENT_ID`; per altri provider reimporta. |
