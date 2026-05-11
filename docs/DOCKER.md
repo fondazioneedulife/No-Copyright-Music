@@ -215,11 +215,7 @@ cd "C:\Users\Riccardo\Documents\New project"
 .\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin
 ```
 
-Lo script usa `yt-dlp --cookies-from-browser`, esporta i cookie dal browser gia' loggato e li invia all'endpoint admin `/api/admin/youtube-cookies`. Se usi Edge:
-
-```powershell
-.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser edge -Username admin
-```
+Lo script prova prima `yt-dlp --cookies-from-browser chrome`; se Chrome risponde con errore DPAPI, usa automaticamente un fallback DevTools locale: apre Chrome, legge i cookie tramite Chrome stesso e li invia all'endpoint admin `/api/admin/youtube-cookies`.
 
 Se `yt-dlp` non e' installato sul PC:
 
@@ -233,20 +229,13 @@ Se lo hai appena installato e PowerShell dice ancora `yt-dlp non trovato`, chiud
 .\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin -YtDlpPath "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\yt-dlp.yt-dlp_Microsoft.Winget.Source_8wekyb3d8bbwe\yt-dlp.exe"
 ```
 
-Se compare `Could not copy Chrome cookie database`, Chrome/Edge e' ancora aperto o ha processi in background. Rilancia con chiusura automatica del browser:
+Se compare `Could not copy Chrome cookie database`, Chrome e' ancora aperto o ha processi in background. Rilancia con chiusura automatica del browser:
 
 ```powershell
 .\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin -CloseBrowser
 ```
 
-Se compare `Failed to decrypt with DPAPI`, Windows/Chrome non permette a `yt-dlp` di decifrare quei cookie. Prova Edge o Firefox:
-
-```powershell
-.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser edge -Username admin -CloseBrowser
-.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser firefox -Username admin -CloseBrowser
-```
-
-Oppure esporta `cookies.txt` con un'estensione e fallo caricare dallo script:
+Se compare `Failed to decrypt with DPAPI`, lo script prova automaticamente il fallback Chrome DevTools. Se anche quello fallisce, esporta `cookies.txt` con un'estensione Chrome e fallo caricare dallo script:
 
 ```powershell
 .\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Username admin -ExistingCookieFile "$env:USERPROFILE\Desktop\youtube-cookies.txt"
