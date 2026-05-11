@@ -708,6 +708,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | Percorso | Ruolo |
 | --- | --- |
 | `server.js` | Router HTTP, API, storage, import, player, export. |
+| `lib/audio-check-service.js` | Check automatico catalogo audio: configurazione, schedule, stato diagnostica. |
 | `lib/auth-service.js` | SQLite utenti, password, token, ruoli. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione catalogo. |
 
