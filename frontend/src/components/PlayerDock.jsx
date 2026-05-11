@@ -50,7 +50,11 @@ export function PlayerDock({
         <span className="player-state" title={playerNotice || `Uscita audio: ${targetLabel}`}>
           {stateLabel} / {targetLabel}
         </span>
-        {playerNotice ? <span className="player-notice">{playerNotice}</span> : null}
+        {playerNotice ? (
+          <span className="player-notice" title={playerNotice}>
+            {playerNotice}
+          </span>
+        ) : null}
         <div className="transport">
           <button
             type="button"

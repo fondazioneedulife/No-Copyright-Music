@@ -5124,9 +5124,9 @@ function serverPlayerFriendlyError(message) {
 
   if (/sign in to confirm your age|inappropriate for some users|use --cookies-from-browser|use --cookies/i.test(text)) {
     if (serverPlayerYtdlCookiesFile && !ytdlCookiesFileIfAvailable()) {
-      return "YouTube richiede login/conferma eta per questo video, ma CLEARWAVE_YTDL_COOKIES_FILE punta a un file cookie non trovato nel container.";
+      return "Cookie YouTube non trovato nel container: traccia saltata.";
     }
-    return "YouTube richiede login/conferma eta per questo video. Configura CLEARWAVE_YTDL_COOKIES_FILE con cookie YouTube validi oppure sostituisci la traccia.";
+    return "YouTube login/eta: traccia saltata. Configura cookie o sostituiscila.";
   }
 
   if (/Unknown error 524|Playback open error|Could not open\/initialize audio device/i.test(text)) {

@@ -1658,11 +1658,14 @@ body[data-theme="light"] .pagination .is-active {
 }
 
 .player-notice {
-  max-width: min(92vw, 560px);
+  max-width: min(68vw, 420px);
+  overflow: hidden;
   color: var(--muted);
   font-size: 0.7rem;
   line-height: 1.2;
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .transport button {

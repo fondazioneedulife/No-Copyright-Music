@@ -65,6 +65,19 @@ function clampVolumeLevel(value) {
   return Math.max(0, Math.min(1, numeric));
 }
 
+function compactPlayerNotice(message) {
+  const text = String(message || "").trim();
+  if (!text) {
+    return "";
+  }
+
+  if (/youtube.*(?:login|eta|age)|cookie youtube|sign in to confirm/i.test(text)) {
+    return "YouTube bloccata: traccia saltata. Vedi Admin.";
+  }
+
+  return text.length > 96 ? `${text.slice(0, 93).trim()}...` : text;
+}
+
 function downloadBlob({ blob, filename }) {
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -228,7 +241,7 @@ export default function App() {
           });
         }
 
-        setPlayerNotice(player.error || "");
+        setPlayerNotice(compactPlayerNotice(player.error));
 
         if (!player.activeTrack) {
           // Se non c'e' nulla sul Raspberry, azzeriamo solo una sessione server gia' attiva.
