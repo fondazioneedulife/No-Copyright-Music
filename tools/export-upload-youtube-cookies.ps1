@@ -516,7 +516,7 @@ if (-not (Test-Path -LiteralPath $CookieFile)) {
   Stop-WithMessage "yt-dlp non ha creato il file cookie."
 }
 
-$cookiesText = Get-Content -LiteralPath $CookieFile -Raw
+[string]$cookiesText = Get-Content -LiteralPath $CookieFile -Raw
 if ($cookiesText -notmatch "youtube\.com|google\.com") {
   Stop-WithMessage "Il file creato non contiene cookie YouTube/Google validi."
 }
@@ -555,6 +555,8 @@ try {
   }
 
   Write-Host "Carico cookie nel backend..."
+  # Windows PowerShell puo' serializzare le stringhe lette da file come PSObject se non sono castate.
+  # Qui inviamo solo il testo Netscape puro, senza metadati PSPath/ReadCount.
   $uploadPayload = @{
     cookiesText = $cookiesText
   } | ConvertTo-Json -Compress
