@@ -31,6 +31,33 @@ function Convert-SecureStringToPlainText {
   }
 }
 
+function Stop-WithHttpError {
+  param(
+    [System.Management.Automation.ErrorRecord]$ErrorRecord,
+    [string]$FallbackMessage
+  )
+
+  $response = $ErrorRecord.Exception.Response
+  $statusCode = 0
+  if ($response -and $response.StatusCode) {
+    $statusCode = [int]$response.StatusCode
+  }
+
+  if ($statusCode -eq 401) {
+    Stop-WithMessage "Login ClearWave non riuscito: password admin non valida. Usa la stessa password con cui entri nell'app web."
+  }
+
+  if ($statusCode -eq 403) {
+    Stop-WithMessage "Login riuscito ma l'utente non e' admin. Usa un account amministratore ClearWave."
+  }
+
+  if ($statusCode -gt 0) {
+    Stop-WithMessage "$FallbackMessage Codice HTTP: $statusCode."
+  }
+
+  Stop-WithMessage "$FallbackMessage $($ErrorRecord.Exception.Message)"
+}
+
 function Resolve-YtDlpPath {
   param([string]$ExplicitPath)
 
@@ -366,6 +393,7 @@ if ($ExistingCookieFile) {
 
   Write-Host "Uso file cookie gia' esportato: $ExistingCookieFile"
   $CookieFile = (Resolve-Path -LiteralPath $ExistingCookieFile).Path
+  $shouldDeleteCookieFile = $false
 } else {
   if ($CloseBrowser) {
     Stop-BrowserForCookieExport $Browser
@@ -440,11 +468,15 @@ try {
     password = $password
   } | ConvertTo-Json -Compress
 
-  $loginResponse = Invoke-RestMethod `
-    -Uri "$baseUrl/api/auth/login" `
-    -Method Post `
-    -ContentType "application/json; charset=utf-8" `
-    -Body $loginPayload
+  try {
+    $loginResponse = Invoke-RestMethod `
+      -Uri "$baseUrl/api/auth/login" `
+      -Method Post `
+      -ContentType "application/json; charset=utf-8" `
+      -Body $loginPayload
+  } catch {
+    Stop-WithHttpError $_ "Login ClearWave non riuscito."
+  }
 
   if (-not $loginResponse.token) {
     Stop-WithMessage "Login ClearWave riuscito senza token: risposta non valida."
@@ -455,12 +487,16 @@ try {
     cookiesText = $cookiesText
   } | ConvertTo-Json -Compress
 
-  $uploadResponse = Invoke-RestMethod `
-    -Uri "$baseUrl/api/admin/youtube-cookies" `
-    -Method Post `
-    -ContentType "application/json; charset=utf-8" `
-    -Headers @{ Authorization = "Bearer $($loginResponse.token)" } `
-    -Body $uploadPayload
+  try {
+    $uploadResponse = Invoke-RestMethod `
+      -Uri "$baseUrl/api/admin/youtube-cookies" `
+      -Method Post `
+      -ContentType "application/json; charset=utf-8" `
+      -Headers @{ Authorization = "Bearer $($loginResponse.token)" } `
+      -Body $uploadPayload
+  } catch {
+    Stop-WithHttpError $_ "Upload cookie ClearWave non riuscito."
+  }
 
   if (-not $uploadResponse.cookies.available) {
     Stop-WithMessage "Cookie inviati, ma ClearWave non li vede come disponibili."

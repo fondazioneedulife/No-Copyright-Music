@@ -241,6 +241,8 @@ Se preferisci esportare il file tu, puoi saltare ogni tentativo automatico e far
 .\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Username admin -ExistingCookieFile "$env:USERPROFILE\Desktop\youtube-cookies.txt"
 ```
 
+Con `-ExistingCookieFile` il file locale non viene cancellato: ClearWave ne legge il contenuto e salva una copia nel volume `data` del server.
+
 Procedura manuale via SSH:
 
 ```bash
