@@ -39,8 +39,37 @@ function Stop-WithHttpError {
 
   $response = $ErrorRecord.Exception.Response
   $statusCode = 0
+  $backendMessage = ""
   if ($response -and $response.StatusCode) {
     $statusCode = [int]$response.StatusCode
+  }
+
+  if ($ErrorRecord.ErrorDetails -and $ErrorRecord.ErrorDetails.Message) {
+    $backendMessage = [string]$ErrorRecord.ErrorDetails.Message
+  }
+
+  if (-not $backendMessage -and $response) {
+    try {
+      $stream = $response.GetResponseStream()
+      if ($stream) {
+        $reader = [IO.StreamReader]::new($stream)
+        $backendMessage = $reader.ReadToEnd()
+        $reader.Dispose()
+      }
+    } catch {
+      $backendMessage = ""
+    }
+  }
+
+  if ($backendMessage) {
+    try {
+      $parsedMessage = $backendMessage | ConvertFrom-Json
+      if ($parsedMessage.error) {
+        $backendMessage = [string]$parsedMessage.error
+      }
+    } catch {
+      $backendMessage = $backendMessage.Trim()
+    }
   }
 
   if ($statusCode -eq 401) {
@@ -52,10 +81,45 @@ function Stop-WithHttpError {
   }
 
   if ($statusCode -gt 0) {
+    if ($backendMessage) {
+      Stop-WithMessage "$FallbackMessage Codice HTTP: $statusCode. Dettaglio backend: $backendMessage"
+    }
     Stop-WithMessage "$FallbackMessage Codice HTTP: $statusCode."
   }
 
   Stop-WithMessage "$FallbackMessage $($ErrorRecord.Exception.Message)"
+}
+
+function Test-YoutubeCookieFileText {
+  param([string]$CookieText)
+
+  $validRows = 0
+  $youtubeRows = 0
+
+  foreach ($line in ($CookieText -split "`n")) {
+    $cleanLine = $line.Trim()
+    if (-not $cleanLine) {
+      continue
+    }
+
+    $cookieLine = if ($cleanLine.StartsWith("#HttpOnly_")) { $cleanLine.Substring("#HttpOnly_".Length) } else { $cleanLine }
+    if ($cookieLine.StartsWith("#")) {
+      continue
+    }
+
+    $columns = $cookieLine -split "`t"
+    if ($columns.Count -ge 7) {
+      $validRows += 1
+      if ($columns[0].Trim() -match "(^|\.)youtube\.com$|(^|\.)google\.com$|(^|\.)youtube-nocookie\.com$") {
+        $youtubeRows += 1
+      }
+    }
+  }
+
+  return [pscustomobject]@{
+    ValidRows = $validRows
+    YoutubeRows = $youtubeRows
+  }
 }
 
 function Resolve-YtDlpPath {
@@ -456,6 +520,14 @@ $cookiesText = Get-Content -LiteralPath $CookieFile -Raw
 if ($cookiesText -notmatch "youtube\.com|google\.com") {
   Stop-WithMessage "Il file creato non contiene cookie YouTube/Google validi."
 }
+$cookieValidation = Test-YoutubeCookieFileText $cookiesText
+if ($cookieValidation.ValidRows -le 0) {
+  Stop-WithMessage "Il file cookie non sembra in formato Netscape: esportalo scegliendo formato Netscape/cookies.txt."
+}
+if ($cookieValidation.YoutubeRows -le 0) {
+  Stop-WithMessage "Il file cookie e' Netscape, ma non contiene righe YouTube/Google leggibili."
+}
+Write-Host "File cookie valido: $($cookieValidation.YoutubeRows) righe YouTube/Google su $($cookieValidation.ValidRows) righe Netscape."
 
 $password = $null
 try {
