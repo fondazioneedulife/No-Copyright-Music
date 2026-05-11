@@ -227,6 +227,12 @@ Se `yt-dlp` non e' installato sul PC:
 winget install yt-dlp.yt-dlp
 ```
 
+Se lo hai appena installato e PowerShell dice ancora `yt-dlp non trovato`, chiudi e riapri PowerShell. In alternativa passa il percorso completo:
+
+```powershell
+.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Browser chrome -Username admin -YtDlpPath "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\yt-dlp.yt-dlp_Microsoft.Winget.Source_8wekyb3d8bbwe\yt-dlp.exe"
+```
+
 Procedura manuale via SSH:
 
 ```bash

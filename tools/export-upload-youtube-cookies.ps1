@@ -3,6 +3,7 @@ param(
   [ValidateSet("chrome", "edge", "firefox", "brave", "chromium")]
   [string]$Browser = "chrome",
   [string]$Username = "admin",
+  [string]$YtDlpPath = "",
   [string]$CookieFile = "",
   [switch]$KeepFile
 )
@@ -28,13 +29,48 @@ function Convert-SecureStringToPlainText {
   }
 }
 
-$ytDlpCommand = Get-Command yt-dlp -ErrorAction SilentlyContinue
-if (-not $ytDlpCommand) {
-  $ytDlpCommand = Get-Command yt-dlp.exe -ErrorAction SilentlyContinue
+function Resolve-YtDlpPath {
+  param([string]$ExplicitPath)
+
+  if ($ExplicitPath) {
+    if (Test-Path -LiteralPath $ExplicitPath) {
+      return (Resolve-Path -LiteralPath $ExplicitPath).Path
+    }
+    Stop-WithMessage "YtDlpPath non trovato: $ExplicitPath"
+  }
+
+  foreach ($commandName in @("yt-dlp", "yt-dlp.exe")) {
+    $command = Get-Command $commandName -ErrorAction SilentlyContinue
+    if ($command) {
+      return $command.Source
+    }
+  }
+
+  $candidatePaths = @(
+    (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\yt-dlp.exe"),
+    (Join-Path $env:LOCALAPPDATA "Microsoft\WindowsApps\yt-dlp.exe")
+  )
+
+  $wingetPackagesDir = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
+  if (Test-Path -LiteralPath $wingetPackagesDir) {
+    $wingetPackages = Get-ChildItem -LiteralPath $wingetPackagesDir -Directory -Filter "yt-dlp.yt-dlp_*" -ErrorAction SilentlyContinue
+    foreach ($packageDir in $wingetPackages) {
+      $candidatePaths += Join-Path $packageDir.FullName "yt-dlp.exe"
+    }
+  }
+
+  foreach ($candidatePath in $candidatePaths) {
+    if (Test-Path -LiteralPath $candidatePath) {
+      return (Resolve-Path -LiteralPath $candidatePath).Path
+    }
+  }
+
+  return ""
 }
 
+$ytDlpCommand = Resolve-YtDlpPath $YtDlpPath
 if (-not $ytDlpCommand) {
-  Stop-WithMessage "yt-dlp non trovato. Installa con: winget install yt-dlp.yt-dlp"
+  Stop-WithMessage "yt-dlp non trovato. Installa con winget install yt-dlp.yt-dlp, poi riapri PowerShell e rilancia lo script."
 }
 
 $baseUrl = $ClearWaveUrl.TrimEnd("/")
@@ -44,6 +80,7 @@ if (-not $CookieFile) {
 
 Write-Host "ClearWave: $baseUrl"
 Write-Host "Browser: $Browser"
+Write-Host "yt-dlp: $ytDlpCommand"
 Write-Host "Esporto cookie YouTube dal browser..."
 
 $testVideoUrl = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
@@ -56,7 +93,7 @@ $ytDlpArgs = @(
   $testVideoUrl
 )
 
-& $ytDlpCommand.Source @ytDlpArgs
+& $ytDlpCommand @ytDlpArgs
 if ($LASTEXITCODE -ne 0) {
   Stop-WithMessage "Export cookie non riuscito. Chiudi il browser, riaprilo su YouTube loggato e rilancia lo script."
 }

@@ -220,6 +220,8 @@ Per Edge usa `-Browser edge`. Se manca `yt-dlp`, installalo con:
 winget install yt-dlp.yt-dlp
 ```
 
+Dopo una nuova installazione puo' servire riaprire PowerShell. Lo script prova anche il percorso winget standard; se serve puoi forzarlo con `-YtDlpPath`.
+
 ## Errori comuni
 
 | Log/errore | Significato probabile | Cosa fare |
