@@ -85,6 +85,11 @@ function diagnosticHealthChecks(diagnostics) {
       detail: commandSummary(diagnostics.tools?.ytdlp),
     },
     {
+      label: "Deno/JS",
+      ok: Boolean(diagnostics.tools?.ytdlJsRuntime?.ok),
+      detail: commandSummary(diagnostics.tools?.ytdlJsRuntime),
+    },
+    {
       label: "Audio",
       ok: audioOk,
       detail: audioOk ? "Almeno un output apribile" : "Nessun output apribile",
@@ -373,6 +378,7 @@ export function AdminPanel({
     ? [
         ["mpv", diagnostics.tools?.mpv],
         ["yt-dlp", diagnostics.tools?.ytdlp],
+        ["deno/js", diagnostics.tools?.ytdlJsRuntime],
         ["aplay -l", diagnostics.alsa?.listDevices],
       ]
     : [];

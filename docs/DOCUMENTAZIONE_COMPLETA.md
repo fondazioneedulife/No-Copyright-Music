@@ -219,6 +219,7 @@ CLEARWAVE_AUDIO_PREFLIGHT=1
 CLEARWAVE_UPDATE_YTDLP_ON_START=1
 CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
+CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno
 ```
 
 All'inizio lascia vuoti:
@@ -634,6 +635,7 @@ Variabili principali:
 | `ALSA_CARD` | vuoto | Scheda ALSA preferita. |
 | `CLEARWAVE_YTDL_PATH` | `/usr/bin/yt-dlp` | Binario yt-dlp. |
 | `CLEARWAVE_YTDL_FORMAT` | audio-only | Formato YouTube richiesto. |
+| `CLEARWAVE_YTDL_JS_RUNTIME` | `deno:/usr/local/bin/deno` | Runtime JavaScript usato da yt-dlp per decifrare YouTube. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | vuoto | File cookie YouTube Netscape nel container. Se vuoto, ClearWave usa automaticamente `/app/data/youtube-cookies.txt` quando esiste. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | `metadata` | Modalita verifica completa YouTube da Admin. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_CONCURRENCY` | `3` | Parallelismo verifica completa YouTube. |
@@ -828,6 +830,7 @@ Azioni:
 
 ```bash
 docker compose exec clearwave yt-dlp --version
+docker compose exec clearwave deno --version
 docker compose build --no-cache clearwave
 docker compose up -d --force-recreate
 ```
@@ -837,6 +840,8 @@ Controlla che nei log compaia:
 ```text
 [startup] yt-dlp aggiornato:
 ```
+
+Se vedi `No supported JavaScript runtime could be found`, il container e' vecchio o non contiene Deno: ricostruisci senza cache.
 
 ### `mpv precedente chiuso per cambio traccia/comando`
 

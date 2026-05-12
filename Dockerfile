@@ -18,15 +18,30 @@ ENV NODE_ENV=production \
     CLEARWAVE_UPLOADS_DIR=/app/uploads \
     CLEARWAVE_ENABLE_DEMOS=0 \
     CLEARWAVE_AUTO_EXPAND=0 \
-    CLEARWAVE_UPDATE_YTDLP_ON_START=1
+    CLEARWAVE_UPDATE_YTDLP_ON_START=1 \
+    CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno
 
 WORKDIR /app
 
 # Runtime audio lato Raspberry: mpv riproduce sul device del server, ffmpeg aiuta codec/stream.
+# Deno serve a yt-dlp come runtime JavaScript per i nuovi controlli YouTube anti-bot/signature.
 # yt-dlp viene preso dal rilascio ufficiale piu' recente per evitare errori YouTube da pacchetto Debian vecchio.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg mpv python3 alsa-utils libasound2-plugins \
+  && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg mpv python3 alsa-utils libasound2-plugins unzip \
   && rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+  arch="$(dpkg --print-architecture)"; \
+  case "$arch" in \
+    amd64) deno_arch="x86_64-unknown-linux-gnu" ;; \
+    arm64) deno_arch="aarch64-unknown-linux-gnu" ;; \
+    *) echo "Architettura Deno non supportata: $arch" >&2; exit 1 ;; \
+  esac; \
+  curl -fL "https://github.com/denoland/deno/releases/latest/download/deno-${deno_arch}.zip" -o /tmp/deno.zip; \
+  unzip -q /tmp/deno.zip -d /usr/local/bin; \
+  chmod a+rx /usr/local/bin/deno; \
+  rm -f /tmp/deno.zip; \
+  /usr/local/bin/deno --version
 
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/bin/yt-dlp \
   && chmod a+rx /usr/bin/yt-dlp \

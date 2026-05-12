@@ -102,6 +102,7 @@ CLEARWAVE_AUDIO_PREFLIGHT=1
 CLEARWAVE_UPDATE_YTDLP_ON_START=1
 CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
+CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno
 CLEARWAVE_MPV_MSG_LEVEL=all=warn,ytdl_hook=info
 ```
 
@@ -175,6 +176,7 @@ Controlla la versione dentro al container:
 ```bash
 docker compose exec clearwave yt-dlp --version
 docker compose exec clearwave /usr/bin/yt-dlp --version
+docker compose exec clearwave deno --version
 ```
 
 Nei log di avvio deve comparire:
@@ -185,6 +187,7 @@ Nei log di avvio deve comparire:
 ```
 
 Se YouTube restituisce `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato uno stream compatibile. In quel caso ricrea il container e controlla `CLEARWAVE_YTDL_FORMAT`.
+Se compare `No supported JavaScript runtime could be found`, l'immagine non contiene ancora Deno: fai `git pull`, rebuild senza cache e ricrea il container.
 
 Per verificare in batch quali tracce del catalogo partono davvero:
 
@@ -234,6 +237,7 @@ Se risponde `Failed to decrypt with DPAPI`, segui il prompt: esporta `youtube-co
 | Socket `/tmp/clearwave-mpv-1.sock` senza `tentativo` | Player vecchio | Ricostruisci immagine o verifica che Docker usi la cartella giusta |
 | `Playback open error` / `Unknown error 524` | ALSA non apre quel device | Lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`, poi usa `aplay -l` |
 | `Requested format is not available` | Problema YouTube/formato, non device audio | Verifica `yt-dlp --version` e `CLEARWAVE_YTDL_FORMAT` |
+| `No supported JavaScript runtime could be found` | yt-dlp non trova Deno per i controlli JavaScript YouTube | Ricostruisci l'immagine aggiornata e controlla `deno --version` nel container |
 | `Sign in to confirm your age` / `not a bot` | YouTube richiede una sessione autenticata | Carica un `cookies.txt` Netscape dal pannello Admin oppure salvalo in `data/youtube-cookies.txt`; il container lo usa come `/app/data/youtube-cookies.txt`. |
 | Playlist importata con 1 solo brano | Link radio/mix `RD...` oppure Data API ha visto solo il video corrente | Usa un link `playlist?list=...`; per playlist normali il backend prova anche `yt-dlp` se la API restituisce solo 1 brano |
 | `mpv precedente chiuso per cambio traccia/comando` | Un nuovo play ha sostituito il processo mpv precedente | Non e' un errore finale: vuol dire che React/server hanno cambiato brano o comando prima che il vecchio processo chiudesse |

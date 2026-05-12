@@ -14,6 +14,7 @@ const DEFAULT_YTDL_PATH = process.env.CLEARWAVE_YTDL_PATH || "/usr/bin/yt-dlp";
 const DEFAULT_YTDL_FORMAT =
   process.env.CLEARWAVE_YTDL_FORMAT || "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best";
 const DEFAULT_YTDL_COOKIES_FILE = process.env.CLEARWAVE_YTDL_COOKIES_FILE || "";
+const DEFAULT_YTDL_JS_RUNTIME = process.env.CLEARWAVE_YTDL_JS_RUNTIME || "";
 
 function firstString(...values) {
   for (const value of values) {
@@ -52,6 +53,7 @@ function parseArgs(argv) {
     ytdlPath: DEFAULT_YTDL_PATH,
     ytdlFormat: DEFAULT_YTDL_FORMAT,
     ytdlCookiesFile: DEFAULT_YTDL_COOKIES_FILE,
+    ytdlJsRuntime: DEFAULT_YTDL_JS_RUNTIME,
     ids: [],
     idSet: new Set(),
     verbose: false,
@@ -122,6 +124,9 @@ function parseArgs(argv) {
         break;
       case "ytdl-cookies":
         options.ytdlCookiesFile = nextValue();
+        break;
+      case "ytdl-js-runtime":
+        options.ytdlJsRuntime = nextValue();
         break;
       case "ids":
         options.ids = nextValue()
@@ -196,6 +201,7 @@ Opzioni utili:
   --timeout-ms 30000
   --sample-seconds 6
   --ytdl-cookies /app/data/youtube-cookies.txt
+  --ytdl-js-runtime deno:/usr/local/bin/deno
   --ids track-a,track-b
   --only-errors
   --fail-on-broken
@@ -479,6 +485,9 @@ async function checkWithYtDlp(source, options) {
   if (options.ytdlFormat) {
     args.push("-f", options.ytdlFormat);
   }
+  if (options.ytdlJsRuntime) {
+    args.push("--js-runtimes", options.ytdlJsRuntime);
+  }
   const cookiesFile = ytdlCookiesFileIfAvailable(options);
   if (cookiesFile) {
     args.push("--cookies", cookiesFile);
@@ -515,8 +524,15 @@ async function checkWithMpv(source, sourceKind, options) {
       args.push(`--script-opts=ytdl_hook-ytdl_path=${options.ytdlPath}`);
     }
     const cookiesFile = ytdlCookiesFileIfAvailable(options);
+    const rawOptions = [];
+    if (options.ytdlJsRuntime) {
+      rawOptions.push(`js-runtimes=${options.ytdlJsRuntime}`);
+    }
     if (cookiesFile) {
-      args.push(`--ytdl-raw-options=cookies=${cookiesFile}`);
+      rawOptions.push(`cookies=${cookiesFile}`);
+    }
+    if (rawOptions.length > 0) {
+      args.push(`--ytdl-raw-options=${rawOptions.join(",")}`);
     }
   } else {
     args.push("--ytdl=no");
@@ -540,6 +556,9 @@ function classifyFailure(message, code, timedOut) {
   }
   if (/sign in to confirm|not a bot|inappropriate for some users|cookies-from-browser|use --cookies/i.test(text)) {
     return "youtube-age-or-login";
+  }
+  if (/No supported JavaScript runtime|js runtime|js-runtimes|deno/i.test(text)) {
+    return "youtube-js-runtime";
   }
   if (/private video|video unavailable|removed|not available|copyright/i.test(text)) {
     return "youtube-unavailable";
@@ -758,6 +777,7 @@ async function main() {
       serverBaseUrl: options.serverBaseUrl,
       ytdlPath: options.ytdlPath,
       ytdlFormat: options.ytdlFormat,
+      ytdlJsRuntime: options.ytdlJsRuntime,
       ytdlCookiesConfigured: Boolean(options.ytdlCookiesFile),
       ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable(options)),
       ids: options.ids,

@@ -46,6 +46,7 @@ const serverPlayerYtdlPath = String(process.env.CLEARWAVE_YTDL_PATH || "/usr/bin
 const serverPlayerYtdlFormat = String(
   process.env.CLEARWAVE_YTDL_FORMAT || "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
 ).trim();
+const serverPlayerYtdlJsRuntime = String(process.env.CLEARWAVE_YTDL_JS_RUNTIME || "").trim();
 const serverPlayerYtdlCookiesFileFromEnv = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
 const serverPlayerYtdlCookiesFile = serverPlayerYtdlCookiesFileFromEnv || DEFAULT_YTDL_COOKIES_FILE;
 const serverPlayerMpvMsgLevel = String(process.env.CLEARWAVE_MPV_MSG_LEVEL || "all=warn,ytdl_hook=info").trim();
@@ -3323,6 +3324,20 @@ function ytdlCookiesConfigured() {
   return Boolean(serverPlayerYtdlCookiesFileFromEnv || fsSync.existsSync(DEFAULT_YTDL_COOKIES_FILE));
 }
 
+function ytdlJsRuntimeExecutable() {
+  const value = firstString(serverPlayerYtdlJsRuntime);
+  if (!value) {
+    return "";
+  }
+
+  const separator = value.indexOf(":");
+  if (separator > 0 && value.slice(separator + 1).startsWith("/")) {
+    return value.slice(separator + 1);
+  }
+
+  return value.split(":")[0];
+}
+
 function ytdlCookiesFileIfAvailable() {
   return fsSync.existsSync(serverPlayerYtdlCookiesFile) ? serverPlayerYtdlCookiesFile : "";
 }
@@ -3411,7 +3426,11 @@ async function installYtdlCookies(payload = {}) {
   };
 }
 
-function appendYtDlpCookieArgs(args) {
+function appendYtDlpCommonArgs(args) {
+  if (serverPlayerYtdlJsRuntime) {
+    args.push("--js-runtimes", serverPlayerYtdlJsRuntime);
+  }
+
   const cookiesFile = ytdlCookiesFileIfAvailable();
   if (cookiesFile) {
     args.push("--cookies", cookiesFile);
@@ -3536,7 +3555,7 @@ async function fetchYouTubeSessionPlaylistWithYtDlp(playlistId, maxTracks) {
   }
 
   const safeLimit = Math.max(1, Math.min(SESSION_IMPORT_MAX_TRACKS, Number(maxTracks) || 300));
-  const payload = await runYtDlpJson(appendYtDlpCookieArgs([
+  const payload = await runYtDlpJson(appendYtDlpCommonArgs([
     "--flat-playlist",
     "--dump-single-json",
     "--no-warnings",
@@ -4853,6 +4872,7 @@ async function buildServerDiagnostics() {
   const audioConfigs = serverPlayerAudioConfigs();
   const preflightResults = [];
   const cookies = ytdlCookieStatus();
+  const ytdlJsRuntimeCommand = ytdlJsRuntimeExecutable();
 
   for (const config of audioConfigs) {
     const result = await runServerPlayerAudioPreflight(config);
@@ -4864,9 +4884,12 @@ async function buildServerDiagnostics() {
     });
   }
 
-  const [mpv, ytdlp, aplayList, aplayNames, asoundCards] = await Promise.all([
+  const [mpv, ytdlp, ytdlJsRuntime, aplayList, aplayNames, asoundCards] = await Promise.all([
     diagnosticCommandResult(serverPlayerCommand, ["--version"], 3500),
     diagnosticCommandResult(serverPlayerYtdlPath, ["--version"], 5000),
+    ytdlJsRuntimeCommand
+      ? diagnosticCommandResult(ytdlJsRuntimeCommand, ["--version"], 5000)
+      : Promise.resolve({ ok: false, command: "", args: [], error: "Runtime JavaScript yt-dlp non configurato." }),
     process.platform === "linux"
       ? diagnosticCommandResult("aplay", ["-l"], 3500)
       : Promise.resolve({ ok: false, command: "aplay", args: ["-l"], error: "Disponibile solo su Linux." }),
@@ -4897,6 +4920,7 @@ async function buildServerDiagnostics() {
       serverVolumeGain: serverPlayerVolumeGain,
       serverVolumeMax: serverPlayerVolumeMax,
       ytdlPath: serverPlayerYtdlPath,
+      ytdlJsRuntime: serverPlayerYtdlJsRuntime,
       ytdlFormat: serverPlayerYtdlFormat,
       ytdlCookiesConfigured: cookies.configured,
       ytdlCookiesAvailable: cookies.available,
@@ -4918,6 +4942,7 @@ async function buildServerDiagnostics() {
     tools: {
       mpv,
       ytdlp,
+      ytdlJsRuntime,
     },
     alsa: {
       cards: asoundCards,
@@ -5191,8 +5216,15 @@ function serverPlayerYtdlConfig(source) {
   }
 
   const cookiesFile = ytdlCookiesFileIfAvailable();
+  const rawOptions = [];
+  if (serverPlayerYtdlJsRuntime) {
+    rawOptions.push(`js-runtimes=${serverPlayerYtdlJsRuntime}`);
+  }
   if (cookiesFile) {
-    args.push(`--ytdl-raw-options=cookies=${cookiesFile}`);
+    rawOptions.push(`cookies=${cookiesFile}`);
+  }
+  if (rawOptions.length > 0) {
+    args.push(`--ytdl-raw-options=${rawOptions.join(",")}`);
   }
 
   return args;
@@ -5236,11 +5268,11 @@ function serverPlayerFriendlyError(message) {
   }
 
   if (
-    /yt-dlp|youtube-dl|signature extraction|video unavailable|sign in|requested format is not available|failed to recognize file format/i.test(
+    /yt-dlp|youtube-dl|signature extraction|JavaScript runtime|js-runtimes|deno|video unavailable|sign in|requested format is not available|failed to recognize file format/i.test(
       text
     )
   ) {
-    return `${text} Verifica yt-dlp, rete del container e CLEARWAVE_YTDL_FORMAT per i video YouTube.`;
+    return `${text} Verifica yt-dlp, Deno/CLEARWAVE_YTDL_JS_RUNTIME, rete del container e CLEARWAVE_YTDL_FORMAT per i video YouTube.`;
   }
 
   return text;

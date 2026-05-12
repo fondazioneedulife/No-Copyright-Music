@@ -84,6 +84,13 @@ Il pulsante avvia un job in background, quindi la web app resta usabile e il pla
 La modalita predefinita e' `metadata`: risolve ogni video con `yt-dlp` e cookie, segnando quelli ancora bloccati da login, bot, video rimossi o formato non disponibile.
 Alla fine aggiorna `data/audio-replacement-list.json` con le tracce da sostituire e salva il report completo in `data/reports/`.
 
+Non sostituire migliaia di video a mano. Se l'audit mostra tantissimi KO YouTube:
+
+1. controlla prima `Cookie YouTube`, `yt-dlp` e `Deno/JS` nella diagnostica;
+2. ricostruisci il container se manca Deno o compare `No supported JavaScript runtime`;
+3. rilancia `Verifica tutto YouTube`;
+4. sostituisci in blocco solo i KO residui confermati dal report finale.
+
 Solo Jamendo:
 
 ```bash
@@ -127,6 +134,7 @@ Il JSON contiene:
 | `youtube-age-or-login` | YouTube richiede login, cookie, conferma eta o verifica anti-bot. | Carica `cookies.txt` dal pannello Admin o salva `data/youtube-cookies.txt`; se fallisce ancora, sostituisci la traccia con una sorgente pubblica. |
 | `youtube-unavailable` | Video rimosso, privato, non disponibile o bloccato. | Sostituisci il brano. |
 | `youtube-format` | `yt-dlp` non trova un formato audio compatibile. | Controlla versione `yt-dlp` e `CLEARWAVE_YTDL_FORMAT`. |
+| `youtube-js-runtime` | `yt-dlp` non trova un runtime JavaScript per risolvere YouTube. | Ricostruisci Docker: l'immagine aggiornata installa Deno e usa `CLEARWAVE_YTDL_JS_RUNTIME`. |
 | `forbidden` | Stream vietato o URL firmato non piu' valido. | Per Jamendo controlla `JAMENDO_CLIENT_ID`; per altri provider reimporta. |
 | `missing-source` | La traccia non ha una sorgente audio reale. | Rimuovi o correggi la traccia. |
 | `missing-file` | File locale caricato non trovato in `uploads/audio`. | Ripristina il file o rimuovi la traccia. |

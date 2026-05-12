@@ -67,6 +67,7 @@ CLEARWAVE_AUDIO_PREFLIGHT=1
 CLEARWAVE_UPDATE_YTDLP_ON_START=1
 CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
+CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno
 ```
 
 Poi apri l'app da un altro dispositivo nella rete usando l'IP del Raspberry:
@@ -104,11 +105,13 @@ Subito dopo l'avvio del server devi vedere anche la firma del codice player:
 ```
 
 Se questa riga non compare, il Raspberry sta ancora usando un'immagine o una cartella progetto vecchia anche se `yt-dlp` si aggiorna correttamente.
+Se nei log di `yt-dlp` compare `No supported JavaScript runtime could be found`, ricostruisci l'immagine: il Dockerfile installa Deno e ClearWave lo passa a `yt-dlp` con `CLEARWAVE_YTDL_JS_RUNTIME`.
 
 Per controllare la versione dentro il container:
 
 ```bash
 docker compose exec clearwave yt-dlp --version
+docker compose exec clearwave deno --version
 ```
 
 Per controllare se le tracce del catalogo partono davvero, usa lo script incluso nel container:
@@ -177,6 +180,7 @@ Variabili principali:
 | `ALSA_CARD` | Scheda audio ALSA usata dal container Raspberry. |
 | `CLEARWAVE_YTDL_PATH` | Binario `yt-dlp` usato dal hook YouTube di `mpv`. |
 | `CLEARWAVE_YTDL_FORMAT` | Formato richiesto a YouTube; default audio-only per Raspberry. |
+| `CLEARWAVE_YTDL_JS_RUNTIME` | Runtime JavaScript passato a `yt-dlp`, default `deno:/usr/local/bin/deno`. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | File cookie YouTube Netscape dentro al container, opzionale per video che richiedono login/conferma eta. |
 | `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | Massimo di tracce YouTube/login ricontrollate dal pulsante admin in un giro, default `80`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | Modalita del controllo completo YouTube da Admin, default `metadata`. |
@@ -339,7 +343,7 @@ Con l'attuale compose a bind mount, `down -v` non elimina `./data` e `./uploads`
 ## Note tecniche
 
 - L'immagine usa `node:22-bookworm-slim`, coerente con l'uso di `node:sqlite`.
-- Il runtime installa `mpv`, `ffmpeg`, `alsa-utils`, `libasound2-plugins` e scarica `yt-dlp` aggiornato in `/usr/bin/yt-dlp`: servono per riprodurre file, stream e link YouTube dal server e per diagnosticare i device audio del Raspberry.
+- Il runtime installa `mpv`, `ffmpeg`, `alsa-utils`, `libasound2-plugins`, Deno e scarica `yt-dlp` aggiornato in `/usr/bin/yt-dlp`: servono per riprodurre file, stream e link YouTube dal server e per diagnosticare i device audio del Raspberry.
 - All'avvio il container puo' riscaricare `yt-dlp` per evitare che la cache Docker lasci una versione vecchia.
 - React viene buildato in uno stage separato con `npm ci --prefix frontend`.
 - Nel runtime finale non vengono installate dipendenze frontend.
