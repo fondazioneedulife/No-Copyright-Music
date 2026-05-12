@@ -290,6 +290,14 @@ export function startYouTubeFullAudit(token, options = {}) {
   });
 }
 
+export function cleanupBrokenAudioTracks(token, options = {}) {
+  return apiRequest("/api/admin/audio-check/cleanup-broken", {
+    method: "POST",
+    token,
+    body: options,
+  });
+}
+
 export function uploadYouTubeCookies(token, cookiesText) {
   return apiRequest("/api/admin/youtube-cookies", {
     method: "POST",

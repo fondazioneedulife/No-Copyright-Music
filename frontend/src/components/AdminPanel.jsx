@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
 
+const hardBrokenReasons = new Set([
+  "youtube-unavailable",
+  "youtube-format",
+  "stream-not-playable",
+  "missing-source",
+  "missing-file",
+  "not-found",
+  "forbidden",
+]);
+
 function firstDiagnosticLine(value) {
   return String(value || "")
     .split(/\r?\n/)
@@ -150,6 +160,7 @@ export function AdminPanel({
   onStartYouTubeFullAudit,
   onUploadYouTubeCookies,
   onProbeYouTubeCookies,
+  onCleanupBrokenAudioTracks,
   onExportCatalogBackup,
   onExportLicenseReport,
   onExportLicenseReportHtml,
@@ -173,6 +184,8 @@ export function AdminPanel({
   const [startingYouTubeFullAudit, setStartingYouTubeFullAudit] = useState(false);
   const [uploadingYouTubeCookies, setUploadingYouTubeCookies] = useState(false);
   const [probingYouTubeCookies, setProbingYouTubeCookies] = useState(false);
+  const [cleaningBrokenTracks, setCleaningBrokenTracks] = useState(false);
+  const [pendingCleanupBroken, setPendingCleanupBroken] = useState(false);
   const [exporting, setExporting] = useState("");
   const [importingBackup, setImportingBackup] = useState(false);
 
@@ -345,6 +358,32 @@ export function AdminPanel({
     }
   }
 
+  async function handleCleanupBrokenAudioTracks() {
+    if (!onCleanupBrokenAudioTracks) {
+      return;
+    }
+
+    setCleaningBrokenTracks(true);
+    setDiagnosticsStatusType("success");
+    setDiagnosticsStatus("Pulizia tracce YouTube non disponibili in corso...");
+    try {
+      const payload = await onCleanupBrokenAudioTracks();
+      if (payload.diagnostics) {
+        setDiagnostics(payload.diagnostics);
+      }
+      setDiagnosticsStatusType("success");
+      setDiagnosticsStatus(
+        `${payload.message || "Pulizia catalogo completata."}${payload.backupFile ? ` Backup: ${payload.backupFile}.` : ""}`
+      );
+      setPendingCleanupBroken(false);
+    } catch (error) {
+      setDiagnosticsStatusType("error");
+      setDiagnosticsStatus(error.message || "Pulizia catalogo non riuscita.");
+    } finally {
+      setCleaningBrokenTracks(false);
+    }
+  }
+
   async function handleExport(type, action) {
     setExporting(type);
     try {
@@ -412,6 +451,9 @@ export function AdminPanel({
     : [];
   const replacementList = diagnostics?.replacementList || null;
   const replacementItems = Array.isArray(replacementList?.items) ? replacementList.items : [];
+  const hardBrokenItems = replacementItems.filter((item) =>
+    hardBrokenReasons.has(String(item.reason || "").toLowerCase())
+  );
   const youtubeAudit = diagnostics?.youtubeAudit || null;
   const youtubeAuditLog = Array.isArray(youtubeAudit?.logTail) ? youtubeAudit.logTail.slice(-8) : [];
 
@@ -744,6 +786,20 @@ export function AdminPanel({
                 </span>
                 <small>{replacementList.updatedAt || "Nessun ricontrollo eseguito"}</small>
               </div>
+              {hardBrokenItems.length > 0 ? (
+                <div>
+                  <strong>{hardBrokenItems.length} non disponibili</strong>
+                  <span>Video rimossi, privati o non piu' riproducibili: puoi toglierli dal catalogo in blocco.</span>
+                  <button
+                    type="button"
+                    className="danger-button"
+                    disabled={cleaningBrokenTracks}
+                    onClick={() => setPendingCleanupBroken(true)}
+                  >
+                    {cleaningBrokenTracks ? "Pulisco..." : "Rimuovi non disponibili"}
+                  </button>
+                </div>
+              ) : null}
               {replacementItems.slice(0, 12).map((item) => (
                 <div key={`${item.id}-${item.checkedAt}`}>
                   <strong>{item.title}</strong>
@@ -799,6 +855,38 @@ export function AdminPanel({
                 onClick={() => handleDelete(pendingDeleteUser)}
               >
                 {deletingUsername === pendingDeleteUser.username ? "Elimino..." : "Elimina utente"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {pendingCleanupBroken ? (
+        <div className="app-modal-backdrop" role="presentation" onClick={() => setPendingCleanupBroken(false)}>
+          <section
+            className="app-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cleanup-broken-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="eyebrow">Catalogo</p>
+            <h3 id="cleanup-broken-title">Rimuovere tracce non disponibili?</h3>
+            <p>
+              Verranno rimosse <strong>{hardBrokenItems.length}</strong> tracce confermate rotte dal report audio.
+              Prima della modifica il backend crea un backup del catalogo in `data`.
+            </p>
+            <div className="modal-actions">
+              <button type="button" onClick={() => setPendingCleanupBroken(false)}>
+                Annulla
+              </button>
+              <button
+                type="button"
+                className="danger-button"
+                disabled={cleaningBrokenTracks}
+                onClick={handleCleanupBrokenAudioTracks}
+              >
+                {cleaningBrokenTracks ? "Pulisco..." : "Rimuovi tracce"}
               </button>
             </div>
           </section>

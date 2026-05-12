@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   bulkImportDiscovery,
   changePassword,
+  cleanupBrokenAudioTracks,
   createTrack,
   createUser,
   deleteUser,
@@ -945,6 +946,24 @@ export default function App() {
     }
   }
 
+  async function handleCleanupBrokenAudioTracks() {
+    try {
+      const payload = await cleanupBrokenAudioTracks(token);
+      await refreshTracks();
+      setAdminStatusType("success");
+      setAdminStatus(
+        `${payload.message || "Pulizia catalogo completata."}${
+          payload.backupFile ? ` Backup: ${payload.backupFile}.` : ""
+        }`
+      );
+      return payload;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Pulizia catalogo non riuscita.");
+      throw error;
+    }
+  }
+
   async function handleExportCatalogBackup() {
     try {
       const file = await exportCatalogBackup(token);
@@ -1570,6 +1589,7 @@ export default function App() {
                       onStartYouTubeFullAudit={handleStartYouTubeFullAudit}
                       onUploadYouTubeCookies={handleUploadYouTubeCookies}
                       onProbeYouTubeCookies={handleProbeYouTubeCookies}
+                      onCleanupBrokenAudioTracks={handleCleanupBrokenAudioTracks}
                       onExportCatalogBackup={handleExportCatalogBackup}
                       onExportLicenseReport={handleExportLicenseReport}
                       onExportLicenseReportHtml={handleExportLicenseReportHtml}

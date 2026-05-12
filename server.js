@@ -118,6 +118,7 @@ const audioReplacementService = createAudioReplacementService({
   reportsDir: AUDIO_CHECK_REPORTS_DIR,
   replacementFile: AUDIO_REPLACEMENT_FILE,
   readLibrary,
+  writeLibrary,
   getYtdlCookiesFile: ytdlCookiesFileIfAvailable,
   getLastPlayerFailure: () => ({
     track: serverPlayer.lastFailedTrack,
@@ -6393,6 +6394,14 @@ async function requestHandler(req, res) {
       const payload = await readJsonBody(req);
       const result = audioReplacementService.startFullYouTubeAudit(payload);
       json(res, 202, { ...result, diagnostics: await buildServerDiagnostics() });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/admin/audio-check/cleanup-broken") {
+      requireAdminRequest(req);
+      const payload = await readJsonBody(req);
+      const result = await audioReplacementService.cleanupHardBrokenTracks(payload);
+      json(res, 200, { ...result, diagnostics: await buildServerDiagnostics() });
       return;
     }
 

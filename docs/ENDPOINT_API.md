@@ -584,6 +584,20 @@ Quando termina, `diagnostics.youtubeAudit.summary` espone `ok`, `failed`, `repla
 Solo admin. Restituisce solo stato del job `Verifica tutto YouTube` e `replacementList`, senza rieseguire la diagnostica completa Raspberry.
 La UI lo usa per aggiornare il progresso ogni pochi secondi senza rilanciare i preflight ALSA.
 
+### `POST /api/admin/audio-check/cleanup-broken`
+
+Solo admin. Legge `data/audio-replacement-list.json`, crea un backup del catalogo in `data/library-before-audio-cleanup-*.json` e rimuove dal catalogo le tracce confermate non riproducibili, per esempio `youtube-unavailable`, `youtube-format`, `stream-not-playable`, `missing-source` e `missing-file`.
+
+Risposta:
+
+```json
+{
+  "ok": true,
+  "removed": 42,
+  "backupFile": "library-before-audio-cleanup-2026-05-12T10-30-00-000Z.json"
+}
+```
+
 ### `POST /api/admin/youtube-cookies`
 
 Solo admin. Riceve un file `cookies.txt` Netscape esportato da una sessione YouTube autorizzata e lo salva in `data/youtube-cookies.txt`, cioe' il percorso automatico usato dal player Docker/Raspberry. Il backend valida che il testo contenga cookie YouTube/Google e cookie di sessione login, ma non restituisce mai il contenuto del file.
