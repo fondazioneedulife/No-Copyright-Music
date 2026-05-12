@@ -60,6 +60,7 @@ function parseArgs(argv) {
     onlyErrors: false,
     csv: true,
     failOnBroken: false,
+    includeArchived: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -146,6 +147,9 @@ function parseArgs(argv) {
       case "fail-on-broken":
         options.failOnBroken = true;
         break;
+      case "include-archived":
+        options.includeArchived = true;
+        break;
       default:
         throw new Error(`Opzione non riconosciuta: --${rawName}`);
     }
@@ -205,14 +209,18 @@ Opzioni utili:
   --ids track-a,track-b
   --only-errors
   --fail-on-broken
+  --include-archived
 `);
 }
 
-async function readLibrary() {
+async function readLibrary(options = {}) {
   const raw = await fs.readFile(LIBRARY_FILE, "utf8");
   const parsed = JSON.parse(raw);
   if (!Array.isArray(parsed.tracks)) {
     throw new Error(`Catalogo non valido: ${LIBRARY_FILE} non contiene tracks[].`);
+  }
+  if (options.includeArchived) {
+    return parsed.tracks;
   }
   return parsed.tracks.filter(
     (track) => !track?.hiddenFromCatalog && String(track?.availabilityStatus || "").toLowerCase() !== "unavailable"
@@ -750,7 +758,7 @@ async function main() {
     return 0;
   }
 
-  const tracks = await readLibrary();
+  const tracks = await readLibrary(options);
   console.log(
     `[check] Catalogo: ${tracks.length} tracce. Modalita ${options.mode}, provider ${options.provider}, concorrenza ${options.concurrency}.`
   );

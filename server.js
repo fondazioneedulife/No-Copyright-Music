@@ -6413,6 +6413,14 @@ async function requestHandler(req, res) {
       return;
     }
 
+    if (req.method === "POST" && pathname === "/api/admin/audio-check/recheck-archived") {
+      requireAdminRequest(req);
+      const payload = await readJsonBody(req);
+      const result = await audioReplacementService.recheckArchivedTracks(payload);
+      json(res, 200, { ...result, diagnostics: await buildServerDiagnostics() });
+      return;
+    }
+
     if (req.method === "GET" && pathname === "/api/admin/audio-check/youtube-full-audit") {
       requireAdminRequest(req);
       json(res, 200, {

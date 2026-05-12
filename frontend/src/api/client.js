@@ -298,6 +298,14 @@ export function cleanupBrokenAudioTracks(token, options = {}) {
   });
 }
 
+export function recheckArchivedAudioTracks(token, options = {}) {
+  return apiRequest("/api/admin/audio-check/recheck-archived", {
+    method: "POST",
+    token,
+    body: options,
+  });
+}
+
 export function uploadYouTubeCookies(token, cookiesText) {
   return apiRequest("/api/admin/youtube-cookies", {
     method: "POST",

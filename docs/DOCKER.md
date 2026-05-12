@@ -280,6 +280,7 @@ Dal pannello admin puoi poi usare due controlli:
 
 - `Test cookie YouTube`: prova subito `yt-dlp` dal Raspberry con i cookie caricati. Se fallisce con `youtube-age-or-login`, non lanciare il controllo da 3000+ video: rigenera i cookie o verifica l'account prima.
 - `Ricontrolla login YouTube`: rapido, legge gli ultimi report in `data/reports`, prende solo le tracce con motivo `youtube-age-or-login` e aggiorna `data/audio-replacement-list.json`.
+- `Riverifica archiviate`: dopo avere caricato cookie nuovi, ricontrolla le tracce YouTube archiviate e riattiva automaticamente quelle tornate riproducibili.
 - `Verifica tutto YouTube`: lungo, passa su tutte le tracce YouTube del catalogo e mostra progresso nella diagnostica. Con 3000+ video puo' durare parecchio, ma resta in background e alla fine produce lo stesso file `data/audio-replacement-list.json`.
 - `Archivia non disponibili`: dopo un report, nasconde dal catalogo attivo le tracce con errori definitivi come `youtube-unavailable`, creando prima un backup `data/library-before-audio-cleanup-*.json` e senza cancellarle da `library.json`.
 

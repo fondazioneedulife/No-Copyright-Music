@@ -26,6 +26,7 @@ import {
   playServerTrack,
   probeYouTubeCookies,
   readStoredToken,
+  recheckArchivedAudioTracks,
   recheckYouTubeLoginFailures,
   resetUserPassword,
   resetYouTubeImportState,
@@ -964,6 +965,24 @@ export default function App() {
     }
   }
 
+  async function handleRecheckArchivedAudioTracks() {
+    try {
+      const payload = await recheckArchivedAudioTracks(token);
+      await refreshTracks();
+      setAdminStatusType("success");
+      setAdminStatus(
+        `${payload.message || "Riverifica archiviate completata."}${
+          payload.backupFile ? ` Backup: ${payload.backupFile}.` : ""
+        }`
+      );
+      return payload;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Riverifica archiviate non riuscita.");
+      throw error;
+    }
+  }
+
   async function handleExportCatalogBackup() {
     try {
       const file = await exportCatalogBackup(token);
@@ -1590,6 +1609,7 @@ export default function App() {
                       onUploadYouTubeCookies={handleUploadYouTubeCookies}
                       onProbeYouTubeCookies={handleProbeYouTubeCookies}
                       onCleanupBrokenAudioTracks={handleCleanupBrokenAudioTracks}
+                      onRecheckArchivedAudioTracks={handleRecheckArchivedAudioTracks}
                       onExportCatalogBackup={handleExportCatalogBackup}
                       onExportLicenseReport={handleExportLicenseReport}
                       onExportLicenseReportHtml={handleExportLicenseReportHtml}

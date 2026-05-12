@@ -161,6 +161,7 @@ export function AdminPanel({
   onUploadYouTubeCookies,
   onProbeYouTubeCookies,
   onCleanupBrokenAudioTracks,
+  onRecheckArchivedAudioTracks,
   onExportCatalogBackup,
   onExportLicenseReport,
   onExportLicenseReportHtml,
@@ -185,6 +186,7 @@ export function AdminPanel({
   const [uploadingYouTubeCookies, setUploadingYouTubeCookies] = useState(false);
   const [probingYouTubeCookies, setProbingYouTubeCookies] = useState(false);
   const [cleaningBrokenTracks, setCleaningBrokenTracks] = useState(false);
+  const [recheckingArchivedTracks, setRecheckingArchivedTracks] = useState(false);
   const [pendingCleanupBroken, setPendingCleanupBroken] = useState(false);
   const [exporting, setExporting] = useState("");
   const [importingBackup, setImportingBackup] = useState(false);
@@ -381,6 +383,31 @@ export function AdminPanel({
       setDiagnosticsStatus(error.message || "Quarantena catalogo non riuscita.");
     } finally {
       setCleaningBrokenTracks(false);
+    }
+  }
+
+  async function handleRecheckArchivedAudioTracks() {
+    if (!onRecheckArchivedAudioTracks) {
+      return;
+    }
+
+    setRecheckingArchivedTracks(true);
+    setDiagnosticsStatusType("success");
+    setDiagnosticsStatus("Riverifica tracce archiviate con i cookie attuali in corso...");
+    try {
+      const payload = await onRecheckArchivedAudioTracks();
+      if (payload.diagnostics) {
+        setDiagnostics(payload.diagnostics);
+      }
+      setDiagnosticsStatusType("success");
+      setDiagnosticsStatus(
+        `${payload.message || "Riverifica archiviate completata."}${payload.backupFile ? ` Backup: ${payload.backupFile}.` : ""}`
+      );
+    } catch (error) {
+      setDiagnosticsStatusType("error");
+      setDiagnosticsStatus(error.message || "Riverifica archiviate non riuscita.");
+    } finally {
+      setRecheckingArchivedTracks(false);
     }
   }
 
@@ -606,6 +633,14 @@ export function AdminPanel({
                 disabled={recheckingYouTubeLogin}
               >
                 {recheckingYouTubeLogin ? "Ricontrollo..." : "Ricontrolla login YouTube"}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleRecheckArchivedAudioTracks}
+                disabled={recheckingArchivedTracks}
+              >
+                {recheckingArchivedTracks ? "Riverifico..." : "Riverifica archiviate"}
               </button>
               <button
                 type="button"

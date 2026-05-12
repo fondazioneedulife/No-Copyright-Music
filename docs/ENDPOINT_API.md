@@ -599,6 +599,21 @@ Risposta:
 }
 ```
 
+### `POST /api/admin/audio-check/recheck-archived`
+
+Solo admin. Ricontrolla le tracce YouTube archiviate con i cookie attuali. Se una traccia torna `ok`, il backend crea un backup del catalogo e la riattiva togliendo `hiddenFromCatalog`.
+
+Risposta:
+
+```json
+{
+  "ok": true,
+  "checked": 120,
+  "restored": 8,
+  "backupFile": "library-before-audio-cleanup-2026-05-12T10-45-00-000Z.json"
+}
+```
+
 ### `POST /api/admin/youtube-cookies`
 
 Solo admin. Riceve un file `cookies.txt` Netscape esportato da una sessione YouTube autorizzata e lo salva in `data/youtube-cookies.txt`, cioe' il percorso automatico usato dal player Docker/Raspberry. Il backend valida che il testo contenga cookie YouTube/Google e cookie di sessione login, ma non restituisce mai il contenuto del file.

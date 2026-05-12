@@ -84,6 +84,7 @@ Il pulsante avvia un job in background, quindi la web app resta usabile e il pla
 La modalita predefinita e' `metadata`: risolve ogni video con `yt-dlp` e cookie, segnando quelli ancora bloccati da login, bot, video rimossi o formato non disponibile.
 Alla fine aggiorna `data/audio-replacement-list.json` con le tracce da sostituire e salva il report completo in `data/reports/`.
 Quando il report conferma tracce `youtube-unavailable` o altri errori definitivi, il pannello Admin mostra `Archivia non disponibili`: il backend crea prima un backup del catalogo, poi marca quelle tracce come `availabilityStatus: "unavailable"` e le nasconde dalla libreria attiva senza cancellarle.
+Dopo avere caricato cookie nuovi puoi usare `Riverifica archiviate`: ClearWave controlla solo le tracce YouTube nascoste e riattiva automaticamente quelle che `yt-dlp` riesce di nuovo a leggere.
 
 Non sostituire migliaia di video a mano. Se l'audit mostra tantissimi KO YouTube:
 
@@ -156,3 +157,4 @@ Il JSON contiene:
 - Dal pannello admin puoi usare `Ricontrolla login YouTube`: legge gli ultimi report, ricontrolla solo le tracce `youtube-age-or-login` e aggiorna `data/audio-replacement-list.json` con le tracce da sostituire.
 - Per controllare tutto YouTube, usa `Verifica tutto YouTube`: e' piu' lenta del ricontrollo mirato, ma copre anche tracce mai finite in un report precedente.
 - `Archivia non disponibili` agisce solo su errori considerati definitivi, salva prima `data/library-before-audio-cleanup-*.json` e lascia le tracce in `library.json` per eventuale recupero.
+- `Riverifica archiviate` usa i cookie attuali e riporta nel catalogo attivo le tracce archiviate che tornano OK.
