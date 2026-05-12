@@ -68,6 +68,7 @@ function diagnosticHealthChecks(diagnostics) {
   const audioOk = preflight.length === 0 || preflight.some((entry) => entry.ok);
   const youtubeCookiesAvailable = Boolean(diagnostics.config?.ytdlCookiesAvailable);
   const youtubeCookiesConfigured = Boolean(diagnostics.config?.ytdlCookiesConfigured);
+  const youtubeCookieSessionCount = Number(diagnostics.config?.ytdlCookieAnalysis?.sessionCookieCount) || 0;
   return [
     {
       label: "Backend",
@@ -101,9 +102,11 @@ function diagnosticHealthChecks(diagnostics) {
     },
     {
       label: "Cookie YouTube",
-      ok: youtubeCookiesAvailable,
+      ok: youtubeCookiesAvailable && youtubeCookieSessionCount > 0,
       detail: youtubeCookiesAvailable
-        ? "Attivi"
+        ? youtubeCookieSessionCount > 0
+          ? `${youtubeCookieSessionCount} cookie sessione`
+          : "File presente ma sessione incompleta"
         : youtubeCookiesConfigured
           ? "File configurato ma non leggibile"
           : "Carica cookies.txt",
@@ -146,6 +149,7 @@ export function AdminPanel({
   onRecheckYouTubeLoginFailures,
   onStartYouTubeFullAudit,
   onUploadYouTubeCookies,
+  onProbeYouTubeCookies,
   onExportCatalogBackup,
   onExportLicenseReport,
   onExportLicenseReportHtml,
@@ -168,6 +172,7 @@ export function AdminPanel({
   const [recheckingYouTubeLogin, setRecheckingYouTubeLogin] = useState(false);
   const [startingYouTubeFullAudit, setStartingYouTubeFullAudit] = useState(false);
   const [uploadingYouTubeCookies, setUploadingYouTubeCookies] = useState(false);
+  const [probingYouTubeCookies, setProbingYouTubeCookies] = useState(false);
   const [exporting, setExporting] = useState("");
   const [importingBackup, setImportingBackup] = useState(false);
 
@@ -314,6 +319,29 @@ export function AdminPanel({
       setDiagnosticsStatus(error.message || "Cookie YouTube non validi.");
     } finally {
       setUploadingYouTubeCookies(false);
+    }
+  }
+
+  async function handleProbeYouTubeCookies() {
+    if (!onProbeYouTubeCookies) {
+      return;
+    }
+
+    setProbingYouTubeCookies(true);
+    setDiagnosticsStatusType("success");
+    setDiagnosticsStatus("Test cookie YouTube dal Raspberry in corso...");
+    try {
+      const payload = await onProbeYouTubeCookies();
+      if (payload.diagnostics) {
+        setDiagnostics(payload.diagnostics);
+      }
+      setDiagnosticsStatusType(payload.ok ? "success" : "error");
+      setDiagnosticsStatus(payload.message || "Test cookie YouTube completato.");
+    } catch (error) {
+      setDiagnosticsStatusType("error");
+      setDiagnosticsStatus(error.message || "Test cookie YouTube non riuscito.");
+    } finally {
+      setProbingYouTubeCookies(false);
     }
   }
 
@@ -524,6 +552,14 @@ export function AdminPanel({
               <button
                 type="button"
                 className="secondary-button"
+                onClick={handleProbeYouTubeCookies}
+                disabled={probingYouTubeCookies}
+              >
+                {probingYouTubeCookies ? "Test..." : "Test cookie YouTube"}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
                 onClick={handleRecheckYouTubeLoginFailures}
                 disabled={recheckingYouTubeLogin}
               >
@@ -617,7 +653,9 @@ export function AdminPanel({
                 </strong>
                 <small>
                   {diagnostics.config?.ytdlCookiesAvailable
-                    ? `${diagnostics.config?.ytdlCookiesSource || "file"} | ${diagnostics.config?.ytdlCookiesPath || ""}`
+                    ? `${diagnostics.config?.ytdlCookiesSource || "file"} | ${
+                        diagnostics.config?.ytdlCookieAnalysis?.sessionCookieCount || 0
+                      } cookie sessione`
                     : diagnostics.config?.ytdlCookiesConfigured
                       ? `Non leggibile: ${diagnostics.config?.ytdlCookiesPath || "percorso mancante"}`
                       : `Auto: ${diagnostics.config?.ytdlCookiesPath || "data/youtube-cookies.txt"}`}

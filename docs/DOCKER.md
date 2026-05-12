@@ -214,6 +214,7 @@ Procedura consigliata dalla UI:
 4. Usa `Carica cookies.txt`.
 
 Il backend salva il file nel volume persistente `data/youtube-cookies.txt`; nel container il percorso diventa `/app/data/youtube-cookies.txt` e viene usato automaticamente dal prossimo play YouTube.
+Il file e' una fotografia della sessione: aprire YouTube dopo l'export non aggiorna automaticamente il Raspberry. Se cambi login, accetti un controllo Google o rigeneri la sessione, devi esportare e caricare un nuovo `cookies.txt`.
 
 Procedura automatica da PC Windows:
 
@@ -277,6 +278,7 @@ Il file `data/youtube-cookies.txt` non va mai committato: contiene una sessione 
 
 Dal pannello admin puoi poi usare due controlli:
 
+- `Test cookie YouTube`: prova subito `yt-dlp` dal Raspberry con i cookie caricati. Se fallisce con `youtube-age-or-login`, non lanciare il controllo da 3000+ video: rigenera i cookie o verifica l'account prima.
 - `Ricontrolla login YouTube`: rapido, legge gli ultimi report in `data/reports`, prende solo le tracce con motivo `youtube-age-or-login` e aggiorna `data/audio-replacement-list.json`.
 - `Verifica tutto YouTube`: lungo, passa su tutte le tracce YouTube del catalogo e mostra progresso nella diagnostica. Con 3000+ video puo' durare parecchio, ma resta in background e alla fine produce lo stesso file `data/audio-replacement-list.json`.
 

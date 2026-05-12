@@ -23,6 +23,7 @@ import {
   logout,
   pauseServerTrack,
   playServerTrack,
+  probeYouTubeCookies,
   readStoredToken,
   recheckYouTubeLoginFailures,
   resetUserPassword,
@@ -931,6 +932,19 @@ export default function App() {
     }
   }
 
+  async function handleProbeYouTubeCookies() {
+    try {
+      const payload = await probeYouTubeCookies(token);
+      setAdminStatusType(payload.ok ? "success" : "error");
+      setAdminStatus(payload.message || "Test cookie YouTube completato.");
+      return payload;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Test cookie YouTube non riuscito.");
+      throw error;
+    }
+  }
+
   async function handleExportCatalogBackup() {
     try {
       const file = await exportCatalogBackup(token);
@@ -1555,6 +1569,7 @@ export default function App() {
                       onRecheckYouTubeLoginFailures={handleRecheckYouTubeLoginFailures}
                       onStartYouTubeFullAudit={handleStartYouTubeFullAudit}
                       onUploadYouTubeCookies={handleUploadYouTubeCookies}
+                      onProbeYouTubeCookies={handleProbeYouTubeCookies}
                       onExportCatalogBackup={handleExportCatalogBackup}
                       onExportLicenseReport={handleExportLicenseReport}
                       onExportLicenseReportHtml={handleExportLicenseReportHtml}

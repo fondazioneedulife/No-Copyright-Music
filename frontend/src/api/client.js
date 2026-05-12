@@ -298,6 +298,13 @@ export function uploadYouTubeCookies(token, cookiesText) {
   });
 }
 
+export function probeYouTubeCookies(token) {
+  return apiRequest("/api/admin/youtube-cookies/probe", {
+    method: "POST",
+    token,
+  });
+}
+
 export function resetYouTubeImportState(token) {
   return apiRequest("/api/admin/youtube-import-state/reset", {
     method: "POST",

@@ -87,11 +87,13 @@ Alla fine aggiorna `data/audio-replacement-list.json` con le tracce da sostituir
 Non sostituire migliaia di video a mano. Se l'audit mostra tantissimi KO YouTube:
 
 1. controlla prima `Cookie YouTube`, `yt-dlp` e `Deno/JS` nella diagnostica;
-2. ricostruisci il container se manca Deno o compare `No supported JavaScript runtime`;
-3. rilancia `Verifica tutto YouTube`;
-4. sostituisci in blocco solo i KO residui confermati dal report finale.
+2. usa `Test cookie YouTube`: fa una prova singola dal Raspberry con i cookie caricati;
+3. ricostruisci il container se manca Deno o compare `No supported JavaScript runtime`;
+4. rilancia `Verifica tutto YouTube`;
+5. sostituisci in blocco solo i KO residui confermati dal report finale.
 
 L'audit completo ha una protezione anti-report-sporco: se le prime tracce controllate sono tutte `youtube-age-or-login`, il backend ferma automaticamente il job. In quel caso il problema non sono migliaia di brani singoli, ma cookie YouTube non accettati o account bloccato da verifica anti-bot.
+Il controllo cookie distingue tre livelli: file presente, cookie di sessione dentro al file, e prova reale `yt-dlp` accettata da YouTube. Solo il terzo conferma che il Raspberry puo' riprodurre YouTube in quel momento.
 
 Solo Jamendo:
 

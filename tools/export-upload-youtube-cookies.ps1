@@ -95,6 +95,21 @@ function Test-YoutubeCookieFileText {
 
   $validRows = 0
   $youtubeRows = 0
+  $sessionNames = @(
+    "SID",
+    "HSID",
+    "SSID",
+    "APISID",
+    "SAPISID",
+    "LOGIN_INFO",
+    "__Secure-1PSID",
+    "__Secure-3PSID",
+    "__Secure-1PAPISID",
+    "__Secure-3PAPISID",
+    "__Secure-1PSIDTS",
+    "__Secure-3PSIDTS"
+  )
+  $presentSessionNames = New-Object System.Collections.Generic.HashSet[string]
 
   foreach ($line in ($CookieText -split "`n")) {
     $cleanLine = $line.Trim()
@@ -112,13 +127,18 @@ function Test-YoutubeCookieFileText {
       $validRows += 1
       if ($columns[0].Trim() -match "(^|\.)youtube\.com$|(^|\.)google\.com$|(^|\.)youtube-nocookie\.com$") {
         $youtubeRows += 1
+        [void]$presentSessionNames.Add($columns[5].Trim())
       }
     }
   }
 
+  $sessionCookieNames = @($sessionNames | Where-Object { $presentSessionNames.Contains($_) })
+
   return [pscustomobject]@{
     ValidRows = $validRows
     YoutubeRows = $youtubeRows
+    SessionCookieCount = $sessionCookieNames.Count
+    SessionCookieNames = $sessionCookieNames
   }
 }
 
@@ -527,7 +547,10 @@ if ($cookieValidation.ValidRows -le 0) {
 if ($cookieValidation.YoutubeRows -le 0) {
   Stop-WithMessage "Il file cookie e' Netscape, ma non contiene righe YouTube/Google leggibili."
 }
-Write-Host "File cookie valido: $($cookieValidation.YoutubeRows) righe YouTube/Google su $($cookieValidation.ValidRows) righe Netscape."
+if ($cookieValidation.SessionCookieCount -lt 4) {
+  Stop-WithMessage "Il file contiene cookie YouTube/Google, ma non abbastanza cookie di sessione login. Apri YouTube gia' loggato, esporta di nuovo cookies.txt e riprova."
+}
+Write-Host "File cookie valido: $($cookieValidation.YoutubeRows) righe YouTube/Google, $($cookieValidation.SessionCookieCount) cookie sessione su $($cookieValidation.ValidRows) righe Netscape."
 
 $password = $null
 try {

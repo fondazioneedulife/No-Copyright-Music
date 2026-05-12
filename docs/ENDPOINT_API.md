@@ -586,7 +586,7 @@ La UI lo usa per aggiornare il progresso ogni pochi secondi senza rilanciare i p
 
 ### `POST /api/admin/youtube-cookies`
 
-Solo admin. Riceve un file `cookies.txt` Netscape esportato da una sessione YouTube autorizzata e lo salva in `data/youtube-cookies.txt`, cioe' il percorso automatico usato dal player Docker/Raspberry. Il backend valida che il testo contenga cookie YouTube/Google, ma non restituisce mai il contenuto del file.
+Solo admin. Riceve un file `cookies.txt` Netscape esportato da una sessione YouTube autorizzata e lo salva in `data/youtube-cookies.txt`, cioe' il percorso automatico usato dal player Docker/Raspberry. Il backend valida che il testo contenga cookie YouTube/Google e cookie di sessione login, ma non restituisce mai il contenuto del file.
 
 Body:
 
@@ -607,6 +607,26 @@ Risposta:
     "available": true,
     "path": "/app/data/youtube-cookies.txt",
     "source": "default"
+  }
+}
+```
+
+### `POST /api/admin/youtube-cookies/probe`
+
+Solo admin. Esegue un test singolo con `yt-dlp`, Deno e i cookie caricati per capire se YouTube accetta davvero la sessione dal Raspberry. Non stampa mai i valori dei cookie.
+
+Risposta:
+
+```json
+{
+  "ok": true,
+  "reason": "ok",
+  "message": "Me at the zoo | public",
+  "probe": {
+    "url": "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    "durationMs": 1200,
+    "exitCode": 0,
+    "title": "Me at the zoo | public"
   }
 }
 ```

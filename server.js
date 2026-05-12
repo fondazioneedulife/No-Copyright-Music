@@ -49,6 +49,9 @@ const serverPlayerYtdlFormat = String(
 const serverPlayerYtdlJsRuntime = String(process.env.CLEARWAVE_YTDL_JS_RUNTIME || "").trim();
 const serverPlayerYtdlCookiesFileFromEnv = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
 const serverPlayerYtdlCookiesFile = serverPlayerYtdlCookiesFileFromEnv || DEFAULT_YTDL_COOKIES_FILE;
+const serverPlayerYtdlCookieProbeUrl = String(
+  process.env.CLEARWAVE_YTDL_COOKIE_PROBE_URL || "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+).trim();
 const serverPlayerMpvMsgLevel = String(process.env.CLEARWAVE_MPV_MSG_LEVEL || "all=warn,ytdl_hook=info").trim();
 const serverPlayerAudioPreflight = process.env.CLEARWAVE_AUDIO_PREFLIGHT !== "0";
 const serverPlayerAudioPreflightTimeoutMs = Math.max(
@@ -63,6 +66,20 @@ const serverPlayerVolumeMax = Math.max(
   100,
   Math.min(180, Number(process.env.CLEARWAVE_SERVER_VOLUME_MAX || 130) || 130)
 );
+const ytdlSessionCookieNames = new Set([
+  "SID",
+  "HSID",
+  "SSID",
+  "APISID",
+  "SAPISID",
+  "LOGIN_INFO",
+  "__Secure-1PSID",
+  "__Secure-3PSID",
+  "__Secure-1PAPISID",
+  "__Secure-3PAPISID",
+  "__Secure-1PSIDTS",
+  "__Secure-3PSIDTS",
+]);
 const serverPlayer = {
   // Stato del player lato Raspberry: React diventa telecomando, l'audio esce dal server.
   process: null,
@@ -3342,6 +3359,76 @@ function ytdlCookiesFileIfAvailable() {
   return fsSync.existsSync(serverPlayerYtdlCookiesFile) ? serverPlayerYtdlCookiesFile : "";
 }
 
+function parseYtdlCookieRows(rawText) {
+  const rows = [];
+  String(rawText || "")
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .forEach((line) => {
+      const cleanLine = line.trim();
+      if (!cleanLine) {
+        return;
+      }
+
+      const cookieLine = cleanLine.startsWith("#HttpOnly_") ? cleanLine.slice("#HttpOnly_".length) : cleanLine;
+      if (cookieLine.startsWith("#")) {
+        return;
+      }
+
+      const columns = cookieLine.split("\t");
+      if (columns.length < 7) {
+        return;
+      }
+
+      rows.push({
+        domain: columns[0].trim(),
+        includeSubdomains: columns[1].trim(),
+        path: columns[2].trim(),
+        secure: columns[3].trim(),
+        expires: Number(columns[4]) || 0,
+        name: columns[5].trim(),
+      });
+    });
+
+  return rows;
+}
+
+function analyzeYtdlCookieText(rawText) {
+  // Analisi volutamente senza valori: i cookie sono credenziali private e non devono finire nei log o in UI.
+  const rows = parseYtdlCookieRows(rawText);
+  const youtubeRows = rows.filter((row) =>
+    /(^|\.)youtube\.com$|(^|\.)google\.com$|(^|\.)youtube-nocookie\.com$/i.test(row.domain)
+  );
+  const names = new Set(youtubeRows.map((row) => row.name).filter(Boolean));
+  const sessionCookieNames = Array.from(ytdlSessionCookieNames).filter((name) => names.has(name));
+  const expiringSessionCookies = youtubeRows
+    .filter((row) => ytdlSessionCookieNames.has(row.name) && row.expires > 0)
+    .map((row) => row.expires);
+  const expiresAt =
+    expiringSessionCookies.length > 0
+      ? new Date(Math.max(...expiringSessionCookies) * 1000).toISOString()
+      : "";
+
+  return {
+    validRows: rows.length,
+    youtubeRows: youtubeRows.length,
+    sessionCookieCount: sessionCookieNames.length,
+    sessionCookieNames,
+    hasSessionCookies: sessionCookieNames.length >= 4,
+    expiresAt,
+  };
+}
+
+function readYtdlCookieAnalysis(filePath) {
+  try {
+    return analyzeYtdlCookieText(fsSync.readFileSync(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 function ytdlCookieStatus() {
   const availableFile = ytdlCookiesFileIfAvailable();
   return {
@@ -3349,6 +3436,7 @@ function ytdlCookieStatus() {
     available: Boolean(availableFile),
     path: serverPlayerYtdlCookiesFile,
     source: serverPlayerYtdlCookiesFileFromEnv ? "env" : "default",
+    analysis: availableFile ? readYtdlCookieAnalysis(availableFile) : null,
   };
 }
 
@@ -3376,29 +3464,19 @@ function normalizeUploadedYtdlCookies(rawText) {
     throw httpError(413, "File cookie troppo grande.");
   }
 
-  const hasYouTubeCookie = text.split("\n").some((line) => {
-    const cleanLine = line.trim();
-    if (!cleanLine) {
-      return false;
-    }
+  const analysis = analyzeYtdlCookieText(text);
 
-    const cookieLine = cleanLine.startsWith("#HttpOnly_") ? cleanLine.slice("#HttpOnly_".length) : cleanLine;
-    if (cookieLine.startsWith("#")) {
-      return false;
-    }
-
-    const columns = cookieLine.split("\t");
-    if (columns.length < 7) {
-      return false;
-    }
-
-    return /(^|\.)youtube\.com$|(^|\.)google\.com$|(^|\.)youtube-nocookie\.com$/i.test(columns[0].trim());
-  });
-
-  if (!hasYouTubeCookie) {
+  if (analysis.youtubeRows <= 0) {
     throw httpError(
       400,
       "Il file deve essere un cookies.txt Netscape e contenere cookie YouTube/Google esportati da una sessione autorizzata."
+    );
+  }
+
+  if (!analysis.hasSessionCookies) {
+    throw httpError(
+      400,
+      "Il file contiene cookie YouTube/Google, ma non abbastanza cookie di sessione login. Esporta cookies.txt dopo aver aperto YouTube con l'account gia' loggato."
     );
   }
 
@@ -3436,6 +3514,102 @@ function appendYtDlpCommonArgs(args) {
     args.push("--cookies", cookiesFile);
   }
   return args;
+}
+
+function classifyYtdlCookieProbe(result) {
+  const text = `${result?.stdout || ""}\n${result?.stderr || ""}\n${result?.error || ""}`;
+  if (result?.ok) {
+    return {
+      ok: true,
+      reason: "ok",
+      message: firstString(result.stdout, "yt-dlp ha letto YouTube usando i cookie caricati."),
+    };
+  }
+
+  if (/sign in to confirm|not a bot|inappropriate for some users|use --cookies|cookies-from-browser/i.test(text)) {
+    return {
+      ok: false,
+      reason: "youtube-age-or-login",
+      message:
+        "YouTube rifiuta ancora la sessione dal Raspberry: rigenera cookies.txt da YouTube gia' loggato oppure attendi e riprova con lo stesso account.",
+    };
+  }
+
+  if (/No supported JavaScript runtime|js runtime|deno|js-runtimes/i.test(text)) {
+    return {
+      ok: false,
+      reason: "youtube-js-runtime",
+      message: "yt-dlp non vede Deno/JavaScript runtime: ricostruisci Docker e controlla CLEARWAVE_YTDL_JS_RUNTIME.",
+    };
+  }
+
+  if (/private video|video unavailable|removed|not available/i.test(text)) {
+    return {
+      ok: false,
+      reason: "youtube-unavailable",
+      message: "Il video test non e' disponibile da YouTube. Cambia CLEARWAVE_YTDL_COOKIE_PROBE_URL.",
+    };
+  }
+
+  if (/network|tls|ssl|connection|econnreset|enotfound|temporary failure/i.test(text)) {
+    return {
+      ok: false,
+      reason: "network",
+      message: "Il container non riesce a raggiungere YouTube in modo stabile.",
+    };
+  }
+
+  return {
+    ok: false,
+    reason: "unknown",
+    message: firstString(result?.stderr, result?.stdout, result?.error, "Test cookie YouTube non riuscito."),
+  };
+}
+
+async function probeYtdlCookies(payload = {}) {
+  const cookies = ytdlCookieStatus();
+  if (!cookies.available) {
+    throw httpError(400, "Cookie YouTube non presenti nel container: carica cookies.txt prima del test.");
+  }
+
+  if (!cookies.analysis?.hasSessionCookies) {
+    throw httpError(
+      400,
+      "Cookie presenti ma senza sessione login completa: esporta di nuovo cookies.txt da YouTube gia' loggato."
+    );
+  }
+
+  const testUrl = firstString(payload.url, serverPlayerYtdlCookieProbeUrl);
+  const args = [
+    "--no-warnings",
+    "--no-playlist",
+    "--skip-download",
+    "--socket-timeout",
+    "20",
+    "--print",
+    "%(title)s | %(availability)s",
+  ];
+  if (serverPlayerYtdlFormat) {
+    args.push("-f", serverPlayerYtdlFormat);
+  }
+  appendYtDlpCommonArgs(args);
+  args.push(testUrl);
+
+  const result = await diagnosticCommandResult(ytDlpCommand(), args, 35000);
+  const classified = classifyYtdlCookieProbe(result);
+
+  return {
+    ok: classified.ok,
+    reason: classified.reason,
+    message: classified.message.slice(0, 600),
+    cookies: ytdlCookieStatus(),
+    probe: {
+      url: testUrl,
+      durationMs: result.durationMs,
+      exitCode: result.code ?? null,
+      title: classified.ok ? String(result.stdout || "").split(/\r?\n/).find(Boolean) || "" : "",
+    },
+  };
 }
 
 function ytDlpPlaylistUrl(playlistId) {
@@ -4926,6 +5100,8 @@ async function buildServerDiagnostics() {
       ytdlCookiesAvailable: cookies.available,
       ytdlCookiesPath: cookies.path,
       ytdlCookiesSource: cookies.source,
+      ytdlCookieAnalysis: cookies.analysis,
+      ytdlCookieProbeUrl: serverPlayerYtdlCookieProbeUrl,
       mpvMsgLevel: serverPlayerMpvMsgLevel,
       hasYouTubeApiKey: Boolean(youtubeApiKey),
       hasJamendoClientId: Boolean(jamendoClientId),
@@ -6233,6 +6409,14 @@ async function requestHandler(req, res) {
       requireAdminRequest(req);
       const payload = await readJsonBody(req);
       const result = await installYtdlCookies(payload);
+      json(res, 200, { ...result, diagnostics: await buildServerDiagnostics() });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/admin/youtube-cookies/probe") {
+      requireAdminRequest(req);
+      const payload = await readJsonBody(req);
+      const result = await probeYtdlCookies(payload);
       json(res, 200, { ...result, diagnostics: await buildServerDiagnostics() });
       return;
     }
