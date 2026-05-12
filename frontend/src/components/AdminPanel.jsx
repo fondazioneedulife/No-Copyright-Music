@@ -644,11 +644,16 @@ export function AdminPanel({
                 <strong>{youtubeAuditSummary(youtubeAudit)}</strong>
                 <span>
                   {youtubeAudit.config?.mode || "metadata"} | concorrenza {youtubeAudit.config?.concurrency || 3}
+                  {youtubeAudit.loginFailures ? ` | login KO ${youtubeAudit.loginFailures}` : ""}
                   {youtubeAudit.summary?.replaceCount
                     ? ` | ${youtubeAudit.summary.replaceCount} da sostituire`
                     : ""}
                 </span>
-                <small>{youtubeAudit.lastError || youtubeAudit.reportJson || "In attesa del report finale"}</small>
+                <small>
+                  {youtubeAudit.earlyAbort
+                    ? "Fermato automaticamente: cookie YouTube non validi o account bloccato da anti-bot."
+                    : youtubeAudit.lastError || youtubeAudit.reportJson || "In attesa del report finale"}
+                </small>
                 {youtubeAudit.running ? (
                   <div className="diagnostic-progress" aria-label="Avanzamento verifica YouTube">
                     <span style={{ width: `${Math.max(0, Math.min(100, youtubeAudit.progress || 0))}%` }} />

@@ -91,6 +91,8 @@ Non sostituire migliaia di video a mano. Se l'audit mostra tantissimi KO YouTube
 3. rilancia `Verifica tutto YouTube`;
 4. sostituisci in blocco solo i KO residui confermati dal report finale.
 
+L'audit completo ha una protezione anti-report-sporco: se le prime tracce controllate sono tutte `youtube-age-or-login`, il backend ferma automaticamente il job. In quel caso il problema non sono migliaia di brani singoli, ma cookie YouTube non accettati o account bloccato da verifica anti-bot.
+
 Solo Jamendo:
 
 ```bash

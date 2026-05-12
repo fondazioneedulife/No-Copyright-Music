@@ -239,6 +239,7 @@ Se risponde `Failed to decrypt with DPAPI`, segui il prompt: esporta `youtube-co
 | `Requested format is not available` | Problema YouTube/formato, non device audio | Verifica `yt-dlp --version` e `CLEARWAVE_YTDL_FORMAT` |
 | `No supported JavaScript runtime could be found` | yt-dlp non trova Deno per i controlli JavaScript YouTube | Ricostruisci l'immagine aggiornata e controlla `deno --version` nel container |
 | `Sign in to confirm your age` / `not a bot` | YouTube richiede una sessione autenticata | Carica un `cookies.txt` Netscape dal pannello Admin oppure salvalo in `data/youtube-cookies.txt`; il container lo usa come `/app/data/youtube-cookies.txt`. |
+| Audit YouTube fermato dopo pochi KO | Le prime tracce chiedono tutte login/anti-bot | Rigenera `cookies.txt` da YouTube loggato, caricalo di nuovo e rilancia l'audit. |
 | Playlist importata con 1 solo brano | Link radio/mix `RD...` oppure Data API ha visto solo il video corrente | Usa un link `playlist?list=...`; per playlist normali il backend prova anche `yt-dlp` se la API restituisce solo 1 brano |
 | `mpv precedente chiuso per cambio traccia/comando` | Un nuovo play ha sostituito il processo mpv precedente | Non e' un errore finale: vuol dire che React/server hanno cambiato brano o comando prima che il vecchio processo chiudesse |
 | `mpv ha completato "... " correttamente (codice 0)` | La traccia e' finita o mpv ha chiuso normalmente | Non e' un errore. Se succede dopo pochi secondi, controlla durata reale della sorgente o eventuali click/skip dalla UI |
