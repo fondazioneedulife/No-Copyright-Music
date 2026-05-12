@@ -586,14 +586,15 @@ La UI lo usa per aggiornare il progresso ogni pochi secondi senza rilanciare i p
 
 ### `POST /api/admin/audio-check/cleanup-broken`
 
-Solo admin. Legge `data/audio-replacement-list.json`, crea un backup del catalogo in `data/library-before-audio-cleanup-*.json` e rimuove dal catalogo le tracce confermate non riproducibili, per esempio `youtube-unavailable`, `youtube-format`, `stream-not-playable`, `missing-source` e `missing-file`.
+Solo admin. Legge `data/audio-replacement-list.json`, crea un backup del catalogo in `data/library-before-audio-cleanup-*.json` e archivia le tracce confermate non riproducibili, per esempio `youtube-unavailable`, `youtube-format`, `stream-not-playable`, `missing-source` e `missing-file`. Le tracce non vengono cancellate: restano in `library.json` con `availabilityStatus: "unavailable"` e `hiddenFromCatalog: true`.
 
 Risposta:
 
 ```json
 {
   "ok": true,
-  "removed": 42,
+  "archived": 42,
+  "removed": 0,
   "backupFile": "library-before-audio-cleanup-2026-05-12T10-30-00-000Z.json"
 }
 ```

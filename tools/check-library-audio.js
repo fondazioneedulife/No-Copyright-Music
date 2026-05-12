@@ -214,7 +214,9 @@ async function readLibrary() {
   if (!Array.isArray(parsed.tracks)) {
     throw new Error(`Catalogo non valido: ${LIBRARY_FILE} non contiene tracks[].`);
   }
-  return parsed.tracks;
+  return parsed.tracks.filter(
+    (track) => !track?.hiddenFromCatalog && String(track?.availabilityStatus || "").toLowerCase() !== "unavailable"
+  );
 }
 
 function isHttpUrl(value) {

@@ -952,14 +952,14 @@ export default function App() {
       await refreshTracks();
       setAdminStatusType("success");
       setAdminStatus(
-        `${payload.message || "Pulizia catalogo completata."}${
+        `${payload.message || "Quarantena catalogo completata."}${
           payload.backupFile ? ` Backup: ${payload.backupFile}.` : ""
         }`
       );
       return payload;
     } catch (error) {
       setAdminStatusType("error");
-      setAdminStatus(error.message || "Pulizia catalogo non riuscita.");
+      setAdminStatus(error.message || "Quarantena catalogo non riuscita.");
       throw error;
     }
   }

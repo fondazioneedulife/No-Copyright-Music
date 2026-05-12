@@ -365,7 +365,7 @@ export function AdminPanel({
 
     setCleaningBrokenTracks(true);
     setDiagnosticsStatusType("success");
-    setDiagnosticsStatus("Pulizia tracce YouTube non disponibili in corso...");
+    setDiagnosticsStatus("Quarantena tracce YouTube non disponibili in corso...");
     try {
       const payload = await onCleanupBrokenAudioTracks();
       if (payload.diagnostics) {
@@ -373,12 +373,12 @@ export function AdminPanel({
       }
       setDiagnosticsStatusType("success");
       setDiagnosticsStatus(
-        `${payload.message || "Pulizia catalogo completata."}${payload.backupFile ? ` Backup: ${payload.backupFile}.` : ""}`
+        `${payload.message || "Quarantena catalogo completata."}${payload.backupFile ? ` Backup: ${payload.backupFile}.` : ""}`
       );
       setPendingCleanupBroken(false);
     } catch (error) {
       setDiagnosticsStatusType("error");
-      setDiagnosticsStatus(error.message || "Pulizia catalogo non riuscita.");
+      setDiagnosticsStatus(error.message || "Quarantena catalogo non riuscita.");
     } finally {
       setCleaningBrokenTracks(false);
     }
@@ -789,14 +789,14 @@ export function AdminPanel({
               {hardBrokenItems.length > 0 ? (
                 <div>
                   <strong>{hardBrokenItems.length} non disponibili</strong>
-                  <span>Video rimossi, privati o non piu' riproducibili: puoi toglierli dal catalogo in blocco.</span>
+                  <span>Video rimossi, privati o non piu' riproducibili: puoi nasconderli senza cancellarli.</span>
                   <button
                     type="button"
                     className="danger-button"
                     disabled={cleaningBrokenTracks}
                     onClick={() => setPendingCleanupBroken(true)}
                   >
-                    {cleaningBrokenTracks ? "Pulisco..." : "Rimuovi non disponibili"}
+                    {cleaningBrokenTracks ? "Archivio..." : "Archivia non disponibili"}
                   </button>
                 </div>
               ) : null}
@@ -871,10 +871,10 @@ export function AdminPanel({
             onClick={(event) => event.stopPropagation()}
           >
             <p className="eyebrow">Catalogo</p>
-            <h3 id="cleanup-broken-title">Rimuovere tracce non disponibili?</h3>
+            <h3 id="cleanup-broken-title">Archiviare tracce non disponibili?</h3>
             <p>
-              Verranno rimosse <strong>{hardBrokenItems.length}</strong> tracce confermate rotte dal report audio.
-              Prima della modifica il backend crea un backup del catalogo in `data`.
+              Verranno archiviate <strong>{hardBrokenItems.length}</strong> tracce confermate rotte dal report audio.
+              Non saranno cancellate: resteranno in `library.json` con motivo errore e backup in `data`.
             </p>
             <div className="modal-actions">
               <button type="button" onClick={() => setPendingCleanupBroken(false)}>
@@ -886,7 +886,7 @@ export function AdminPanel({
                 disabled={cleaningBrokenTracks}
                 onClick={handleCleanupBrokenAudioTracks}
               >
-                {cleaningBrokenTracks ? "Pulisco..." : "Rimuovi tracce"}
+                {cleaningBrokenTracks ? "Archivio..." : "Archivia tracce"}
               </button>
             </div>
           </section>

@@ -963,6 +963,10 @@ function httpError(status, message) {
   return error;
 }
 
+function isArchivedLibraryTrack(track) {
+  return Boolean(track?.hiddenFromCatalog) || firstString(track?.availabilityStatus).toLowerCase() === "unavailable";
+}
+
 async function ensureStorage() {
   // Prepara cartelle e file runtime. Se le demo sono disattivate, il catalogo parte pulito.
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -5743,7 +5747,11 @@ async function serverPlaybackContextTracks(payload = {}, user = null) {
 
   if (requestedIds.length > 0) {
     const library = await readLibrary();
-    const byId = new Map(library.map((track) => [firstString(track.id), attachComputedFields(track)]));
+    const byId = new Map(
+      library
+        .filter((track) => !isArchivedLibraryTrack(track))
+        .map((track) => [firstString(track.id), attachComputedFields(track)])
+    );
     return requestedIds.map((trackId) => byId.get(trackId)).filter(Boolean);
   }
 
