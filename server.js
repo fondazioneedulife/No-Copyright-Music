@@ -4909,6 +4909,7 @@ async function buildServerDiagnostics() {
     player: serverPlayerStatus(),
     audioCheck: automaticAudioCheck.status(),
     replacementList: await audioReplacementService.readList(),
+    youtubeAudit: audioReplacementService.auditStatus(),
     audioConfigs: audioConfigs.map((config) => ({
       label: config.label,
       args: config.args,
@@ -6176,6 +6177,23 @@ async function requestHandler(req, res) {
       requireAdminRequest(req);
       const result = await audioReplacementService.recheckYouTubeLoginFailures();
       json(res, 200, { ...result, diagnostics: await buildServerDiagnostics() });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/admin/audio-check/youtube-full-audit") {
+      requireAdminRequest(req);
+      const payload = await readJsonBody(req);
+      const result = audioReplacementService.startFullYouTubeAudit(payload);
+      json(res, 202, { ...result, diagnostics: await buildServerDiagnostics() });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/admin/audio-check/youtube-full-audit") {
+      requireAdminRequest(req);
+      json(res, 200, {
+        audit: audioReplacementService.auditStatus(),
+        replacementList: await audioReplacementService.readList(),
+      });
       return;
     }
 

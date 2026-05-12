@@ -467,6 +467,7 @@ La diagnostica mostra:
 - `aplay -L`;
 - `/proc/asound/cards`;
 - risultati preflight audio;
+- stato verifica completa YouTube;
 - ultimi eventi player, per vedere start, stop, cambio traccia, errori mpv e completamenti codice `0`.
 
 Endpoint:
@@ -515,6 +516,12 @@ CLEARWAVE_AUDIO_CHECK_INTERVAL_HOURS=24
 ```
 
 Il check parte in background, non blocca l'app e viene mostrato nella diagnostica admin.
+
+Per il problema specifico dei video YouTube che chiedono login/conferma eta o verifica anti-bot:
+
+- `Ricontrolla login YouTube` e' rapido e controlla solo le tracce gia' finite in report con errore `youtube-age-or-login`;
+- `Verifica tutto YouTube` e' completo e passa su tutte le tracce YouTube del catalogo, usando i cookie caricati in `data/youtube-cookies.txt`;
+- il progresso si vede nella diagnostica admin e il report finale aggiorna `data/audio-replacement-list.json`.
 
 ## 15. Backup, export e report licenze
 
@@ -628,6 +635,10 @@ Variabili principali:
 | `CLEARWAVE_YTDL_PATH` | `/usr/bin/yt-dlp` | Binario yt-dlp. |
 | `CLEARWAVE_YTDL_FORMAT` | audio-only | Formato YouTube richiesto. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | vuoto | File cookie YouTube Netscape nel container. Se vuoto, ClearWave usa automaticamente `/app/data/youtube-cookies.txt` quando esiste. |
+| `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | `metadata` | Modalita verifica completa YouTube da Admin. |
+| `CLEARWAVE_YOUTUBE_FULL_AUDIT_CONCURRENCY` | `3` | Parallelismo verifica completa YouTube. |
+| `CLEARWAVE_YOUTUBE_FULL_AUDIT_TIMEOUT_MS` | `25000` | Timeout per traccia nella verifica completa YouTube. |
+| `CLEARWAVE_YOUTUBE_FULL_AUDIT_LIMIT` | `0` | Limite opzionale; `0` controlla tutto YouTube. |
 | `CLEARWAVE_MPV_MSG_LEVEL` | `all=warn,ytdl_hook=info` | Verbosita' log mpv. |
 | `CLEARWAVE_UPDATE_YTDLP_ON_START` | `1` | Aggiorna yt-dlp all'avvio. |
 | `JAMENDO_CLIENT_ID` | vuoto | Import Jamendo. |
@@ -697,6 +708,8 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `POST` | `/api/users/:username/reset-password` | Reset password. |
 | `GET` | `/api/admin/diagnostics` | Diagnostica Raspberry. |
 | `POST` | `/api/admin/audio-check/youtube-login-recheck` | Ricontrollo mirato errori YouTube/login e lista tracce da sostituire. |
+| `POST` | `/api/admin/audio-check/youtube-full-audit` | Avvia verifica completa YouTube in background. |
+| `GET` | `/api/admin/audio-check/youtube-full-audit` | Stato leggero della verifica completa YouTube. |
 | `POST` | `/api/admin/youtube-cookies` | Upload admin di `cookies.txt` Netscape in `data/youtube-cookies.txt`, senza restituire il contenuto del file. |
 | `POST` | `/api/admin/youtube-import-state/reset` | Reset cursori YouTube. |
 | `GET` | `/api/admin/export/catalog.json` | Backup catalogo JSON. |
@@ -712,7 +725,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | --- | --- |
 | `server.js` | Router HTTP, API, storage, import, player, export. |
 | `lib/audio-check-service.js` | Check automatico catalogo audio: configurazione, schedule, stato diagnostica. |
-| `lib/audio-replacement-service.js` | Ricontrollo mirato degli errori YouTube/login e lista tracce da sostituire. |
+| `lib/audio-replacement-service.js` | Ricontrollo errori YouTube/login, audit completo YouTube e lista tracce da sostituire. |
 | `lib/auth-service.js` | SQLite utenti, password, token, ruoli. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione catalogo. |
 

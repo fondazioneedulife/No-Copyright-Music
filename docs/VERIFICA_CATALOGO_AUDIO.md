@@ -71,6 +71,19 @@ Solo YouTube:
 docker compose exec clearwave node tools/check-library-audio.js --mode probe --provider youtube --concurrency 1 --only-errors
 ```
 
+## Verifica completa YouTube dal pannello Admin
+
+Quando il catalogo contiene migliaia di video YouTube, usa il pannello Admin:
+
+1. apri `Impostazioni`;
+2. controlla che `Cookie YouTube` sia `OK / Attivi`;
+3. premi `Verifica tutto YouTube`;
+4. lascia lavorare il backend: lo stato viene aggiornato nella diagnostica ogni pochi secondi.
+
+Il pulsante avvia un job in background, quindi la web app resta usabile e il player Raspberry puo' continuare a suonare.
+La modalita predefinita e' `metadata`: risolve ogni video con `yt-dlp` e cookie, segnando quelli ancora bloccati da login, bot, video rimossi o formato non disponibile.
+Alla fine aggiorna `data/audio-replacement-list.json` con le tracce da sostituire e salva il report completo in `data/reports/`.
+
 Solo Jamendo:
 
 ```bash
@@ -128,3 +141,4 @@ Il JSON contiene:
 - Per Jamendo lo script prova a ottenere un link fresco quando `JAMENDO_CLIENT_ID` e' configurato.
 - Il report non cancella automaticamente le tracce rotte: prima controlla gli errori, poi decidi cosa rimuovere o reimportare.
 - Dal pannello admin puoi usare `Ricontrolla login YouTube`: legge gli ultimi report, ricontrolla solo le tracce `youtube-age-or-login` e aggiorna `data/audio-replacement-list.json` con le tracce da sostituire.
+- Per controllare tutto YouTube, usa `Verifica tutto YouTube`: e' piu' lenta del ricontrollo mirato, ma copre anche tracce mai finite in un report precedente.

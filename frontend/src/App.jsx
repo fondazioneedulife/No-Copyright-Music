@@ -14,6 +14,7 @@ import {
   fetchServerPlayerStatus,
   fetchTracks,
   fetchUsers,
+  fetchYouTubeFullAuditStatus,
   importDiscoveryLink,
   importDiscoveryTrack,
   importCatalogBackup,
@@ -30,6 +31,7 @@ import {
   seekServerTrack,
   setServerTrackContext,
   setServerTrackVolume,
+  startYouTubeFullAudit,
   stopServerTrack,
   storeToken,
   uploadYouTubeCookies,
@@ -882,6 +884,10 @@ export default function App() {
     return payload.diagnostics || null;
   }
 
+  async function handleLoadYouTubeFullAuditStatus() {
+    return fetchYouTubeFullAuditStatus(token);
+  }
+
   async function handleRecheckYouTubeLoginFailures() {
     try {
       const payload = await recheckYouTubeLoginFailures(token);
@@ -895,6 +901,19 @@ export default function App() {
     } catch (error) {
       setAdminStatusType("error");
       setAdminStatus(error.message || "Ricontrollo YouTube non riuscito.");
+      throw error;
+    }
+  }
+
+  async function handleStartYouTubeFullAudit() {
+    try {
+      const payload = await startYouTubeFullAudit(token, { mode: "metadata" });
+      setAdminStatusType("success");
+      setAdminStatus(payload.message || "Verifica completa YouTube avviata.");
+      return payload;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Verifica completa YouTube non riuscita.");
       throw error;
     }
   }
@@ -1532,7 +1551,9 @@ export default function App() {
                       onResetUserPassword={handleResetUserPassword}
                       onResetYouTubeImportState={handleResetYouTubeImportState}
                       onLoadDiagnostics={handleLoadAdminDiagnostics}
+                      onLoadYouTubeAuditStatus={handleLoadYouTubeFullAuditStatus}
                       onRecheckYouTubeLoginFailures={handleRecheckYouTubeLoginFailures}
+                      onStartYouTubeFullAudit={handleStartYouTubeFullAudit}
                       onUploadYouTubeCookies={handleUploadYouTubeCookies}
                       onExportCatalogBackup={handleExportCatalogBackup}
                       onExportLicenseReport={handleExportLicenseReport}

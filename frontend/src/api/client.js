@@ -212,7 +212,7 @@ export function fetchServerPlayerStatus(token) {
   return apiRequest("/api/server-player/status", { token });
 }
 
-export function playServerTrack(token, { track, startAt = 0, volume = 0.75 }) {
+export function playServerTrack(token, { track, startAt = 0, volume = 0.75, serverContext = null }) {
   // Player Raspberry: il browser invia solo comandi, l'audio viene emesso dal backend.
   return apiRequest("/api/server-player/play", {
     method: "POST",
@@ -221,6 +221,7 @@ export function playServerTrack(token, { track, startAt = 0, volume = 0.75 }) {
       track,
       trackId: track?.id,
       startAt,
+      serverContext,
       ...volumeBody(volume),
     },
   });
@@ -270,10 +271,22 @@ export function fetchAdminDiagnostics(token) {
   return apiRequest("/api/admin/diagnostics", { token });
 }
 
+export function fetchYouTubeFullAuditStatus(token) {
+  return apiRequest("/api/admin/audio-check/youtube-full-audit", { token });
+}
+
 export function recheckYouTubeLoginFailures(token) {
   return apiRequest("/api/admin/audio-check/youtube-login-recheck", {
     method: "POST",
     token,
+  });
+}
+
+export function startYouTubeFullAudit(token, options = {}) {
+  return apiRequest("/api/admin/audio-check/youtube-full-audit", {
+    method: "POST",
+    token,
+    body: options,
   });
 }
 

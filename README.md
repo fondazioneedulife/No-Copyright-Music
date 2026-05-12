@@ -175,6 +175,7 @@ Se YouTube blocca molte tracce con login/eta/anti-bot, dal PC Windows dove sei g
 ```
 
 Lo script usa `yt-dlp --cookies-from-browser`, invia il file all'endpoint admin di ClearWave e cancella il file temporaneo dal PC.
+Dopo avere caricato i cookie, dal pannello Admin puoi usare `Verifica tutto YouTube`: controlla in background tutte le tracce YouTube del catalogo, mostra l'avanzamento nella diagnostica e aggiorna `data/audio-replacement-list.json` con i brani da sostituire.
 
 ## Backend in breve
 

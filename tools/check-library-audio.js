@@ -691,6 +691,8 @@ async function runChecks(tracks, options) {
     .filter((entry) => options.idSet.size === 0 || options.idSet.has(firstString(entry.track.id)))
     .slice(options.offset, options.limit ? options.offset + options.limit : undefined);
 
+  console.log(`[check] Selezionate: ${selected.length} tracce da controllare.`);
+
   const results = new Array(selected.length);
   let cursor = 0;
   let checked = 0;

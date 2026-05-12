@@ -1096,6 +1096,23 @@ body[data-theme="light"] .pagination .is-active {
   gap: 8px;
 }
 
+.diagnostic-progress {
+  height: 7px;
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.diagnostic-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+
 .diagnostic-list .is-ok {
   color: var(--success);
 }

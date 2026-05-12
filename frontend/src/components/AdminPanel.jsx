@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function firstDiagnosticLine(value) {
   return String(value || "")
@@ -34,6 +34,29 @@ function audioCheckSummary(audioCheck) {
   }
 
   return audioCheck.lastStartedAt ? "Ultimo report non letto" : "In attesa del primo giro";
+}
+
+function youtubeAuditSummary(audit) {
+  if (!audit) {
+    return "Non avviato";
+  }
+
+  if (audit.running) {
+    const total = Number(audit.total) || 0;
+    const checked = Number(audit.checked) || 0;
+    return total > 0 ? `${checked}/${total} (${audit.progress || 0}%)` : "In avvio";
+  }
+
+  if (audit.lastError) {
+    return "Errore";
+  }
+
+  const checked = Number(audit.summary?.ok || 0) + Number(audit.summary?.failed || 0);
+  if (checked > 0) {
+    return `OK ${audit.summary?.ok || 0} / KO ${audit.summary?.failed || 0}`;
+  }
+
+  return audit.finishedAt ? "Report letto" : "Non avviato";
 }
 
 function diagnosticHealthChecks(diagnostics) {
@@ -98,6 +121,11 @@ function diagnosticHealthChecks(diagnostics) {
         diagnostics.audioCheck?.lastExitCode === 0,
       detail: audioCheckSummary(diagnostics.audioCheck),
     },
+    {
+      label: "Audit YouTube",
+      ok: !diagnostics.youtubeAudit?.lastError,
+      detail: youtubeAuditSummary(diagnostics.youtubeAudit),
+    },
   ];
 }
 
@@ -109,7 +137,9 @@ export function AdminPanel({
   onResetUserPassword,
   onResetYouTubeImportState,
   onLoadDiagnostics,
+  onLoadYouTubeAuditStatus,
   onRecheckYouTubeLoginFailures,
+  onStartYouTubeFullAudit,
   onUploadYouTubeCookies,
   onExportCatalogBackup,
   onExportLicenseReport,
@@ -131,6 +161,7 @@ export function AdminPanel({
   const [diagnosticsStatusType, setDiagnosticsStatusType] = useState("success");
   const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
   const [recheckingYouTubeLogin, setRecheckingYouTubeLogin] = useState(false);
+  const [startingYouTubeFullAudit, setStartingYouTubeFullAudit] = useState(false);
   const [uploadingYouTubeCookies, setUploadingYouTubeCookies] = useState(false);
   const [exporting, setExporting] = useState("");
   const [importingBackup, setImportingBackup] = useState(false);
@@ -233,6 +264,29 @@ export function AdminPanel({
     }
   }
 
+  async function handleStartYouTubeFullAudit() {
+    if (!onStartYouTubeFullAudit) {
+      return;
+    }
+
+    setStartingYouTubeFullAudit(true);
+    setDiagnosticsStatusType("success");
+    setDiagnosticsStatus("Verifica completa YouTube avviata in background...");
+    try {
+      const payload = await onStartYouTubeFullAudit();
+      if (payload.diagnostics) {
+        setDiagnostics(payload.diagnostics);
+      }
+      setDiagnosticsStatusType("success");
+      setDiagnosticsStatus(payload.message || "Verifica completa YouTube avviata.");
+    } catch (error) {
+      setDiagnosticsStatusType("error");
+      setDiagnosticsStatus(error.message || "Verifica completa YouTube non riuscita.");
+    } finally {
+      setStartingYouTubeFullAudit(false);
+    }
+  }
+
   async function handleUploadYouTubeCookiesFile(event) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -287,6 +341,31 @@ export function AdminPanel({
     }
   }
 
+  useEffect(() => {
+    if (!diagnostics?.youtubeAudit?.running || !onLoadYouTubeAuditStatus) {
+      return undefined;
+    }
+
+    const timerId = window.setInterval(async () => {
+      try {
+        const payload = await onLoadYouTubeAuditStatus();
+        setDiagnostics((current) =>
+          current
+            ? {
+                ...current,
+                youtubeAudit: payload.audit || current.youtubeAudit,
+                replacementList: payload.replacementList || current.replacementList,
+              }
+            : current
+        );
+      } catch {
+        // Il refresh quieto non deve interrompere un audit lungo solo per un giro rete fallito.
+      }
+    }, 5000);
+
+    return () => window.clearInterval(timerId);
+  }, [diagnostics?.youtubeAudit?.running, onLoadYouTubeAuditStatus]);
+
   const preflightResults = Array.isArray(diagnostics?.audioPreflight) ? diagnostics.audioPreflight : [];
   const healthChecks = diagnosticHealthChecks(diagnostics);
   const playerEvents = Array.isArray(diagnostics?.player?.events) ? diagnostics.player.events : [];
@@ -299,6 +378,8 @@ export function AdminPanel({
     : [];
   const replacementList = diagnostics?.replacementList || null;
   const replacementItems = Array.isArray(replacementList?.items) ? replacementList.items : [];
+  const youtubeAudit = diagnostics?.youtubeAudit || null;
+  const youtubeAuditLog = Array.isArray(youtubeAudit?.logTail) ? youtubeAudit.logTail.slice(-8) : [];
 
   return (
     <section className="panel admin-panel">
@@ -442,6 +523,18 @@ export function AdminPanel({
               >
                 {recheckingYouTubeLogin ? "Ricontrollo..." : "Ricontrolla login YouTube"}
               </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleStartYouTubeFullAudit}
+                disabled={startingYouTubeFullAudit || youtubeAudit?.running}
+              >
+                {youtubeAudit?.running
+                  ? `YouTube ${youtubeAudit.progress || 0}%`
+                  : startingYouTubeFullAudit
+                    ? "Avvio..."
+                    : "Verifica tutto YouTube"}
+              </button>
               <label className={`file-button ${uploadingYouTubeCookies ? "is-disabled" : ""}`}>
                 {uploadingYouTubeCookies ? "Carico..." : "Carica cookies.txt"}
                 <input
@@ -524,6 +617,44 @@ export function AdminPanel({
                       : `Auto: ${diagnostics.config?.ytdlCookiesPath || "data/youtube-cookies.txt"}`}
                 </small>
               </div>
+              <div>
+                <span>Audit YouTube</span>
+                <strong>{youtubeAuditSummary(youtubeAudit)}</strong>
+                <small>
+                  {youtubeAudit?.running
+                    ? `Controllo completo in corso dal ${youtubeAudit.startedAt || "n/d"}`
+                    : youtubeAudit?.finishedAt
+                      ? `Ultimo giro: ${youtubeAudit.finishedAt}`
+                      : "Avvialo dopo avere caricato i cookie"}
+                </small>
+              </div>
+            </div>
+          ) : null}
+
+          {youtubeAudit ? (
+            <div className="diagnostic-events">
+              <p className="eyebrow">Verifica completa YouTube</p>
+              <div>
+                <strong>{youtubeAuditSummary(youtubeAudit)}</strong>
+                <span>
+                  {youtubeAudit.config?.mode || "metadata"} | concorrenza {youtubeAudit.config?.concurrency || 3}
+                  {youtubeAudit.summary?.replaceCount
+                    ? ` | ${youtubeAudit.summary.replaceCount} da sostituire`
+                    : ""}
+                </span>
+                <small>{youtubeAudit.lastError || youtubeAudit.reportJson || "In attesa del report finale"}</small>
+                {youtubeAudit.running ? (
+                  <div className="diagnostic-progress" aria-label="Avanzamento verifica YouTube">
+                    <span style={{ width: `${Math.max(0, Math.min(100, youtubeAudit.progress || 0))}%` }} />
+                  </div>
+                ) : null}
+              </div>
+              {youtubeAuditLog.map((line, index) => (
+                <div key={`${line}-${index}`}>
+                  <strong>{line.startsWith("[check]") ? "check" : "log"}</strong>
+                  <span>{line}</span>
+                </div>
+              ))}
             </div>
           ) : null}
 

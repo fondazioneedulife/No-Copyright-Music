@@ -516,7 +516,7 @@ Risposta:
 Solo admin. Restituisce diagnostica runtime per Raspberry/audio: versione Node, revisione runtime, configurazione player, stato mpv corrente, versioni `mpv`/`yt-dlp`, device ALSA, risultati del preflight audio e stato del check automatico catalogo.
 Non espone valori segreti delle API: indica solo se le chiavi principali sono configurate.
 La risposta include anche gli ultimi eventi del player, utili per capire se una traccia e' partita, e' stata sostituita da un comando nuovo o e' terminata correttamente.
-Include anche `replacementList`, cioe' la lista runtime delle tracce da sostituire generata dai ricontrolli audio.
+Include anche `replacementList`, cioe' la lista runtime delle tracce da sostituire generata dai ricontrolli audio, e `youtubeAudit`, cioe' stato/progresso dell'eventuale verifica completa YouTube in background.
 
 ### `POST /api/admin/audio-check/youtube-login-recheck`
 
@@ -540,6 +540,49 @@ Risposta:
   }
 }
 ```
+
+### `POST /api/admin/audio-check/youtube-full-audit`
+
+Solo admin. Avvia in background una verifica di tutte le tracce YouTube del catalogo usando `tools/check-library-audio.js`.
+Serve quando il catalogo e' grande e il ricontrollo mirato da 80 tracce non basta: il backend continua a rispondere mentre lo scan procede, la UI legge l'avanzamento da `/api/admin/diagnostics` e alla fine viene aggiornato `data/audio-replacement-list.json`.
+
+Body opzionale:
+
+```json
+{
+  "mode": "metadata",
+  "concurrency": 3,
+  "timeoutMs": 25000,
+  "sampleSeconds": 4,
+  "limit": 0
+}
+```
+
+Risposta immediata:
+
+```json
+{
+  "ok": true,
+  "message": "Verifica completa YouTube avviata in background: controllo cookie/yt-dlp su tutto il catalogo.",
+  "audit": {
+    "running": true,
+    "checked": 0,
+    "total": 0,
+    "progress": 0,
+    "config": {
+      "mode": "metadata",
+      "concurrency": 3
+    }
+  }
+}
+```
+
+Quando termina, `diagnostics.youtubeAudit.summary` espone `ok`, `failed`, `replaceCount` e `waitingForCookies`.
+
+### `GET /api/admin/audio-check/youtube-full-audit`
+
+Solo admin. Restituisce solo stato del job `Verifica tutto YouTube` e `replacementList`, senza rieseguire la diagnostica completa Raspberry.
+La UI lo usa per aggiornare il progresso ogni pochi secondi senza rilanciare i preflight ALSA.
 
 ### `POST /api/admin/youtube-cookies`
 
