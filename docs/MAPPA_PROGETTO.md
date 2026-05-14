@@ -121,7 +121,7 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `Hero.jsx` | Riepilogo alto con numero tracce e coda. |
 | `Catalog.jsx` | Griglia tracce, filtri, paginazione e play. |
 | `QueuePanel.jsx` | Visualizza e svuota la coda React. |
-| `AdminPanel.jsx` | Crea utenti, resetta password temporanea, elimina utenti, resetta stato YouTube, mostra diagnostica Raspberry, esporta/ripristina backup e produce report licenze. |
+| `AdminPanel.jsx` | Crea utenti, resetta password temporanea, elimina utenti, resetta stato YouTube, mostra diagnostica Raspberry con auto-refresh, gestisce cookie/audit YouTube, archiviazione tracce e report licenze. |
 | `SettingsPanel.jsx` | Cambio password dell'utente loggato. |
 | `PlayerDock.jsx` | Player inferiore React: play, prev, next, progress, shuffle, repeat, volume e uscita Pi/PC. |
 
@@ -144,11 +144,15 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `assets/covers/` | Copertine locali/fallback per generi musicali. |
 | `tools/check-library-audio.js` | Script CLI per verificare se le sorgenti del catalogo partono davvero. |
 | `tools/export-upload-youtube-cookies.ps1` | Helper Windows per esportare cookie YouTube dal browser con `yt-dlp` e caricarli nel backend. |
+| `tools/update-raspberry.sh` | Helper Raspberry per fare pull, rebuild e pulizia Docker senza cancellare dati persistenti. |
 | `uploads/audio/` | Audio caricati manualmente. Runtime, escluso da git. |
 | `uploads/licenses/` | Licenze, ricevute e allegati diritti. Runtime, escluso da git. |
 | `data/library.json` | Catalogo permanente. Runtime, escluso da git. |
 | `data/clearwave-auth.sqlite` | Database utenti/admin. Runtime, escluso da git. |
 | `data/youtube-import-state.json` | Stato import progressivo YouTube. Runtime, escluso da git. |
+| `data/youtube-cookies.txt` | Cookie YouTube Netscape caricati dall'admin. Runtime segreto, escluso da git. |
+| `data/audio-replacement-list.json` | Elenco runtime delle tracce da sostituire, archiviare o riverificare dopo controlli audio. |
+| `data/reports/` | Report JSON/CSV dei check catalogo e audit YouTube. Runtime, escluso da git. |
 | `.tmp-*` | Cartelle temporanee usate durante test/import. Non fanno parte del prodotto. |
 
 ## Documentazione

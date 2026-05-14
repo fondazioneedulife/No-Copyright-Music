@@ -59,9 +59,11 @@ All'inizio lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`. Se la diagnostic
 8. Riapri la pagina e verifica che il player si riallinei allo stato del server.
 9. Prova play/pausa, next, prev, shuffle e repeat.
 10. Cambia volume con slider e input numerico, per esempio `30`, `60`, `85`.
-11. Importa un lotto da `120` tracce.
-12. Esporta `Backup catalogo`, `Report licenze` e `Report HTML`.
-13. Premi `Importa backup` solo se devi ripristinare: il backend salva prima una copia automatica del catalogo corrente.
+11. Se usi YouTube, controlla `Cookie YouTube`: deve essere `OK / Attivi`; se serve carica un `cookies.txt` nuovo.
+12. Avvia `Verifica tutto YouTube` solo dopo il test cookie: mentre gira deve comparire `Auto-refresh attivo`.
+13. Importa un lotto da `120` tracce.
+14. Esporta `Backup catalogo`, `Report licenze` e `Report HTML`.
+15. Premi `Importa backup` solo se devi ripristinare: il backend salva prima una copia automatica del catalogo corrente.
 
 ## Import musica
 
@@ -97,10 +99,23 @@ Il report non sostituisce la verifica legale finale: serve a sapere da dove arri
 | --- | --- | --- |
 | `Playback open error` | ALSA non apre il device audio | Usa diagnostica admin, poi prova `ALSA_CARD` o `CLEARWAVE_AUDIO_DEVICE`. |
 | `Requested format is not available` | YouTube/yt-dlp non trova uno stream compatibile | Ricostruisci senza cache e controlla `yt-dlp --version`. |
-| `Sign in to confirm your age` | YouTube richiede login/conferma eta per quel video | Normale per alcuni video: ClearWave lo salta e prova il prossimo brano. |
+| `Sign in to confirm your age` / `not a bot` | YouTube richiede cookie/sessione autorizzata | Carica `cookies.txt`, usa `Test cookie YouTube`, poi rilancia `Verifica tutto YouTube`. |
+| Tanti `timeout` nel check YouTube | Rete lenta, Raspberry carico o YouTube lento | Aspetta il report finale; se restano molti timeout, rifai il giro con meno concorrenza. |
 | `mpv precedente chiuso per cambio traccia/comando` | Un nuovo comando ha sostituito il vecchio mpv | Non e' un errore se la traccia successiva parte. |
 | `mpv ha completato ... codice 0` | Traccia terminata correttamente | Normale. |
 | Importa poche tracce | Molti duplicati o filtri durata/licenza | Usa lotto piu' grande o reset scan YouTube. |
+
+## Cookie YouTube e audit
+
+Per YouTube su Raspberry, i cookie sono un file di sessione, non una configurazione permanente eterna. Quando scadono o YouTube richiede una verifica, ClearWave mostra un popup admin ogni 10 minuti finche' non carichi un file nuovo.
+
+Procedura piu' sicura:
+
+1. esporta o carica `cookies.txt` dal PC dove YouTube e' loggato;
+2. usa `Test cookie YouTube`;
+3. se leggi `Account YouTube autorizzato`, rilancia `Verifica tutto YouTube`;
+4. se il report finale contiene tracce definitive non disponibili, usa `Archivia non disponibili`;
+5. dopo cookie nuovi usa `Riverifica archiviate` per recuperare brani nascosti.
 
 ## Comandi utili
 

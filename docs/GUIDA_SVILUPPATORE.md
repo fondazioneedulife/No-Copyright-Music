@@ -55,6 +55,7 @@ node --check server.js
 | Modificare catalogo React | `frontend/src/App.jsx`, `frontend/src/components/Catalog.jsx`, `frontend/src/utils.js`, `frontend/src/styles/app.css` |
 | Modificare player legacy | `src/player-core.js`, `src/player-playback.js`, `src/player-controls.js`, `src/player-render.js`, `partials/player.html` |
 | Modificare player React | `frontend/src/App.jsx`, `frontend/src/components/PlayerDock.jsx`, `frontend/src/utils.js` |
+| Modificare diagnostica, cookie o audit audio | `server.js`, `lib/audio-replacement-service.js`, `tools/check-library-audio.js`, `frontend/src/components/AdminPanel.jsx`, `docs/VERIFICA_CATALOGO_AUDIO.md` |
 | Aggiungere provider | `server.js`, `docs/CONFIGURAZIONE_API.md`, `docs/ENDPOINT_API.md` |
 | Cambiare stile legacy | `styles.css`, `styles/`, `partials/` |
 | Cambiare stile React | `frontend/src/styles/app.css` |
@@ -185,6 +186,9 @@ Non modificare o committare questi file come codice:
 
 - `data/library.json`;
 - `data/youtube-import-state.json`;
+- `data/youtube-cookies.txt`;
+- `data/audio-replacement-list.json`;
+- `data/reports/*`;
 - `data/*.sqlite`;
 - `uploads/audio/*`;
 - `uploads/licenses/*`;

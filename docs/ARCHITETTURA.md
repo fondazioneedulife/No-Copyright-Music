@@ -225,6 +225,8 @@ Responsabilita' attuali:
 - import sicuro e playlist temporanea admin;
 - upload e archivio licenze;
 - cambio password;
+- diagnostica Raspberry con auto-refresh durante check lunghi;
+- popup cookie YouTube mancanti/in scadenza;
 - tema dark/light.
 
 `App.jsx` mantiene lo stato globale. I componenti sotto `frontend/src/components/` ricevono props e rimangono focalizzati sulla UI.

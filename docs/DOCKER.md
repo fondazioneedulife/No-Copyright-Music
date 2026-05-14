@@ -142,6 +142,7 @@ CLEARWAVE_AUDIO_CHECK_INTERVAL_HOURS=24
 ```
 
 Il backend lancia il controllo in background: l'app resta utilizzabile e la diagnostica admin mostra ultimo esito e stato corrente.
+Quando il check catalogo o `Verifica tutto YouTube` sono attivi, la UI React aggiorna la diagnostica da sola. Il banner `Auto-refresh attivo` indica che non devi premere manualmente `Aggiorna diagnostica`; il refresh completo resta distanziato per non sovraccaricare il Raspberry con troppi probe audio.
 
 `docker-compose.yml` contiene gia' `privileged: ${CLEARWAVE_DOCKER_PRIVILEGED:-false}`. Su Raspberry conviene metterlo a `true`; su PC puoi lasciarlo `false`.
 
@@ -304,6 +305,13 @@ Dal pannello admin puoi poi usare due controlli:
 - `Riverifica archiviate`: dopo avere caricato cookie nuovi, ricontrolla le tracce YouTube archiviate e riattiva automaticamente quelle tornate riproducibili.
 - `Verifica tutto YouTube`: lungo, passa su tutte le tracce YouTube del catalogo e mostra progresso nella diagnostica. Con 3000+ video puo' durare parecchio, ma resta in background e alla fine produce lo stesso file `data/audio-replacement-list.json`.
 - `Archivia non disponibili`: dopo un report, nasconde dal catalogo attivo le tracce con errori definitivi come `youtube-unavailable`, creando prima un backup `data/library-before-audio-cleanup-*.json` e senza cancellarle da `library.json`.
+
+Lettura pratica dei risultati:
+
+- molti `youtube-age-or-login` subito all'inizio indicano quasi sempre cookie non accettati o account non autorizzato dal container;
+- `timeout` isolati possono essere solo lentezza di rete o carico Raspberry, quindi vanno confermati con un secondo giro;
+- `youtube-unavailable`, `not-found`, `forbidden`, `missing-source` e `missing-file` sono candidati piu' forti per `Archivia non disponibili`;
+- dopo avere caricato cookie nuovi, usa prima `Test cookie YouTube`, poi `Riverifica archiviate`, poi eventualmente `Verifica tutto YouTube`.
 
 ## Dati persistenti
 

@@ -255,7 +255,7 @@ Componenti principali:
 - `Catalog.jsx`: griglia brani, filtri, paginazione e coda con click destro.
 - `DiscoveryPanel.jsx`: import admin, ricerca provider e playlist YouTube temporanea.
 - `PlaylistPanel.jsx`: mix automatici per genere e coda di ascolto.
-- `AdminPanel.jsx`: creazione, reset password ed eliminazione utenti.
+- `AdminPanel.jsx`: creazione utenti, diagnostica Raspberry, cookie YouTube, audit audio, backup, report e archiviazione tracce non disponibili.
 - `SettingsPanel.jsx`: cambio password account corrente.
 - `StudioPanel.jsx`: archivio licenze e upload manuale.
 - `PlayerDock.jsx`: player fisso in basso con uscita `PC` / `Pi`, shuffle, repeat, volume e seek.
@@ -286,9 +286,14 @@ I file principali modificati durante questa fase di lavoro sono:
 - `frontend/src/styles/app.css`
 - `docker-compose.yml`
 - `.env.example`
+- `tools/update-raspberry.sh`
+- `tools/export-upload-youtube-cookies.ps1`
+- `lib/audio-replacement-service.js`
 - `README.md`
 - `docs/DOCKER.md`
 - `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`
+- `docs/VERIFICA_CATALOGO_AUDIO.md`
+- `docs/GUIDA_CONSEGNA.md`
 - `docs/CONFIGURAZIONE_API.md`
 - `docs/ARCHITETTURA.md`
 - `docs/ENDPOINT_API.md`
@@ -305,6 +310,9 @@ Sono gia' stati eseguiti controlli tecnici su:
 - avvio container;
 - risposta delle API base;
 - risposta degli endpoint del player server-side.
+- upload/probe cookie YouTube con esito `Account YouTube autorizzato`;
+- audit YouTube completo in background con aggiornamento diagnostica;
+- update Raspberry con helper che evita accumulo cache Docker.
 
 ## Stato del Raspberry Pi
 
@@ -314,6 +322,10 @@ La parte player Raspberry e' stata impostata per funzionare in modo piu' robusto
 - ogni device ALSA viene provato con un mini WAV silenzioso prima di avviare davvero la canzone;
 - se un device come `plughw:1,0` fallisce, il backend lo scarta e passa ai fallback successivi;
 - gli avvii `Play` vengono serializzati: se arrivano comandi ravvicinati, il backend evita processi `mpv` sovrapposti;
+- la coda lato server permette alla musica di continuare anche se la pagina web viene chiusa;
+- il volume UI viene tradotto in volume mpv con gain configurabile, utile per Raspberry/ALSA;
+- `yt-dlp` viene aggiornato all'avvio e usa Deno per le richieste YouTube piu' recenti;
+- i cookie YouTube possono essere caricati dall'admin e verificati direttamente dal Raspberry;
 - se serve si puo' impostare il device in modo esplicito;
 - gli errori sono piu' facili da leggere dai log.
 
@@ -334,20 +346,19 @@ Se il default ALSA non basta, il passo successivo e':
 
 ## Problemi che restano da rifinire
 
-Le aree ancora da rifinire o verificare meglio sono:
+Le aree ancora da monitorare o rifinire sono:
 
-- conferma finale dell'uscita audio reale sul Raspberry con il device corretto;
-- ultima verifica pratica di seek/pausa/volume server-side su hardware reale;
-- rifinitura finale di alcuni comportamenti player lato browser;
+- stabilita' dei controlli YouTube su cataloghi molto grandi, specialmente `timeout` di rete o video non piu' disponibili;
+- rinnovo periodico dei cookie YouTube quando Google/YouTube invalida la sessione;
+- eventuale scelta definitiva di `ALSA_CARD` o `CLEARWAVE_AUDIO_DEVICE` se il default ALSA cambia;
 - commentatura finale piu' estesa di tutto il progetto a lavoro concluso.
 
 ## Prossimo passo consigliato
 
 Ordine consigliato:
 
-1. avvio del Raspberry con il `docker-compose.yml` unico;
-2. test audio reale;
-3. scelta definitiva del device ALSA se necessario;
-4. ultimo giro di fix;
-5. dockerizzazione finale stabile;
-6. documentazione conclusiva completa file-per-file.
+1. tenere il Raspberry aggiornato con `sh tools/update-raspberry.sh`;
+2. controllare periodicamente `Cookie YouTube` e usare il popup admin come avviso;
+3. rilanciare `Verifica tutto YouTube` dopo cookie nuovi o import grossi;
+4. archiviare solo KO definitivi confermati da report;
+5. continuare a rifinire documentazione e commenti quando si stabilizza il prodotto.

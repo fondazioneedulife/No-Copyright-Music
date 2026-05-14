@@ -119,6 +119,7 @@ Sorgenti supportate:
 | Nessuna sorgente diretta | Preview WAV generata dal backend. |
 
 Il player React gestisce play/pausa, precedente, successivo, seek, volume, shuffle e repeat.
+In modalita' `Pi`, quando una traccia viene avviata React invia anche contesto di coda, shuffle e repeat al backend. Se la pagina web viene chiusa, la musica continua sul Raspberry e il server puo' passare alla traccia successiva senza dipendere dal browser.
 
 ## Import da provider
 
@@ -168,6 +169,26 @@ Il backend:
 - limita quantita' e pagine per non saturare quota/API.
 
 Se YouTube risponde `quotaExceeded`, aspetta il reset quota e rilancia `Importa lotto`.
+
+## Diagnostica e controlli lunghi
+
+La diagnostica admin serve per capire lo stato reale di Raspberry, `mpv`, `yt-dlp`, Deno, ALSA, cookie YouTube, player e check catalogo.
+
+Durante `Verifica tutto YouTube` o un check catalogo automatico:
+
+- la UI mostra `Auto-refresh attivo`;
+- il progresso YouTube viene aggiornato ogni pochi secondi;
+- la diagnostica completa viene aggiornata a intervalli piu' larghi per non caricare troppo il Raspberry;
+- non serve premere ripetutamente `Aggiorna diagnostica`.
+
+Quando il check finisce, leggi prima il report:
+
+- `youtube-age-or-login`: carica cookie nuovi e usa `Test cookie YouTube`;
+- `timeout`: riprova con rete stabile o concorrenza piu' bassa;
+- `youtube-unavailable` o `missing-source`: usa `Archivia non disponibili`;
+- tracce archiviate dopo cookie nuovi: usa `Riverifica archiviate`.
+
+I cookie YouTube sono validi solo finche' la sessione esportata resta accettata da YouTube. Se stanno per scadere o mancano, gli admin vedono un popup ricorrente ogni 10 minuti.
 
 ## Upload manuale
 

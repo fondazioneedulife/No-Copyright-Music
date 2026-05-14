@@ -64,6 +64,7 @@ ClearWave non sostituisce una verifica legale finale. Il report licenze aiuta a 
 | Uscita audio | `PC` per browser locale, `Pi` per audio server-side su Raspberry. |
 | Admin | Utenti, reset password, elimina utente, reset scan YouTube. |
 | Diagnostica | Runtime, mpv, yt-dlp, ALSA, preflight audio, ultimo errore ed eventi player. |
+| Audit audio | Check catalogo automatico, verifica completa YouTube, lista sostituzioni e auto-refresh UI. |
 | Backup | Export JSON del catalogo e ripristino con copia automatica preventiva. |
 | Report | Export CSV e HTML licenze/fonti. |
 | Docker | Un solo container con backend, React, mpv, ffmpeg, yt-dlp. |
@@ -468,8 +469,13 @@ La diagnostica mostra:
 - `aplay -L`;
 - `/proc/asound/cards`;
 - risultati preflight audio;
+- stato check catalogo automatico;
+- stato cookie YouTube e numero cookie sessione;
 - stato verifica completa YouTube;
+- lista tracce candidate a sostituzione/archiviazione;
 - ultimi eventi player, per vedere start, stop, cambio traccia, errori mpv e completamenti codice `0`.
+
+Se `Verifica tutto YouTube` o il check catalogo automatico sono in corso, React mostra un banner `Auto-refresh attivo` e aggiorna da solo la diagnostica. Il progresso dell'audit YouTube viene riletto spesso; la diagnostica completa viene ricaricata piu' lentamente per non martellare il Raspberry con comandi `mpv`, `yt-dlp` e ALSA.
 
 Endpoint:
 
@@ -523,6 +529,13 @@ Per il problema specifico dei video YouTube che chiedono login/conferma eta o ve
 - `Ricontrolla login YouTube` e' rapido e controlla solo le tracce gia' finite in report con errore `youtube-age-or-login`;
 - `Verifica tutto YouTube` e' completo e passa su tutte le tracce YouTube del catalogo, usando i cookie caricati in `data/youtube-cookies.txt`;
 - il progresso si vede nella diagnostica admin e il report finale aggiorna `data/audio-replacement-list.json`.
+
+Regola pratica:
+
+- se l'audit produce subito molti `youtube-age-or-login`, prima controlla cookie/account con `Test cookie YouTube`;
+- se compaiono molti `timeout`, aspetta il report finale e riprova con concorrenza piu' bassa prima di archiviare;
+- se il report finale conferma `youtube-unavailable`, `missing-source`, `missing-file`, `forbidden` o `stream-not-playable`, usa `Archivia non disponibili`;
+- dopo avere caricato cookie nuovi usa `Riverifica archiviate` per recuperare tracce nascoste che tornano OK.
 
 ## 15. Backup, export e report licenze
 
@@ -637,6 +650,10 @@ Variabili principali:
 | `CLEARWAVE_YTDL_FORMAT` | audio-only | Formato YouTube richiesto. |
 | `CLEARWAVE_YTDL_JS_RUNTIME` | `deno:/usr/local/bin/deno` | Runtime JavaScript usato da yt-dlp per decifrare YouTube. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | vuoto | File cookie YouTube Netscape nel container. Se vuoto, ClearWave usa automaticamente `/app/data/youtube-cookies.txt` quando esiste. |
+| `CLEARWAVE_YTDL_COOKIE_PROBE_URL` | video pubblico | URL usato da `Test cookie YouTube` quando non ci sono tracce problematiche note. |
+| `CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS` | `14` | Giorni prima della scadenza cookie in cui mostrare il popup admin. |
+| `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | `80` | Quante tracce login/bot ricontrollare in un giro mirato. |
+| `CLEARWAVE_YOUTUBE_ARCHIVED_RECHECK_LIMIT` | `120` | Quante tracce YouTube archiviate ricontrollare con i cookie attuali. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | `metadata` | Modalita verifica completa YouTube da Admin. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_CONCURRENCY` | `3` | Parallelismo verifica completa YouTube. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_TIMEOUT_MS` | `25000` | Timeout per traccia nella verifica completa YouTube. |

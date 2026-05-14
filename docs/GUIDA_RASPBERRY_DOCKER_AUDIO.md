@@ -221,6 +221,7 @@ docker compose exec clearwave npm run check:tracks:probe
 
 Il controllo usa `mpv --ao=null`, quindi prova le sorgenti senza far uscire audio fisico. I report finiscono in `/app/data/reports/`; la guida completa e' in `docs/VERIFICA_CATALOGO_AUDIO.md`.
 Per farlo partire da solo, imposta `CLEARWAVE_AUDIO_CHECK_ENABLED=1` nel `.env`: il backend lo esegue in background e la diagnostica admin mostra l'ultimo esito.
+Se il check catalogo o `Verifica tutto YouTube` sono in corso, la pagina Admin si aggiorna da sola. Il banner `Auto-refresh attivo` conferma che React sta rileggendo stato e log; premi `Aggiorna diagnostica` solo se vuoi forzare un refresh manuale fuori dai job lunghi.
 
 ## Cookie YouTube automatici da PC Windows
 
@@ -254,6 +255,15 @@ Se `yt-dlp` risponde `Could not copy Chrome cookie database`, rilancia con `-Clo
 Se risponde `Failed to decrypt with DPAPI`, segui il prompt: esporta `youtube-cookies.txt` con l'estensione Chrome e premi Invio. In alternativa passa direttamente `-ExistingCookieFile`.
 Per testare un video specifico che dava login/bot, aggiungi `-ProbeUrl "https://www.youtube.com/watch?v=ID_VIDEO"`.
 Se lo script stampa `Account YouTube autorizzato`, l'account dietro ai cookie e' stato accettato dal Raspberry. Se stampa `Test non conclusivo`, il file cookie e' leggibile ma devi riprovare con `-ProbeUrl` su un video realmente bloccato.
+
+Dopo cookie nuovi:
+
+1. apri Admin -> Diagnostica audio/server;
+2. usa `Test cookie YouTube`;
+3. se il test e' autorizzato, usa `Riverifica archiviate`;
+4. se serve una pulizia completa, lancia `Verifica tutto YouTube` e aspetta il report finale.
+
+Se durante il giro compaiono alcuni `timeout`, non archiviarli subito: su Raspberry possono dipendere da rete o carico. Segui il riepilogo finale e riprova con meno concorrenza se i timeout sono tanti.
 
 ## Errori comuni
 

@@ -544,7 +544,7 @@ Risposta:
 ### `POST /api/admin/audio-check/youtube-full-audit`
 
 Solo admin. Avvia in background una verifica di tutte le tracce YouTube del catalogo usando `tools/check-library-audio.js`.
-Serve quando il catalogo e' grande e il ricontrollo mirato da 80 tracce non basta: il backend continua a rispondere mentre lo scan procede, la UI legge l'avanzamento da `/api/admin/diagnostics` e alla fine viene aggiornato `data/audio-replacement-list.json`.
+Serve quando il catalogo e' grande e il ricontrollo mirato da 80 tracce non basta: il backend continua a rispondere mentre lo scan procede, la UI legge l'avanzamento leggero da `/api/admin/audio-check/youtube-full-audit`, aggiorna la diagnostica completa a intervalli piu' larghi e alla fine viene aggiornato `data/audio-replacement-list.json`.
 
 Body opzionale:
 

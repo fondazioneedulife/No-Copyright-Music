@@ -45,6 +45,7 @@ docker compose up -d --build
 
 Il backend aspetta qualche secondo, lancia il controllo in background e poi lo ripete ogni 24 ore.
 L'app resta utilizzabile; dalla diagnostica admin puoi vedere se il controllo e' in corso e l'ultimo riepilogo `OK/KO`.
+Durante un check attivo il pannello Admin usa l'auto-refresh: aggiorna periodicamente stato, percentuale, log e ultimo riepilogo senza premere ogni volta `Aggiorna diagnostica`. Il refresh completo e' volutamente piu' lento del refresh dell'audit YouTube, cosi' il Raspberry non perde tempo a rifare continuamente probe ALSA e comandi di diagnostica.
 
 ## Controllo rapido
 
@@ -83,6 +84,7 @@ Quando il catalogo contiene migliaia di video YouTube, usa il pannello Admin:
 Il pulsante avvia un job in background, quindi la web app resta usabile e il player Raspberry puo' continuare a suonare.
 La modalita predefinita e' `metadata`: risolve ogni video con `yt-dlp` e cookie, segnando quelli ancora bloccati da login, bot, video rimossi o formato non disponibile.
 Alla fine aggiorna `data/audio-replacement-list.json` con le tracce da sostituire e salva il report completo in `data/reports/`.
+Il progresso puo' restare basso per qualche minuto all'inizio perche' il backend sta preparando il catalogo, caricando cookie e aprendo le prime richieste `yt-dlp`. Durante il giro puoi vedere righe `OK` e `KO`: non prendere ogni `KO timeout` come definitivo finche' il report finale non e' scritto. Su Raspberry i timeout possono dipendere da rete, quota, carico CPU o risposte lente di YouTube.
 Quando il report conferma tracce `youtube-unavailable` o altri errori definitivi, il pannello Admin mostra `Archivia non disponibili`: il backend crea prima un backup del catalogo, poi marca quelle tracce come `availabilityStatus: "unavailable"` e le nasconde dalla libreria attiva senza cancellarle.
 Dopo avere caricato cookie nuovi puoi usare `Riverifica archiviate`: ClearWave controlla solo le tracce YouTube nascoste e riattiva automaticamente quelle che `yt-dlp` riesce di nuovo a leggere.
 
@@ -96,6 +98,14 @@ Non sostituire migliaia di video a mano. Se l'audit mostra tantissimi KO YouTube
 
 L'audit completo ha una protezione anti-report-sporco: se le prime tracce controllate sono tutte `youtube-age-or-login`, il backend ferma automaticamente il job. In quel caso il problema non sono migliaia di brani singoli, ma cookie YouTube non accettati o account bloccato da verifica anti-bot.
 Il controllo cookie distingue tre livelli: file presente, cookie di sessione dentro al file, e prova reale `yt-dlp` accettata da YouTube. Solo il terzo conferma che il Raspberry puo' riprodurre YouTube in quel momento.
+
+Quando il check finisce:
+
+1. leggi il riepilogo `ok`, `failed`, `replaceCount` e i motivi errore;
+2. se dominano `youtube-age-or-login`, rigenera/carica cookie e usa `Test cookie YouTube`;
+3. se dominano `timeout`, rilancia un giro con concorrenza piu' bassa o in un momento di rete piu' stabile;
+4. se dominano `youtube-unavailable`, usa `Archivia non disponibili` invece di cancellare a mano;
+5. dopo nuovi cookie usa `Riverifica archiviate` per recuperare brani nascosti che tornano disponibili.
 
 Solo Jamendo:
 
@@ -145,12 +155,13 @@ Il JSON contiene:
 | `missing-source` | La traccia non ha una sorgente audio reale. | Rimuovi o correggi la traccia. |
 | `missing-file` | File locale caricato non trovato in `uploads/audio`. | Ripristina il file o rimuovi la traccia. |
 | `stream-not-playable` | `mpv` non riesce a decodificare lo stream. | Reimporta o sostituisci la sorgente. |
-| `timeout` | La sorgente non risponde in tempo. | Riprova; se resta, considera la traccia instabile. |
+| `timeout` | La sorgente non risponde in tempo. | Riprova con rete stabile o concorrenza piu' bassa; se resta in piu' report, considera la traccia instabile. |
 | `missing-tool` | Mancano `mpv` o `yt-dlp`. | Ricostruisci il container con il Dockerfile aggiornato. |
 
 ## Note importanti
 
 - Su cataloghi grandi il controllo completo puo' durare molto. Usa `--concurrency 2` sul Raspberry per non saturarlo.
+- Se il pannello Admin mostra `Auto-refresh attivo`, lo stato si aggiorna da solo: non serve premere manualmente `Aggiorna diagnostica` mentre il job e' in corso.
 - `probe` verifica l'avvio reale, non ascolta tutta la canzone fino alla fine. Se vuoi essere piu' severo aumenta `--sample-seconds`.
 - Per Jamendo lo script prova a ottenere un link fresco quando `JAMENDO_CLIENT_ID` e' configurato.
 - Il report non cancella automaticamente le tracce rotte: prima controlla gli errori, poi decidi cosa rimuovere o reimportare.

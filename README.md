@@ -177,6 +177,7 @@ Se YouTube blocca molte tracce con login/eta/anti-bot, dal PC Windows dove sei g
 
 Lo script usa `yt-dlp --cookies-from-browser`, invia il file all'endpoint admin di ClearWave e cancella il file temporaneo dal PC.
 Dopo avere caricato i cookie, dal pannello Admin puoi usare `Verifica tutto YouTube`: controlla in background tutte le tracce YouTube del catalogo, mostra l'avanzamento nella diagnostica e aggiorna `data/audio-replacement-list.json` con i brani da sostituire.
+Mentre `Verifica tutto YouTube` o il check catalogo automatico sono in corso, il pannello Admin si aggiorna da solo: il progresso YouTube viene riletto ogni pochi secondi e la diagnostica completa viene aggiornata a intervalli piu' larghi per non appesantire il Raspberry. Se vedi il banner `Auto-refresh attivo`, non serve premere continuamente `Aggiorna diagnostica`.
 
 ## Backend in breve
 
@@ -218,7 +219,10 @@ Funzioni React attuali:
 - archivio licenze e upload manuale;
 - reset password temporanea;
 - cambio password;
-- diagnostica Raspberry, reset scan YouTube, backup catalogo JSON e report licenze CSV.
+- diagnostica Raspberry con auto-refresh durante check lunghi;
+- popup admin per cookie YouTube mancanti/in scadenza;
+- audit completo YouTube, archiviazione tracce non disponibili e riverifica archiviate;
+- reset scan YouTube, backup catalogo JSON e report licenze CSV/HTML.
 
 ## UI legacy in breve
 
@@ -243,6 +247,9 @@ Il backend crea e usa:
 | `data/library.json` | Catalogo brani importati o caricati. |
 | `data/clearwave-auth.sqlite` | Utenti, ruoli e hash password. |
 | `data/youtube-import-state.json` | Avanzamento import progressivo YouTube. |
+| `data/youtube-cookies.txt` | Cookie YouTube Netscape caricati dall'admin. Runtime, mai da committare. |
+| `data/audio-replacement-list.json` | Ultimo elenco di tracce da sostituire o archiviare dopo audit audio. |
+| `data/reports/` | Report JSON/CSV dei controlli audio e YouTube. |
 | `uploads/audio/` | Audio caricati manualmente. |
 | `uploads/licenses/` | Licenze, ricevute e allegati diritti. |
 
