@@ -99,6 +99,19 @@ function audioCheckSummary(audioCheck) {
   return audioCheck.lastStartedAt ? "Ultimo report non letto" : "In attesa del primo giro";
 }
 
+function audioCheckHealthOk(audioCheck) {
+  if (!audioCheck?.enabled || audioCheck.running) {
+    return true;
+  }
+
+  const neverStarted = !audioCheck.lastStartedAt && audioCheck.lastExitCode === null && !audioCheck.lastError;
+  if (neverStarted) {
+    return true;
+  }
+
+  return !audioCheck.lastError && audioCheck.lastExitCode === 0;
+}
+
 function youtubeAuditSummary(audit) {
   if (!audit) {
     return "Non avviato";
@@ -244,10 +257,7 @@ function diagnosticHealthChecks(diagnostics) {
     },
     {
       label: "Check catalogo",
-      ok:
-        !diagnostics.audioCheck?.enabled ||
-        diagnostics.audioCheck?.running ||
-        diagnostics.audioCheck?.lastExitCode === 0,
+      ok: audioCheckHealthOk(diagnostics.audioCheck),
       detail: audioCheckSummary(diagnostics.audioCheck),
     },
     {
