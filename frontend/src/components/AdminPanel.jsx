@@ -9,6 +9,8 @@ const hardBrokenReasons = new Set([
   "not-found",
   "forbidden",
 ]);
+const auditRefreshMs = 3000;
+const diagnosticsRefreshMs = 15000;
 
 function firstDiagnosticLine(value) {
   return String(value || "")
@@ -67,6 +69,14 @@ function youtubeAuditSummary(audit) {
   }
 
   return audit.finishedAt ? "Report letto" : "Non avviato";
+}
+
+function refreshClockLabel() {
+  return new Intl.DateTimeFormat("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date());
 }
 
 function diagnosticHealthChecks(diagnostics) {
@@ -190,6 +200,7 @@ export function AdminPanel({
   const [pendingCleanupBroken, setPendingCleanupBroken] = useState(false);
   const [exporting, setExporting] = useState("");
   const [importingBackup, setImportingBackup] = useState(false);
+  const [autoRefreshAt, setAutoRefreshAt] = useState("");
 
   async function handleCreate(event) {
     event.preventDefault();
@@ -256,6 +267,7 @@ export function AdminPanel({
     try {
       const payload = await onLoadDiagnostics();
       setDiagnostics(payload);
+      setAutoRefreshAt(refreshClockLabel());
       setDiagnosticsStatusType("success");
       setDiagnosticsStatus("Diagnostica aggiornata.");
     } catch (error) {
@@ -444,14 +456,30 @@ export function AdminPanel({
     }
   }
 
+  // Quando un controllo lungo e' attivo, la diagnostica si aggiorna da sola senza premere il pulsante.
   useEffect(() => {
-    if (!diagnostics?.youtubeAudit?.running || !onLoadYouTubeAuditStatus) {
+    const auditRunning = Boolean(diagnostics?.youtubeAudit?.running);
+    const catalogCheckRunning = Boolean(diagnostics?.audioCheck?.running);
+    if (!auditRunning && !catalogCheckRunning) {
       return undefined;
     }
 
-    const timerId = window.setInterval(async () => {
+    let cancelled = false;
+    let auditBusy = false;
+    let diagnosticsBusy = false;
+
+    async function refreshAuditStatus() {
+      if (!auditRunning || !onLoadYouTubeAuditStatus || auditBusy) {
+        return;
+      }
+
+      auditBusy = true;
       try {
         const payload = await onLoadYouTubeAuditStatus();
+        if (cancelled) {
+          return;
+        }
+
         setDiagnostics((current) =>
           current
             ? {
@@ -461,13 +489,54 @@ export function AdminPanel({
               }
             : current
         );
+        setAutoRefreshAt(refreshClockLabel());
       } catch {
         // Il refresh quieto non deve interrompere un audit lungo solo per un giro rete fallito.
+      } finally {
+        auditBusy = false;
       }
-    }, 5000);
+    }
 
-    return () => window.clearInterval(timerId);
-  }, [diagnostics?.youtubeAudit?.running, onLoadYouTubeAuditStatus]);
+    async function refreshFullDiagnostics() {
+      if (!onLoadDiagnostics || diagnosticsBusy) {
+        return;
+      }
+
+      diagnosticsBusy = true;
+      try {
+        const payload = await onLoadDiagnostics();
+        if (!cancelled && payload) {
+          setDiagnostics(payload);
+          setAutoRefreshAt(refreshClockLabel());
+        }
+      } catch {
+        // Anche la diagnostica completa puo' saltare un giro se mpv/ALSA rispondono lentamente.
+      } finally {
+        diagnosticsBusy = false;
+      }
+    }
+
+    void refreshAuditStatus();
+    if (catalogCheckRunning) {
+      void refreshFullDiagnostics();
+    }
+
+    const auditTimerId = auditRunning ? window.setInterval(refreshAuditStatus, auditRefreshMs) : 0;
+    const diagnosticsTimerId = window.setInterval(refreshFullDiagnostics, diagnosticsRefreshMs);
+
+    return () => {
+      cancelled = true;
+      if (auditTimerId) {
+        window.clearInterval(auditTimerId);
+      }
+      window.clearInterval(diagnosticsTimerId);
+    };
+  }, [
+    diagnostics?.youtubeAudit?.running,
+    diagnostics?.audioCheck?.running,
+    onLoadYouTubeAuditStatus,
+    onLoadDiagnostics,
+  ]);
 
   const preflightResults = Array.isArray(diagnostics?.audioPreflight) ? diagnostics.audioPreflight : [];
   const healthChecks = diagnosticHealthChecks(diagnostics);
@@ -487,6 +556,7 @@ export function AdminPanel({
   );
   const youtubeAudit = diagnostics?.youtubeAudit || null;
   const youtubeAuditLog = Array.isArray(youtubeAudit?.logTail) ? youtubeAudit.logTail.slice(-8) : [];
+  const autoRefreshActive = Boolean(youtubeAudit?.running || diagnostics?.audioCheck?.running);
 
   return (
     <section className="panel admin-panel">
@@ -672,6 +742,13 @@ export function AdminPanel({
 
           {diagnosticsStatus ? (
             <p className={`status-banner is-${diagnosticsStatusType}`}>{diagnosticsStatus}</p>
+          ) : null}
+
+          {autoRefreshActive ? (
+            <p className="status-banner is-info">
+              Auto-refresh attivo: aggiorno lo stato dei controlli ogni pochi secondi
+              {autoRefreshAt ? `, ultimo aggiornamento ${autoRefreshAt}.` : "."}
+            </p>
           ) : null}
 
           {healthChecks.length > 0 ? (
