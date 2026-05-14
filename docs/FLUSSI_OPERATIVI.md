@@ -185,6 +185,7 @@ Quando il check finisce, leggi prima il report:
 
 - `youtube-age-or-login`: carica cookie nuovi e usa `Test cookie YouTube`;
 - `timeout`: riprova con rete stabile o concorrenza piu' bassa;
+- `youtube-error` o `exit-1`: leggi il messaggio breve nella diagnostica o nel report JSON; e' il caso generico di `yt-dlp`/`mpv`;
 - `youtube-unavailable` o `missing-source`: usa `Archivia non disponibili`;
 - tracce archiviate dopo cookie nuovi: usa `Riverifica archiviate`.
 

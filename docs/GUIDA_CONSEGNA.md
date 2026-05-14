@@ -122,6 +122,7 @@ Il report non sostituisce la verifica legale finale: serve a sapere da dove arri
 | `Requested format is not available` | YouTube/yt-dlp non trova uno stream compatibile | Ricostruisci senza cache e controlla `yt-dlp --version`. |
 | `Sign in to confirm your age` / `not a bot` | YouTube richiede cookie/sessione autorizzata | Carica `cookies.txt`, usa `Test cookie YouTube`, poi rilancia `Verifica tutto YouTube`. |
 | Tanti `timeout` nel check YouTube | Rete lenta, Raspberry carico o YouTube lento | Aspetta il report finale; se restano molti timeout, rifai il giro con meno concorrenza. |
+| `youtube-error` o `exit-1` | Errore generico di `yt-dlp`/`mpv`; nei nuovi report c'e' anche il messaggio breve | Leggi la riga nella diagnostica o apri il JSON in `data/reports`; spesso serve cookie nuovo, rete stabile o archiviazione del video. |
 | `mpv precedente chiuso per cambio traccia/comando` | Un nuovo comando ha sostituito il vecchio mpv | Non e' un errore se la traccia successiva parte. |
 | `mpv ha completato ... codice 0` | Traccia terminata correttamente | Normale. |
 | Importa poche tracce | Molti duplicati o filtri durata/licenza | Usa lotto piu' grande o reset scan YouTube. |

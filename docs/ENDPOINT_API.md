@@ -517,6 +517,7 @@ Solo admin. Restituisce diagnostica runtime per Raspberry/audio: versione Node, 
 Non espone valori segreti delle API: indica solo se le chiavi principali sono configurate.
 La risposta include anche gli ultimi eventi del player, utili per capire se una traccia e' partita, e' stata sostituita da un comando nuovo o e' terminata correttamente.
 Include anche `replacementList`, cioe' la lista runtime delle tracce da sostituire generata dai ricontrolli audio, e `youtubeAudit`, cioe' stato/progresso dell'eventuale verifica completa YouTube in background.
+Per i cookie YouTube la diagnostica espone solo metadati sicuri: file letto, sorgente, numero righe, numero cookie YouTube/Google, numero nomi cookie sessione riconosciuti, stato `hasSessionCookies`, scadenza critica e messaggio `ytdlCookieWarning`. Non espone mai i valori dei cookie.
 
 ### `POST /api/admin/audio-check/youtube-login-recheck`
 
@@ -551,7 +552,7 @@ Body opzionale:
 ```json
 {
   "mode": "metadata",
-  "concurrency": 3,
+  "concurrency": 5,
   "timeoutMs": 25000,
   "sampleSeconds": 4,
   "limit": 0
@@ -571,7 +572,7 @@ Risposta immediata:
     "progress": 0,
     "config": {
       "mode": "metadata",
-      "concurrency": 3
+      "concurrency": 5
     }
   }
 }

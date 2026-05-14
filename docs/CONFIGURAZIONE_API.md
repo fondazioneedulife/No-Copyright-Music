@@ -59,7 +59,7 @@ npm start
 | `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | `lib/audio-replacement-service.js` | Numero massimo di tracce YouTube/login ricontrollate dal pulsante admin, default `80`. |
 | `CLEARWAVE_YOUTUBE_ARCHIVED_RECHECK_LIMIT` | `lib/audio-replacement-service.js` | Numero massimo di tracce YouTube archiviate riverificate con i cookie attuali, default `120`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | `lib/audio-replacement-service.js` | Modalita della verifica completa YouTube da pannello Admin: `metadata` consigliata, `probe` piu' severa, `source` solo rapido. |
-| `CLEARWAVE_YOUTUBE_FULL_AUDIT_CONCURRENCY` | `lib/audio-replacement-service.js` | Numero di controlli YouTube paralleli per l'audit completo, default `3`. |
+| `CLEARWAVE_YOUTUBE_FULL_AUDIT_CONCURRENCY` | `lib/audio-replacement-service.js` | Numero di controlli YouTube paralleli per l'audit completo, default `5`. Se il Raspberry accumula molti `timeout`, scendi temporaneamente a `3` o `2`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_TIMEOUT_MS` | `lib/audio-replacement-service.js` | Timeout per singola traccia nell'audit completo, default `25000`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_SAMPLE_SECONDS` | `lib/audio-replacement-service.js` | Secondi di campione quando l'audit usa `probe`, default `4`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_LIMIT` | `lib/audio-replacement-service.js` | Limite opzionale per test; `0` controlla tutto il catalogo YouTube. |

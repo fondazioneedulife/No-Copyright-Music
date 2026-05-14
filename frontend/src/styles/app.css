@@ -1086,6 +1086,15 @@ body[data-theme="light"] .pagination .is-active {
   color: var(--muted);
 }
 
+.diagnostic-events.is-readable strong,
+.diagnostic-events.is-readable span,
+.diagnostic-events.is-readable small {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .diagnostic-list {
   display: grid;
   gap: 8px;

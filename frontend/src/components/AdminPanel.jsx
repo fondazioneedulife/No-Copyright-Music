@@ -11,6 +11,45 @@ const hardBrokenReasons = new Set([
 ]);
 const auditRefreshMs = 3000;
 const diagnosticsRefreshMs = 15000;
+const diagnosticReasonInfo = {
+  ok: {
+    label: "OK",
+    detail: "La traccia e' stata aperta correttamente durante il controllo.",
+  },
+  timeout: {
+    label: "Timeout",
+    detail:
+      "YouTube, rete o Raspberry non hanno risposto in tempo. Non e' definitivo: se sono tanti, riprova con meno concorrenza o rete piu' libera.",
+  },
+  "youtube-unavailable": {
+    label: "YouTube non disponibile",
+    detail:
+      "Il video risulta rimosso, privato, bloccato o non piu' leggibile da yt-dlp. Se resta cosi' in piu' report, e' candidato ad archiviazione.",
+  },
+  "youtube-age-or-login": {
+    label: "Login/eta YouTube",
+    detail:
+      "YouTube richiede cookie validi, conferma account o controllo anti-bot. Prima prova Test cookie YouTube, poi rilancia il check.",
+  },
+  "youtube-error": {
+    label: "Errore YouTube",
+    detail:
+      "yt-dlp e' uscito con errore generico. Da ora il log mostra anche il messaggio breve per capire se e' login, rete o video non valido.",
+  },
+  "exit-1": {
+    label: "Exit 1",
+    detail:
+      "Motivo generico dei report vecchi. Nei nuovi check viene trasformato in Errore YouTube quando riguarda un video YouTube.",
+  },
+};
+const diagnosticReasonOrder = [
+  "ok",
+  "timeout",
+  "youtube-unavailable",
+  "youtube-age-or-login",
+  "youtube-error",
+  "exit-1",
+];
 
 function firstDiagnosticLine(value) {
   return String(value || "")
@@ -71,12 +110,60 @@ function youtubeAuditSummary(audit) {
   return audit.finishedAt ? "Report letto" : "Non avviato";
 }
 
+function diagnosticReasonRows(diagnostics, youtubeAudit) {
+  const counts = {};
+  [diagnostics?.audioCheck?.lastSummary?.byReason, youtubeAudit?.summary?.byReason].forEach((source) => {
+    if (!source || typeof source !== "object") {
+      return;
+    }
+
+    Object.entries(source).forEach(([reason, count]) => {
+      counts[reason] = (counts[reason] || 0) + (Number(count) || 0);
+    });
+  });
+
+  const ordered = diagnosticReasonOrder.map((reason) => ({
+    reason,
+    count: counts[reason] || 0,
+    label: diagnosticReasonInfo[reason]?.label || reason,
+    detail: diagnosticReasonInfo[reason]?.detail || "Motivo tecnico letto dal report.",
+  }));
+
+  const extras = Object.keys(counts)
+    .filter((reason) => !diagnosticReasonOrder.includes(reason))
+    .sort()
+    .map((reason) => ({
+      reason,
+      count: counts[reason] || 0,
+      label: reason,
+      detail: "Motivo tecnico letto dal report. Apri il JSON in data/reports per il dettaglio completo.",
+    }));
+
+  return [...ordered, ...extras];
+}
+
 function refreshClockLabel() {
   return new Intl.DateTimeFormat("it-IT", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
   }).format(new Date());
+}
+
+function diagnosticDateLabel(value) {
+  if (!value) {
+    return "";
+  }
+
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) {
+    return String(value);
+  }
+
+  return new Intl.DateTimeFormat("it-IT", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(timestamp));
 }
 
 function diagnosticHealthChecks(diagnostics) {
@@ -86,9 +173,11 @@ function diagnosticHealthChecks(diagnostics) {
 
   const preflight = Array.isArray(diagnostics.audioPreflight) ? diagnostics.audioPreflight : [];
   const audioOk = preflight.length === 0 || preflight.some((entry) => entry.ok);
+  const cookieAnalysis = diagnostics.config?.ytdlCookieAnalysis || null;
   const youtubeCookiesAvailable = Boolean(diagnostics.config?.ytdlCookiesAvailable);
   const youtubeCookiesConfigured = Boolean(diagnostics.config?.ytdlCookiesConfigured);
-  const youtubeCookieSessionCount = Number(diagnostics.config?.ytdlCookieAnalysis?.sessionCookieCount) || 0;
+  const youtubeCookieSessionCount = Number(cookieAnalysis?.sessionCookieCount) || 0;
+  const youtubeCookieSessionReady = Boolean(cookieAnalysis?.hasSessionCookies);
   return [
     {
       label: "Backend",
@@ -122,9 +211,9 @@ function diagnosticHealthChecks(diagnostics) {
     },
     {
       label: "Cookie YouTube",
-      ok: youtubeCookiesAvailable && youtubeCookieSessionCount > 0,
+      ok: youtubeCookiesAvailable && youtubeCookieSessionReady,
       detail: youtubeCookiesAvailable
-        ? youtubeCookieSessionCount > 0
+        ? youtubeCookieSessionReady
           ? `${youtubeCookieSessionCount} cookie sessione`
           : "File presente ma sessione incompleta"
         : youtubeCookiesConfigured
@@ -155,6 +244,55 @@ function diagnosticHealthChecks(diagnostics) {
       detail: youtubeAuditSummary(diagnostics.youtubeAudit),
     },
   ];
+}
+
+function cookieDiagnosticRows(diagnostics) {
+  const config = diagnostics?.config || {};
+  const analysis = config.ytdlCookieAnalysis || {};
+  const warning = config.ytdlCookieWarning || {};
+  const sessionNames = Array.isArray(analysis.sessionCookieNames) ? analysis.sessionCookieNames : [];
+  const rows = [
+    {
+      label: "Messaggio",
+      value:
+        warning.message ||
+        (config.ytdlCookiesAvailable
+          ? "File cookie presente. Usa Test cookie YouTube per verificare se l'account e' accettato dal Raspberry."
+          : "Cookie YouTube non presenti."),
+    },
+    {
+      label: "File letto",
+      value: config.ytdlCookiesPath || "data/youtube-cookies.txt",
+    },
+    {
+      label: "Origine",
+      value: config.ytdlCookiesSource || "default",
+    },
+    {
+      label: "Righe cookie",
+      value: `${analysis.validRows ?? 0} totali, ${analysis.youtubeRows ?? 0} YouTube/Google`,
+    },
+    {
+      label: "Sessione login",
+      value: analysis.hasSessionCookies
+        ? `${analysis.sessionCookieCount ?? 0} cookie sessione trovati`
+        : `${analysis.sessionCookieCount ?? 0} cookie sessione trovati: esporta un cookies.txt nuovo da YouTube gia' loggato`,
+    },
+    {
+      label: "Nomi sessione trovati",
+      value: sessionNames.length > 0 ? sessionNames.join(", ") : "Nessun cookie sessione riconosciuto",
+    },
+    {
+      label: "Prossima scadenza critica",
+      value: analysis.earliestExpiresAt
+        ? `${diagnosticDateLabel(analysis.earliestExpiresAt)}${
+            Number.isFinite(analysis.expiresInDays) ? ` (${analysis.expiresInDays} giorni)` : ""
+          }`
+        : "Scadenza non rilevata nel file",
+    },
+  ];
+
+  return rows;
 }
 
 export function AdminPanel({
@@ -555,7 +693,14 @@ export function AdminPanel({
     hardBrokenReasons.has(String(item.reason || "").toLowerCase())
   );
   const youtubeAudit = diagnostics?.youtubeAudit || null;
-  const youtubeAuditLog = Array.isArray(youtubeAudit?.logTail) ? youtubeAudit.logTail.slice(-8) : [];
+  const youtubeAuditLog = Array.isArray(youtubeAudit?.logTail) ? youtubeAudit.logTail.slice(-20) : [];
+  const audioCheckLog = Array.isArray(diagnostics?.audioCheck?.logTail) ? diagnostics.audioCheck.logTail.slice(-20) : [];
+  const warningHealthChecks = healthChecks.filter((entry) => !entry.ok);
+  const cookieRows = cookieDiagnosticRows(diagnostics);
+  const checkReasonRows = diagnosticReasonRows(diagnostics, youtubeAudit);
+  const cookieReady = Boolean(
+    diagnostics?.config?.ytdlCookiesAvailable && diagnostics?.config?.ytdlCookieAnalysis?.hasSessionCookies
+  );
   const autoRefreshActive = Boolean(youtubeAudit?.running || diagnostics?.audioCheck?.running);
 
   return (
@@ -754,10 +899,27 @@ export function AdminPanel({
           {healthChecks.length > 0 ? (
             <div className="diagnostic-health">
               {healthChecks.map((entry) => (
-                <div key={entry.label} className={entry.ok ? "is-ok" : "is-warn"}>
+                <div key={entry.label} className={entry.ok ? "is-ok" : "is-warn"} title={entry.detail}>
                   <strong>{entry.label}</strong>
                   <span>{entry.ok ? "OK" : "ATTENZIONE"}</span>
                   <small>{entry.detail}</small>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {warningHealthChecks.length > 0 ? (
+            <div className="diagnostic-events is-readable">
+              <p className="eyebrow">Avvisi diagnostica</p>
+              {warningHealthChecks.map((entry) => (
+                <div key={`warning-${entry.label}`}>
+                  <strong>{entry.label}</strong>
+                  <span>{entry.detail}</span>
+                  <small>
+                    {entry.label === "Cookie YouTube"
+                      ? "Il file esiste, ma non basta: deve contenere cookie di sessione login esportati da YouTube gia' autenticato."
+                      : "Apri il dettaglio sotto per leggere il messaggio completo e capire il prossimo passo."}
+                  </small>
                 </div>
               ))}
             </div>
@@ -803,17 +965,21 @@ export function AdminPanel({
               <div>
                 <span>Cookie YouTube</span>
                 <strong>
-                  {diagnostics.config?.ytdlCookiesAvailable
+                  {cookieReady
                     ? "Attivi"
-                    : diagnostics.config?.ytdlCookiesConfigured
+                    : diagnostics.config?.ytdlCookiesAvailable
+                      ? "Sessione incompleta"
+                      : diagnostics.config?.ytdlCookiesConfigured
                       ? "File mancante"
                       : "Non configurati"}
                 </strong>
                 <small>
-                  {diagnostics.config?.ytdlCookiesAvailable
+                  {cookieReady
                     ? `${diagnostics.config?.ytdlCookiesSource || "file"} | ${
                         diagnostics.config?.ytdlCookieAnalysis?.sessionCookieCount || 0
                       } cookie sessione`
+                    : diagnostics.config?.ytdlCookiesAvailable
+                      ? diagnostics.config?.ytdlCookieWarning?.message || "File presente ma senza sessione login completa"
                     : diagnostics.config?.ytdlCookiesConfigured
                       ? `Non leggibile: ${diagnostics.config?.ytdlCookiesPath || "percorso mancante"}`
                       : `Auto: ${diagnostics.config?.ytdlCookiesPath || "data/youtube-cookies.txt"}`}
@@ -833,13 +999,25 @@ export function AdminPanel({
             </div>
           ) : null}
 
+          {diagnostics ? (
+            <div className="diagnostic-events is-readable">
+              <p className="eyebrow">Dettaglio cookie YouTube</p>
+              {cookieRows.map((row) => (
+                <div key={row.label}>
+                  <strong>{row.label}</strong>
+                  <span>{row.value}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           {youtubeAudit ? (
-            <div className="diagnostic-events">
+            <div className="diagnostic-events is-readable">
               <p className="eyebrow">Verifica completa YouTube</p>
               <div>
                 <strong>{youtubeAuditSummary(youtubeAudit)}</strong>
                 <span>
-                  {youtubeAudit.config?.mode || "metadata"} | concorrenza {youtubeAudit.config?.concurrency || 3}
+                  {youtubeAudit.config?.mode || "metadata"} | concorrenza {youtubeAudit.config?.concurrency || 5}
                   {youtubeAudit.loginFailures ? ` | login KO ${youtubeAudit.loginFailures}` : ""}
                   {youtubeAudit.summary?.replaceCount
                     ? ` | ${youtubeAudit.summary.replaceCount} da sostituire`
@@ -857,6 +1035,54 @@ export function AdminPanel({
                 ) : null}
               </div>
               {youtubeAuditLog.map((line, index) => (
+                <div key={`${line}-${index}`}>
+                  <strong>{line.startsWith("[check]") ? "check" : "log"}</strong>
+                  <span>{line}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {diagnostics ? (
+            <div className="diagnostic-events is-readable">
+              <p className="eyebrow">Legenda risultati check</p>
+              <div>
+                <strong>Concorrenza audit</strong>
+                <span>Default 5 controlli paralleli per velocizzare YouTube.</span>
+                <small>
+                  Se il report finale ha molti timeout, abbassa temporaneamente
+                  CLEARWAVE_YOUTUBE_FULL_AUDIT_CONCURRENCY a 3 o 2 e rilancia.
+                </small>
+              </div>
+              {checkReasonRows.map((row) => (
+                <div key={row.reason}>
+                  <strong>
+                    {row.label}
+                    {row.count ? ` (${row.count})` : ""}
+                  </strong>
+                  <span>{row.reason}</span>
+                  <small>{row.detail}</small>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {audioCheckLog.length > 0 ? (
+            <div className="diagnostic-events is-readable">
+              <p className="eyebrow">Log check catalogo</p>
+              <div>
+                <strong>{audioCheckSummary(diagnostics.audioCheck)}</strong>
+                <span>
+                  OK {diagnostics.audioCheck?.lastSummary?.ok ?? "n/d"} | KO{" "}
+                  {diagnostics.audioCheck?.lastSummary?.failed ?? "n/d"}
+                </span>
+                <small>
+                  {diagnostics.audioCheck?.lastError ||
+                    diagnostics.audioCheck?.lastReportJson ||
+                    "Ultime righe del controllo automatico catalogo."}
+                </small>
+              </div>
+              {audioCheckLog.map((line, index) => (
                 <div key={`${line}-${index}`}>
                   <strong>{line.startsWith("[check]") ? "check" : "log"}</strong>
                   <span>{line}</span>
@@ -890,7 +1116,7 @@ export function AdminPanel({
           ) : null}
 
           {replacementList ? (
-            <div className="diagnostic-events">
+            <div className="diagnostic-events is-readable">
               <p className="eyebrow">Tracce da sostituire</p>
               <div>
                 <strong>{replacementList.summary?.replaceCount ?? replacementItems.length} candidate</strong>
@@ -931,7 +1157,7 @@ export function AdminPanel({
           ) : null}
 
           {playerEvents.length > 0 ? (
-            <div className="diagnostic-events">
+            <div className="diagnostic-events is-readable">
               <p className="eyebrow">Ultimi eventi player</p>
               {playerEvents.map((event) => (
                 <div key={event.id}>

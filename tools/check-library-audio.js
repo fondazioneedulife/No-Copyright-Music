@@ -504,11 +504,15 @@ async function checkWithYtDlp(source, options) {
   }
   args.push(source);
   const result = await runCommand(options.ytdlPath, args, options.timeoutMs);
+  const fallbackMessage =
+    result.ok || result.timedOut
+      ? ""
+      : `yt-dlp terminato con codice ${result.code ?? "n/d"} senza dettagli aggiuntivi.`;
   return {
     ok: result.ok,
     code: result.code,
     durationMs: result.durationMs,
-    message: firstString(result.stderr, result.stdout, result.error),
+    message: firstString(result.stderr, result.stdout, result.error, fallbackMessage),
     timedOut: result.timedOut,
   };
 }
@@ -550,16 +554,20 @@ async function checkWithMpv(source, sourceKind, options) {
 
   args.push(source);
   const result = await runCommand("mpv", args, options.timeoutMs);
+  const fallbackMessage =
+    result.ok || result.timedOut
+      ? ""
+      : `mpv terminato con codice ${result.code ?? "n/d"} senza dettagli aggiuntivi.`;
   return {
     ok: result.ok,
     code: result.code,
     durationMs: result.durationMs,
-    message: firstString(result.stderr, result.stdout, result.error),
+    message: firstString(result.stderr, result.stdout, result.error, fallbackMessage),
     timedOut: result.timedOut,
   };
 }
 
-function classifyFailure(message, code, timedOut) {
+function classifyFailure(message, code, timedOut, sourceKind) {
   const text = String(message || "");
   if (timedOut || /timeout|timed out/i.test(text)) {
     return "timeout";
@@ -590,6 +598,9 @@ function classifyFailure(message, code, timedOut) {
   }
   if (/ENOENT/i.test(text)) {
     return "missing-tool";
+  }
+  if (sourceKind === "youtube" && code === 1) {
+    return "youtube-error";
   }
   return code === null || code === undefined ? "unknown" : `exit-${code}`;
 }
@@ -651,7 +662,7 @@ async function checkTrack(track, catalogIndex, options) {
   return {
     ...base,
     status: ok ? "ok" : "failed",
-    reason: ok ? "ok" : classifyFailure(result.message, result.code, result.timedOut),
+    reason: ok ? "ok" : classifyFailure(result.message, result.code, result.timedOut, sourceKind),
     exitCode: result.code,
     message: firstString(result.message, ok ? "Riproduzione verificata." : "Errore sconosciuto").slice(0, 1000),
     durationMs: result.durationMs || Date.now() - startedAt,
@@ -710,7 +721,13 @@ function printResult(result, checked, total, options) {
   }
 
   const marker = result.status === "ok" ? "OK" : "KO";
-  console.log(`[${checked}/${total}] ${marker} ${result.provider} - ${result.title} (${result.reason})`);
+  const detail =
+    result.status === "ok"
+      ? ""
+      : ` - ${String(result.message || "nessun dettaglio")
+          .replace(/\s+/g, " ")
+          .slice(0, 220)}`;
+  console.log(`[${checked}/${total}] ${marker} ${result.provider} - ${result.title} (${result.reason})${detail}`);
 }
 
 async function runChecks(tracks, options) {

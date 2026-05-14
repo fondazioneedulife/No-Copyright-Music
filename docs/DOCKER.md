@@ -214,7 +214,7 @@ Variabili principali:
 | `CLEARWAVE_YTDL_COOKIES_FILE` | File cookie YouTube Netscape dentro al container, opzionale per video che richiedono login/conferma eta. |
 | `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | Massimo di tracce YouTube/login ricontrollate dal pulsante admin in un giro, default `80`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | Modalita del controllo completo YouTube da Admin, default `metadata`. |
-| `CLEARWAVE_YOUTUBE_FULL_AUDIT_CONCURRENCY` | Parallelismo del controllo completo YouTube, default `3` sul Raspberry. |
+| `CLEARWAVE_YOUTUBE_FULL_AUDIT_CONCURRENCY` | Parallelismo del controllo completo YouTube, default `5` sul Raspberry. Se compaiono molti `timeout`, scendi temporaneamente a `3` o `2`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_LIMIT` | Limite opzionale per test; `0` controlla tutte le tracce YouTube. |
 | `CLEARWAVE_MPV_MSG_LEVEL` | Livello log `mpv`, default `all=warn,ytdl_hook=info` per vedere avvisi e risoluzione YouTube. |
 | `JAMENDO_CLIENT_ID` | Discovery/import Jamendo. |

@@ -104,8 +104,9 @@ Quando il check finisce:
 1. leggi il riepilogo `ok`, `failed`, `replaceCount` e i motivi errore;
 2. se dominano `youtube-age-or-login`, rigenera/carica cookie e usa `Test cookie YouTube`;
 3. se dominano `timeout`, rilancia un giro con concorrenza piu' bassa o in un momento di rete piu' stabile;
-4. se dominano `youtube-unavailable`, usa `Archivia non disponibili` invece di cancellare a mano;
-5. dopo nuovi cookie usa `Riverifica archiviate` per recuperare brani nascosti che tornano disponibili.
+4. se compaiono `youtube-error` o vecchi `exit-1`, guarda il log breve e il report JSON: ora il check stampa anche il messaggio reale di `yt-dlp`/`mpv`;
+5. se dominano `youtube-unavailable`, usa `Archivia non disponibili` invece di cancellare a mano;
+6. dopo nuovi cookie usa `Riverifica archiviate` per recuperare brani nascosti che tornano disponibili.
 
 Solo Jamendo:
 
@@ -151,6 +152,8 @@ Il JSON contiene:
 | `youtube-unavailable` | Video rimosso, privato, non disponibile o bloccato. | Sostituisci il brano. |
 | `youtube-format` | `yt-dlp` non trova un formato audio compatibile. | Controlla versione `yt-dlp` e `CLEARWAVE_YTDL_FORMAT`. |
 | `youtube-js-runtime` | `yt-dlp` non trova un runtime JavaScript per risolvere YouTube. | Ricostruisci Docker: l'immagine aggiornata installa Deno e usa `CLEARWAVE_YTDL_JS_RUNTIME`. |
+| `youtube-error` | `yt-dlp` e' uscito con errore generico su una traccia YouTube. | Leggi il messaggio nella UI o nel report: spesso indica login, rete o video non piu' disponibile. |
+| `exit-1` | Motivo generico presente nei report vecchi quando un comando usciva con codice 1 senza dettagli. | Rilancia il check aggiornato: le nuove righe mostrano il messaggio breve e classificano YouTube come `youtube-error`. |
 | `forbidden` | Stream vietato o URL firmato non piu' valido. | Per Jamendo controlla `JAMENDO_CLIENT_ID`; per altri provider reimporta. |
 | `missing-source` | La traccia non ha una sorgente audio reale. | Rimuovi o correggi la traccia. |
 | `missing-file` | File locale caricato non trovato in `uploads/audio`. | Ripristina il file o rimuovi la traccia. |

@@ -76,6 +76,9 @@ const ytdlSessionCookieNames = new Set([
   "SSID",
   "APISID",
   "SAPISID",
+  "SIDCC",
+  "LSID",
+  "OSID",
   "LOGIN_INFO",
   "__Secure-1PSID",
   "__Secure-3PSID",
@@ -83,6 +86,8 @@ const ytdlSessionCookieNames = new Set([
   "__Secure-3PAPISID",
   "__Secure-1PSIDTS",
   "__Secure-3PSIDTS",
+  "__Secure-1PSIDCC",
+  "__Secure-3PSIDCC",
 ]);
 const serverPlayer = {
   // Stato del player lato Raspberry: React diventa telecomando, l'audio esce dal server.
@@ -3412,6 +3417,7 @@ function analyzeYtdlCookieText(rawText) {
   );
   const names = new Set(youtubeRows.map((row) => row.name).filter(Boolean));
   const sessionCookieNames = Array.from(ytdlSessionCookieNames).filter((name) => names.has(name));
+  const hasSessionCookies = sessionCookieNames.length > 0;
   const expiringSessionCookies = youtubeRows
     .filter((row) => ytdlSessionCookieNames.has(row.name) && row.expires > 0)
     .map((row) => row.expires);
@@ -3436,7 +3442,8 @@ function analyzeYtdlCookieText(rawText) {
     youtubeRows: youtubeRows.length,
     sessionCookieCount: sessionCookieNames.length,
     sessionCookieNames,
-    hasSessionCookies: sessionCookieNames.length >= 4,
+    hasSessionCookies,
+    sessionCookieThreshold: 1,
     expiresAt: latestExpiresAt,
     earliestExpiresAt,
     latestExpiresAt,
@@ -5313,6 +5320,7 @@ async function buildServerDiagnostics() {
       ytdlCookiesPath: cookies.path,
       ytdlCookiesSource: cookies.source,
       ytdlCookieAnalysis: cookies.analysis,
+      ytdlCookieWarning: cookies.warning,
       ytdlCookieProbeUrl: serverPlayerYtdlCookieProbeUrl,
       mpvMsgLevel: serverPlayerMpvMsgLevel,
       hasYouTubeApiKey: Boolean(youtubeApiKey),

@@ -655,7 +655,7 @@ Variabili principali:
 | `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | `80` | Quante tracce login/bot ricontrollare in un giro mirato. |
 | `CLEARWAVE_YOUTUBE_ARCHIVED_RECHECK_LIMIT` | `120` | Quante tracce YouTube archiviate ricontrollare con i cookie attuali. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | `metadata` | Modalita verifica completa YouTube da Admin. |
-| `CLEARWAVE_YOUTUBE_FULL_AUDIT_CONCURRENCY` | `3` | Parallelismo verifica completa YouTube. |
+| `CLEARWAVE_YOUTUBE_FULL_AUDIT_CONCURRENCY` | `5` | Parallelismo verifica completa YouTube. Se il Raspberry o la rete generano molti `timeout`, usa `3` o `2` per un giro piu' stabile. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_TIMEOUT_MS` | `25000` | Timeout per traccia nella verifica completa YouTube. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_LIMIT` | `0` | Limite opzionale; `0` controlla tutto YouTube. |
 | `CLEARWAVE_MPV_MSG_LEVEL` | `all=warn,ytdl_hook=info` | Verbosita' log mpv. |
