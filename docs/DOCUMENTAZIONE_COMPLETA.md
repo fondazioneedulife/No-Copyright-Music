@@ -778,11 +778,11 @@ La UI principale da usare e consegnare e' React.
 
 ```bash
 cd ~/No-Copyright-Music
-git pull --ff-only
-docker compose down
-docker compose build --no-cache clearwave
-docker compose up -d --force-recreate
+sh tools/update-raspberry.sh
 ```
+
+Lo script esegue `git pull --ff-only`, ricostruisce ClearWave, ricrea il container e pulisce cache/immagini Docker inutilizzate senza cancellare `data/` o `uploads/`.
+Usa `CLEARWAVE_NO_CACHE=1 sh tools/update-raspberry.sh` solo se e' cambiato il Dockerfile, sono cambiate dipendenze o il container continua a risultare vecchio.
 
 ### Se `git pull` si blocca per file modificati
 
@@ -812,6 +812,60 @@ git status
 ```
 
 ## 21. Troubleshooting
+
+### Spazio pieno sul Raspberry
+
+Sintomi tipici:
+
+```text
+No space left on device
+fatal: write error: No space left on device
+failed to update builder last activity time
+```
+
+Controlla disco e uso Docker:
+
+```bash
+df -h
+docker system df
+```
+
+Pulizia sicura:
+
+```bash
+docker builder prune -af
+docker image prune -af
+docker container prune -f
+```
+
+Pulizia piu' ampia, ancora senza volumi:
+
+```bash
+docker system prune -af
+```
+
+Pulizia log e cache sistema:
+
+```bash
+journalctl --disk-usage
+sudo journalctl --vacuum-time=3d
+sudo apt clean
+```
+
+Per capire cosa pesa:
+
+```bash
+du -hxd1 ~ | sort -h
+du -hxd1 ~/No-Copyright-Music | sort -h
+```
+
+Non cancellare manualmente `data/`, `uploads/`, `data/library.json`, `data/clearwave-auth.sqlite` o `data/youtube-cookies.txt`. Dopo la pulizia rilancia:
+
+```bash
+cd ~/No-Copyright-Music
+git pull --ff-only
+sh tools/update-raspberry.sh
+```
 
 ### Audio non esce dal Raspberry
 

@@ -168,6 +168,7 @@ Se nei log vedi `Playback open error` o `Unknown error 524`, il problema e' ALSA
 Se compare `No supported JavaScript runtime could be found`, usa l'immagine aggiornata: il Dockerfile installa Deno e ClearWave lo passa a `yt-dlp` con `CLEARWAVE_YTDL_JS_RUNTIME`.
 
 Per debug rapido sul Raspberry usa `docs/GUIDA_RASPBERRY_DOCKER_AUDIO.md`: contiene i comandi per capire se stai usando codice vecchio, se Docker vede ALSA e se `yt-dlp` e' aggiornato.
+La stessa guida contiene anche la procedura per `No space left on device`: prima controlla `df -h` e `docker system df`, poi libera cache con `docker builder prune -af`, `docker image prune -af` e `docker container prune -f`. Non cancellare mai a mano `data/` o `uploads/`.
 
 Se YouTube blocca molte tracce con login/eta/anti-bot, dal PC Windows dove sei gia' loggato su YouTube puoi caricare i cookie in modo assistito:
 

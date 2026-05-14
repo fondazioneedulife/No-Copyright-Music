@@ -23,6 +23,26 @@ sh tools/update-raspberry.sh
 
 Lo script evita `--no-cache` di default e pulisce cache/immagini Docker inutilizzate senza cancellare volumi. Se serve davvero una build pulita per Dockerfile o dipendenze cambiate, usa `CLEARWAVE_NO_CACHE=1 sh tools/update-raspberry.sh`.
 
+Se l'aggiornamento fallisce con `No space left on device`, libera prima spazio sul Raspberry:
+
+```bash
+df -h
+docker system df
+docker builder prune -af
+docker image prune -af
+docker container prune -f
+```
+
+Se resta pieno:
+
+```bash
+docker system prune -af
+sudo journalctl --vacuum-time=3d
+sudo apt clean
+```
+
+Non cancellare `data/`, `uploads/` o `youtube-cookies.txt`: sono dati dell'app, non cache.
+
 Nei log iniziali devono comparire:
 
 ```text
@@ -98,6 +118,7 @@ Il report non sostituisce la verifica legale finale: serve a sapere da dove arri
 | Sintomo | Significato | Cosa fare |
 | --- | --- | --- |
 | `Playback open error` | ALSA non apre il device audio | Usa diagnostica admin, poi prova `ALSA_CARD` o `CLEARWAVE_AUDIO_DEVICE`. |
+| `No space left on device` | SD piena per cache Docker/log/sistema | Usa i comandi di pulizia spazio sopra, poi rilancia `sh tools/update-raspberry.sh`. |
 | `Requested format is not available` | YouTube/yt-dlp non trova uno stream compatibile | Ricostruisci senza cache e controlla `yt-dlp --version`. |
 | `Sign in to confirm your age` / `not a bot` | YouTube richiede cookie/sessione autorizzata | Carica `cookies.txt`, usa `Test cookie YouTube`, poi rilancia `Verifica tutto YouTube`. |
 | Tanti `timeout` nel check YouTube | Rete lenta, Raspberry carico o YouTube lento | Aspetta il report finale; se restano molti timeout, rifai il giro con meno concorrenza. |

@@ -66,6 +66,26 @@ sh tools/update-raspberry.sh
 
 Lo script fa `git pull --ff-only`, build normale, `up -d --force-recreate` e poi pulisce solo cache/immagini/container inutilizzati. Non usa `docker prune --volumes`, quindi non cancella catalogo, utenti, cookie o upload. Usa `CLEARWAVE_NO_CACHE=1 sh tools/update-raspberry.sh` solo per build davvero pulite.
 
+Se il Raspberry finisce lo spazio durante pull/build:
+
+```bash
+df -h
+docker system df
+docker builder prune -af
+docker image prune -af
+docker container prune -f
+```
+
+Se non basta:
+
+```bash
+docker system prune -af
+sudo journalctl --vacuum-time=3d
+sudo apt clean
+```
+
+Non usare `docker system prune --volumes` come routine e non cancellare a mano `data/` o `uploads/`: contengono catalogo, utenti, cookie YouTube, report, audio e licenze. Dopo la pulizia puoi rilanciare `sh tools/update-raspberry.sh`; se le immagini sono state rimosse, Docker le ricostruisce.
+
 Nel `.env` del Raspberry imposta almeno:
 
 ```env

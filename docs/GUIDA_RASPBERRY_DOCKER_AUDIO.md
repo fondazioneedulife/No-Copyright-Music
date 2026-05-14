@@ -105,6 +105,80 @@ pwd
 cat docker-compose.yml | head
 ```
 
+## Spazio pieno sul Raspberry
+
+Se `git pull`, `docker compose build` o Buildx falliscono con messaggi tipo:
+
+```text
+No space left on device
+fatal: write error: No space left on device
+failed to update builder last activity time
+```
+
+prima controlla quanto spazio resta:
+
+```bash
+df -h
+docker system df
+```
+
+Se `/` e' al 100%, libera spazio Docker senza toccare dati, utenti, upload o cookie:
+
+```bash
+docker builder prune -af
+docker image prune -af
+docker container prune -f
+```
+
+Questi comandi cancellano cache di build, immagini non usate e container fermi. Non cancellano `~/No-Copyright-Music/data` e `~/No-Copyright-Music/uploads`, perche' sono cartelle normali del progetto montate nel container.
+
+Se serve una pulizia piu' ampia ma ancora senza cancellare volumi:
+
+```bash
+docker system prune -af
+```
+
+Evita invece questo comando, salvo backup e decisione consapevole:
+
+```bash
+docker system prune -af --volumes
+```
+
+`--volumes` puo' cancellare volumi Docker generici. ClearWave usa bind mount su `./data` e `./uploads`, ma la regola resta: non usare `--volumes` come routine.
+
+Se dopo Docker lo spazio resta poco, controlla log e cache di sistema:
+
+```bash
+journalctl --disk-usage
+sudo journalctl --vacuum-time=3d
+sudo apt clean
+```
+
+Per trovare cartelle grandi:
+
+```bash
+du -hxd1 ~ | sort -h
+du -hxd1 ~/No-Copyright-Music | sort -h
+```
+
+Non cancellare manualmente:
+
+- `~/No-Copyright-Music/data/library.json`;
+- `~/No-Copyright-Music/data/clearwave-auth.sqlite`;
+- `~/No-Copyright-Music/data/youtube-cookies.txt`;
+- `~/No-Copyright-Music/uploads/`;
+- backup `data/library.backup-*` o `data/library-before-audio-cleanup-*` prima di averli copiati altrove.
+
+Dopo avere liberato spazio, aggiorna e ricrea:
+
+```bash
+cd ~/No-Copyright-Music
+git pull --ff-only
+sh tools/update-raspberry.sh
+```
+
+Se hai cancellato tutte le immagini Docker, e' normale: il comando sopra ricostruisce l'immagine ClearWave.
+
 ## Configurazione `.env` consigliata
 
 Nel primo test audio lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`.
