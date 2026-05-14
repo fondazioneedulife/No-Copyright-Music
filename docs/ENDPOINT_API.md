@@ -146,6 +146,8 @@ Risposta:
     "lastExitCode": null,
     "lastFailedTrack": null,
     "ytdlPath": "/usr/bin/yt-dlp",
+    "ytdlFormat": "bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best",
+    "ytdlExtractorArgs": "youtube:player_client=web_safari",
     "ytdlCookiesConfigured": false,
     "ytdlCookiesAvailable": false,
     "mpvMsgLevel": "all=warn,ytdl_hook=info"

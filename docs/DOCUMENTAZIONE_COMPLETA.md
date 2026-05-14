@@ -219,8 +219,9 @@ CLEARWAVE_AUDIO_OUTPUT=alsa
 CLEARWAVE_AUDIO_PREFLIGHT=1
 CLEARWAVE_UPDATE_YTDLP_ON_START=1
 CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
-CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
+CLEARWAVE_YTDL_FORMAT=bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
 CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno
+CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari
 ```
 
 All'inizio lascia vuoti:
@@ -649,8 +650,9 @@ Variabili principali:
 | `CLEARWAVE_AUDIO_PREFLIGHT_TIMEOUT_MS` | `2500` | Timeout preflight. |
 | `ALSA_CARD` | vuoto | Scheda ALSA preferita. |
 | `CLEARWAVE_YTDL_PATH` | `/usr/bin/yt-dlp` | Binario yt-dlp. |
-| `CLEARWAVE_YTDL_FORMAT` | audio-only | Formato YouTube richiesto. |
+| `CLEARWAVE_YTDL_FORMAT` | audio-only HLS first | Formato YouTube richiesto; preferisce HLS/m3u8 per ridurre i 403 sugli stream `googlevideo.com`. |
 | `CLEARWAVE_YTDL_JS_RUNTIME` | `deno:/usr/local/bin/deno` | Runtime JavaScript usato da yt-dlp per decifrare YouTube. |
+| `CLEARWAVE_YTDL_EXTRACTOR_ARGS` | `youtube:player_client=web_safari` | Client extractor YouTube usato da yt-dlp; `web_safari` favorisce stream HLS quando disponibili. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | vuoto | File cookie YouTube Netscape nel container. Se vuoto, ClearWave usa automaticamente `/app/data/youtube-cookies.txt` quando esiste. |
 | `CLEARWAVE_YTDL_COOKIE_PROBE_URL` | video pubblico | URL usato da `Test cookie YouTube` quando non ci sono tracce problematiche note. |
 | `CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS` | `14` | Giorni prima della scadenza cookie in cui mostrare il popup admin. |

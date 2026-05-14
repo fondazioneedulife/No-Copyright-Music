@@ -62,7 +62,8 @@ CLEARWAVE_AUDIO_OUTPUT=alsa
 CLEARWAVE_AUDIO_PREFLIGHT=1
 CLEARWAVE_UPDATE_YTDLP_ON_START=1
 CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
-CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
+CLEARWAVE_YTDL_FORMAT=bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
+CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari
 ```
 
 All'inizio lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`. Se la diagnostica mostra un device stabile, puoi fissarlo dopo.

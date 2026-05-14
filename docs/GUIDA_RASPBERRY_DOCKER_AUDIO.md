@@ -191,8 +191,9 @@ ALSA_CARD=
 CLEARWAVE_AUDIO_PREFLIGHT=1
 CLEARWAVE_UPDATE_YTDLP_ON_START=1
 CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
-CLEARWAVE_YTDL_FORMAT=bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
+CLEARWAVE_YTDL_FORMAT=bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
 CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno
+CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari
 CLEARWAVE_MPV_MSG_LEVEL=all=warn,ytdl_hook=info
 ```
 
@@ -285,6 +286,7 @@ Nei log di avvio deve comparire:
 ```
 
 Se YouTube restituisce `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato uno stream compatibile. In quel caso ricrea il container e controlla `CLEARWAVE_YTDL_FORMAT`.
+Se invece vedi `HTTP error 403 Forbidden` o `Failed to open ... googlevideo.com`, YouTube ha firmato uno stream ma poi lo ha rifiutato. Usa il default aggiornato `CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari` e il formato con priorita `m3u8`; se continua, servira' un provider PO token per yt-dlp.
 Se compare `No supported JavaScript runtime could be found`, l'immagine non contiene ancora Deno: fai `git pull`, rebuild senza cache e ricrea il container.
 
 Per verificare in batch quali tracce del catalogo partono davvero:
@@ -348,6 +350,7 @@ Se durante il giro compaiono alcuni `timeout`, non archiviarli subito: su Raspbe
 | Socket `/tmp/clearwave-mpv-1.sock` senza `tentativo` | Player vecchio | Ricostruisci immagine o verifica che Docker usi la cartella giusta |
 | `Playback open error` / `Unknown error 524` | ALSA non apre quel device | Lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`, poi usa `aplay -l` |
 | `Requested format is not available` | Problema YouTube/formato, non device audio | Verifica `yt-dlp --version` e `CLEARWAVE_YTDL_FORMAT` |
+| `HTTP error 403` su `googlevideo.com` | YouTube rifiuta lo stream firmato dopo la risoluzione yt-dlp | Usa `web_safari`/HLS, verifica cookie/account; se persiste passa a PO token |
 | `No supported JavaScript runtime could be found` | yt-dlp non trova Deno per i controlli JavaScript YouTube | Ricostruisci l'immagine aggiornata e controlla `deno --version` nel container |
 | `Sign in to confirm your age` / `not a bot` | YouTube richiede una sessione autenticata | Carica un `cookies.txt` Netscape dal pannello Admin oppure salvalo in `data/youtube-cookies.txt`; il container lo usa come `/app/data/youtube-cookies.txt`. |
 | Audit YouTube fermato dopo pochi KO | Le prime tracce chiedono tutte login/anti-bot | Rigenera `cookies.txt` da YouTube loggato, caricalo di nuovo e rilancia l'audit. |

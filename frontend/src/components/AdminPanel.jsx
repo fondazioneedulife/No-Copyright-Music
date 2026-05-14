@@ -994,8 +994,13 @@ export function AdminPanel({
                       ? diagnostics.config?.ytdlCookieWarning?.message || "File presente ma senza sessione login completa"
                     : diagnostics.config?.ytdlCookiesConfigured
                       ? `Non leggibile: ${diagnostics.config?.ytdlCookiesPath || "percorso mancante"}`
-                      : `Auto: ${diagnostics.config?.ytdlCookiesPath || "data/youtube-cookies.txt"}`}
+                  : `Auto: ${diagnostics.config?.ytdlCookiesPath || "data/youtube-cookies.txt"}`}
                 </small>
+              </div>
+              <div>
+                <span>Stream YouTube</span>
+                <strong>{diagnostics.config?.ytdlExtractorArgs || "default"}</strong>
+                <small>{diagnostics.config?.ytdlFormat || "audio-only"}</small>
               </div>
               <div>
                 <span>Audit YouTube</span>

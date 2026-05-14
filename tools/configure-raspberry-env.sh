@@ -44,7 +44,8 @@ set_env CLEARWAVE_UPDATE_YTDLP_ON_START 1
 set_env CLEARWAVE_AUDIO_OUTPUT alsa
 set_env CLEARWAVE_AUDIO_PREFLIGHT 1
 set_env CLEARWAVE_YTDL_PATH /usr/bin/yt-dlp
-set_env CLEARWAVE_YTDL_FORMAT "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
+set_env CLEARWAVE_YTDL_FORMAT "bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
+set_env CLEARWAVE_YTDL_EXTRACTOR_ARGS "youtube:player_client=web_safari"
 set_env CLEARWAVE_YTDL_COOKIES_FILE ""
 set_env CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT 80
 set_env CLEARWAVE_MPV_MSG_LEVEL "all=warn,ytdl_hook=info"

@@ -44,9 +44,13 @@ const serverPlayerAudioDevice = String(process.env.CLEARWAVE_AUDIO_DEVICE || "")
 const serverPlayerAlsaCard = String(process.env.ALSA_CARD || "").trim();
 const serverPlayerYtdlPath = String(process.env.CLEARWAVE_YTDL_PATH || "/usr/bin/yt-dlp").trim();
 const serverPlayerYtdlFormat = String(
-  process.env.CLEARWAVE_YTDL_FORMAT || "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
+  process.env.CLEARWAVE_YTDL_FORMAT ||
+    "bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
 ).trim();
 const serverPlayerYtdlJsRuntime = String(process.env.CLEARWAVE_YTDL_JS_RUNTIME || "").trim();
+const serverPlayerYtdlExtractorArgs = String(
+  process.env.CLEARWAVE_YTDL_EXTRACTOR_ARGS || "youtube:player_client=web_safari"
+).trim();
 const serverPlayerYtdlCookiesFileFromEnv = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
 const serverPlayerYtdlCookiesFile = serverPlayerYtdlCookiesFileFromEnv || DEFAULT_YTDL_COOKIES_FILE;
 const serverPlayerYtdlCookieProbeUrl = String(
@@ -5177,6 +5181,7 @@ function serverPlayerStatus() {
     lastFailedTrack: serverPlayer.lastFailedTrack,
     ytdlFormat: serverPlayerYtdlFormat,
     ytdlPath: serverPlayerYtdlPath,
+    ytdlExtractorArgs: serverPlayerYtdlExtractorArgs,
     ytdlCookiesConfigured: ytdlCookiesConfigured(),
     ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable()),
     mpvMsgLevel: serverPlayerMpvMsgLevel,
@@ -5314,6 +5319,7 @@ async function buildServerDiagnostics() {
       serverVolumeMax: serverPlayerVolumeMax,
       ytdlPath: serverPlayerYtdlPath,
       ytdlJsRuntime: serverPlayerYtdlJsRuntime,
+      ytdlExtractorArgs: serverPlayerYtdlExtractorArgs,
       ytdlFormat: serverPlayerYtdlFormat,
       ytdlCookiesConfigured: cookies.configured,
       ytdlCookiesAvailable: cookies.available,
@@ -5635,6 +5641,9 @@ function serverPlayerYtdlConfig(source) {
   const rawOptions = [];
   if (serverPlayerYtdlJsRuntime) {
     rawOptions.push(`js-runtimes=${serverPlayerYtdlJsRuntime}`);
+  }
+  if (serverPlayerYtdlExtractorArgs) {
+    rawOptions.push(`extractor-args=${serverPlayerYtdlExtractorArgs}`);
   }
   if (cookiesFile) {
     rawOptions.push(`cookies=${cookiesFile}`);

@@ -12,9 +12,12 @@ const DEFAULT_SERVER_BASE_URL =
   process.env.CLEARWAVE_CHECK_SERVER_BASE_URL || `http://127.0.0.1:${process.env.PORT || 3000}`;
 const DEFAULT_YTDL_PATH = process.env.CLEARWAVE_YTDL_PATH || "/usr/bin/yt-dlp";
 const DEFAULT_YTDL_FORMAT =
-  process.env.CLEARWAVE_YTDL_FORMAT || "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best";
+  process.env.CLEARWAVE_YTDL_FORMAT ||
+  "bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best";
 const DEFAULT_YTDL_COOKIES_FILE = process.env.CLEARWAVE_YTDL_COOKIES_FILE || "";
 const DEFAULT_YTDL_JS_RUNTIME = process.env.CLEARWAVE_YTDL_JS_RUNTIME || "";
+const DEFAULT_YTDL_EXTRACTOR_ARGS =
+  process.env.CLEARWAVE_YTDL_EXTRACTOR_ARGS || "youtube:player_client=web_safari";
 
 function firstString(...values) {
   for (const value of values) {
@@ -54,6 +57,7 @@ function parseArgs(argv) {
     ytdlFormat: DEFAULT_YTDL_FORMAT,
     ytdlCookiesFile: DEFAULT_YTDL_COOKIES_FILE,
     ytdlJsRuntime: DEFAULT_YTDL_JS_RUNTIME,
+    ytdlExtractorArgs: DEFAULT_YTDL_EXTRACTOR_ARGS,
     ids: [],
     idSet: new Set(),
     verbose: false,
@@ -128,6 +132,9 @@ function parseArgs(argv) {
         break;
       case "ytdl-js-runtime":
         options.ytdlJsRuntime = nextValue();
+        break;
+      case "ytdl-extractor-args":
+        options.ytdlExtractorArgs = nextValue();
         break;
       case "ids":
         options.ids = nextValue()
@@ -206,6 +213,7 @@ Opzioni utili:
   --sample-seconds 6
   --ytdl-cookies /app/data/youtube-cookies.txt
   --ytdl-js-runtime deno:/usr/local/bin/deno
+  --ytdl-extractor-args youtube:player_client=web_safari
   --ids track-a,track-b
   --only-errors
   --fail-on-broken
@@ -516,6 +524,9 @@ async function checkWithYtDlp(source, options) {
   if (options.ytdlJsRuntime) {
     args.push("--js-runtimes", options.ytdlJsRuntime);
   }
+  if (options.ytdlExtractorArgs) {
+    args.push("--extractor-args", options.ytdlExtractorArgs);
+  }
   const cookiesFile = ytdlCookiesFileIfAvailable(options);
   if (cookiesFile) {
     args.push("--cookies", cookiesFile);
@@ -559,6 +570,9 @@ async function checkWithMpv(source, sourceKind, options) {
     const rawOptions = [];
     if (options.ytdlJsRuntime) {
       rawOptions.push(`js-runtimes=${options.ytdlJsRuntime}`);
+    }
+    if (options.ytdlExtractorArgs) {
+      rawOptions.push(`extractor-args=${options.ytdlExtractorArgs}`);
     }
     if (cookiesFile) {
       rawOptions.push(`cookies=${cookiesFile}`);
@@ -829,6 +843,7 @@ async function main() {
       ytdlPath: options.ytdlPath,
       ytdlFormat: options.ytdlFormat,
       ytdlJsRuntime: options.ytdlJsRuntime,
+      ytdlExtractorArgs: options.ytdlExtractorArgs,
       ytdlCookiesConfigured: Boolean(options.ytdlCookiesFile),
       ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable(options)),
       ids: options.ids,
