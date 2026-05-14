@@ -1187,6 +1187,53 @@ body[data-theme="light"] .pagination .is-active {
   color: var(--text);
 }
 
+.cookie-alert-backdrop {
+  z-index: 90;
+}
+
+.cookie-alert-modal {
+  width: min(560px, 100%);
+  animation: alert-pop 0.22s ease-out;
+}
+
+.cookie-alert-modal.is-error {
+  border-color: rgba(255, 85, 100, 0.7);
+}
+
+.cookie-alert-meta {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cookie-alert-meta span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cookie-alert-meta strong {
+  font-size: 1rem;
+}
+
+@keyframes alert-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

@@ -641,6 +641,37 @@ Risposta:
 }
 ```
 
+### `GET /api/admin/youtube-cookies/status`
+
+Solo admin. Restituisce solo lo stato tecnico dei cookie YouTube caricati, senza mai esporre il contenuto del file. React lo usa per mostrare un popup ogni 10 minuti quando i cookie mancano, sono scaduti o stanno per scadere.
+
+Risposta:
+
+```json
+{
+  "cookies": {
+    "configured": true,
+    "available": true,
+    "path": "/app/data/youtube-cookies.txt",
+    "source": "default",
+    "analysis": {
+      "youtubeRows": 379,
+      "sessionCookieCount": 8,
+      "hasSessionCookies": true,
+      "earliestExpiresAt": "2026-05-25T08:00:00.000Z",
+      "expiresInDays": 12,
+      "expiresSoon": true,
+      "warningDays": 14
+    },
+    "warning": {
+      "shouldAlert": true,
+      "level": "warning",
+      "message": "Cookie YouTube in scadenza tra 12 giorni: prepara un cookies.txt nuovo."
+    }
+  }
+}
+```
+
 ### `POST /api/admin/youtube-cookies/probe`
 
 Solo admin. Esegue un test singolo con `yt-dlp`, Deno e i cookie caricati per capire se YouTube accetta davvero la sessione dal Raspberry. Non stampa mai i valori dei cookie.

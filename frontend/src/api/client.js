@@ -314,6 +314,10 @@ export function uploadYouTubeCookies(token, cookiesText) {
   });
 }
 
+export function fetchYouTubeCookieStatus(token) {
+  return apiRequest("/api/admin/youtube-cookies/status", { token });
+}
+
 export function probeYouTubeCookies(token) {
   return apiRequest("/api/admin/youtube-cookies/probe", {
     method: "POST",

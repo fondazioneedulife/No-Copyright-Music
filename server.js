@@ -52,6 +52,10 @@ const serverPlayerYtdlCookiesFile = serverPlayerYtdlCookiesFileFromEnv || DEFAUL
 const serverPlayerYtdlCookieProbeUrl = String(
   process.env.CLEARWAVE_YTDL_COOKIE_PROBE_URL || "https://www.youtube.com/watch?v=jNQXAC9IVRw"
 ).trim();
+const serverPlayerYtdlCookieExpiryWarningDays = Math.max(
+  1,
+  Math.min(60, Number(process.env.CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS || 14) || 14)
+);
 const serverPlayerMpvMsgLevel = String(process.env.CLEARWAVE_MPV_MSG_LEVEL || "all=warn,ytdl_hook=info").trim();
 const serverPlayerAudioPreflight = process.env.CLEARWAVE_AUDIO_PREFLIGHT !== "0";
 const serverPlayerAudioPreflightTimeoutMs = Math.max(
@@ -3411,10 +3415,21 @@ function analyzeYtdlCookieText(rawText) {
   const expiringSessionCookies = youtubeRows
     .filter((row) => ytdlSessionCookieNames.has(row.name) && row.expires > 0)
     .map((row) => row.expires);
-  const expiresAt =
+  const latestExpiresAt =
     expiringSessionCookies.length > 0
       ? new Date(Math.max(...expiringSessionCookies) * 1000).toISOString()
       : "";
+  const earliestExpiresAt =
+    expiringSessionCookies.length > 0
+      ? new Date(Math.min(...expiringSessionCookies) * 1000).toISOString()
+      : "";
+  const expiresInDays = earliestExpiresAt
+    ? Math.floor((Date.parse(earliestExpiresAt) - Date.now()) / 86400000)
+    : null;
+  const expired = Number.isFinite(expiresInDays) ? expiresInDays < 0 : false;
+  const expiresSoon = Number.isFinite(expiresInDays)
+    ? expiresInDays <= serverPlayerYtdlCookieExpiryWarningDays
+    : false;
 
   return {
     validRows: rows.length,
@@ -3422,7 +3437,13 @@ function analyzeYtdlCookieText(rawText) {
     sessionCookieCount: sessionCookieNames.length,
     sessionCookieNames,
     hasSessionCookies: sessionCookieNames.length >= 4,
-    expiresAt,
+    expiresAt: latestExpiresAt,
+    earliestExpiresAt,
+    latestExpiresAt,
+    expiresInDays,
+    expired,
+    expiresSoon,
+    warningDays: serverPlayerYtdlCookieExpiryWarningDays,
   };
 }
 
@@ -3436,12 +3457,69 @@ function readYtdlCookieAnalysis(filePath) {
 
 function ytdlCookieStatus() {
   const availableFile = ytdlCookiesFileIfAvailable();
+  const analysis = availableFile ? readYtdlCookieAnalysis(availableFile) : null;
+  const warning = availableFile
+    ? ytdlCookieWarning(analysis)
+    : {
+        shouldAlert: true,
+        level: "warning",
+        message: "Cookie YouTube non presenti: carica cookies.txt per ridurre i KO delle tracce YouTube.",
+      };
   return {
     configured: ytdlCookiesConfigured(),
     available: Boolean(availableFile),
     path: serverPlayerYtdlCookiesFile,
     source: serverPlayerYtdlCookiesFileFromEnv ? "env" : "default",
-    analysis: availableFile ? readYtdlCookieAnalysis(availableFile) : null,
+    analysis,
+    warning,
+  };
+}
+
+function ytdlCookieWarning(analysis) {
+  if (!analysis) {
+    return {
+      shouldAlert: false,
+      level: "none",
+      message: "",
+    };
+  }
+
+  if (!analysis.hasSessionCookies) {
+    return {
+      shouldAlert: true,
+      level: "error",
+      message: "Cookie YouTube presenti ma senza sessione login completa: carica un cookies.txt nuovo.",
+    };
+  }
+
+  if (analysis.expired) {
+    return {
+      shouldAlert: true,
+      level: "error",
+      message: "Cookie YouTube scaduti: carica un cookies.txt nuovo per evitare KO sulle tracce YouTube.",
+    };
+  }
+
+  if (analysis.expiresSoon) {
+    return {
+      shouldAlert: true,
+      level: "warning",
+      message: `Cookie YouTube in scadenza tra ${Math.max(0, analysis.expiresInDays)} giorni: prepara un cookies.txt nuovo.`,
+    };
+  }
+
+  if (!Number.isFinite(analysis.expiresInDays)) {
+    return {
+      shouldAlert: false,
+      level: "ok",
+      message: "Cookie YouTube validi; scadenza critica non rilevata nel file.",
+    };
+  }
+
+  return {
+    shouldAlert: false,
+    level: "ok",
+    message: `Cookie YouTube validi: prossima scadenza critica tra ${analysis.expiresInDays} giorni.`,
   };
 }
 
@@ -6435,6 +6513,12 @@ async function requestHandler(req, res) {
       const payload = await readJsonBody(req);
       const result = await installYtdlCookies(payload);
       json(res, 200, { ...result, diagnostics: await buildServerDiagnostics() });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/api/admin/youtube-cookies/status") {
+      requireAdminRequest(req);
+      json(res, 200, { cookies: ytdlCookieStatus() });
       return;
     }
 

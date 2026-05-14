@@ -55,6 +55,7 @@ npm start
 | `CLEARWAVE_YTDL_COOKIES_FILE` | `server.js` | File cookie YouTube Netscape nel container. Se vuoto, ClearWave usa automaticamente `/app/data/youtube-cookies.txt` quando il file esiste. |
 | `CLEARWAVE_YTDL_JS_RUNTIME` | `server.js`, `tools/check-library-audio.js` | Runtime JavaScript per `yt-dlp`, default `deno:/usr/local/bin/deno`. Serve quando YouTube richiede decifratura JS. |
 | `CLEARWAVE_YTDL_COOKIE_PROBE_URL` | `server.js` | Video pubblico usato dal pulsante admin `Test cookie YouTube` per verificare se i cookie sono accettati dal Raspberry. |
+| `CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS` | `server.js`, React | Giorni prima della scadenza dei cookie YouTube in cui mostrare un popup admin ricorrente, default `14`. |
 | `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | `lib/audio-replacement-service.js` | Numero massimo di tracce YouTube/login ricontrollate dal pulsante admin, default `80`. |
 | `CLEARWAVE_YOUTUBE_ARCHIVED_RECHECK_LIMIT` | `lib/audio-replacement-service.js` | Numero massimo di tracce YouTube archiviate riverificate con i cookie attuali, default `120`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | `lib/audio-replacement-service.js` | Modalita della verifica completa YouTube da pannello Admin: `metadata` consigliata, `probe` piu' severa, `source` solo rapido. |

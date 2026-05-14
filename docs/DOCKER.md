@@ -216,6 +216,8 @@ Procedura consigliata dalla UI:
 Il backend salva il file nel volume persistente `data/youtube-cookies.txt`; nel container il percorso diventa `/app/data/youtube-cookies.txt` e viene usato automaticamente dal prossimo play YouTube.
 Il file e' una fotografia della sessione: aprire YouTube dopo l'export non aggiorna automaticamente il Raspberry. Se cambi login, accetti un controllo Google o rigeneri la sessione, devi esportare e caricare un nuovo `cookies.txt`.
 
+ClearWave controlla anche la scadenza dei cookie caricati. Se il file manca, e' scaduto o entra nella finestra configurata da `CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS` (default 14 giorni), gli admin vedono un popup ogni 10 minuti finche' non caricano un `cookies.txt` nuovo e valido. Il popup permette di caricare subito il file senza passare dalla diagnostica.
+
 Procedura automatica da PC Windows:
 
 ```powershell
@@ -264,6 +266,7 @@ Non serve impostare variabili se usi il percorso standard. Nel `.env` del Raspbe
 
 ```bash
 CLEARWAVE_YTDL_COOKIES_FILE=/app/data/youtube-cookies.txt
+CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS=14
 ```
 
 Poi ricrea il container solo se hai cambiato `.env`; se hai caricato il file dalla UI basta riprovare la traccia o usare il ricontrollo admin:

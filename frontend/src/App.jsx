@@ -15,6 +15,7 @@ import {
   fetchServerPlayerStatus,
   fetchTracks,
   fetchUsers,
+  fetchYouTubeCookieStatus,
   fetchYouTubeFullAuditStatus,
   importDiscoveryLink,
   importDiscoveryTrack,
@@ -62,6 +63,8 @@ import {
   youtubeEmbedSourceFor,
 } from "./utils.js";
 
+const COOKIE_ALERT_INTERVAL_MS = 10 * 60 * 1000;
+
 function clampVolumeLevel(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
@@ -102,6 +105,18 @@ function playerConnectionMessage(error, fallback) {
   }
 
   return message || fallback;
+}
+
+function formatCookieExpiryDate(value) {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) {
+    return "Scadenza non rilevata";
+  }
+
+  return new Intl.DateTimeFormat("it-IT", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 export default function App() {
@@ -146,6 +161,11 @@ export default function App() {
   const [embedSource, setEmbedSource] = useState("");
   const [adminStatus, setAdminStatus] = useState("");
   const [adminStatusType, setAdminStatusType] = useState("success");
+  const [cookieAlert, setCookieAlert] = useState(null);
+  const [cookieAlertVisible, setCookieAlertVisible] = useState(false);
+  const [cookieAlertStatus, setCookieAlertStatus] = useState("");
+  const [cookieAlertStatusType, setCookieAlertStatusType] = useState("success");
+  const [cookieAlertUploading, setCookieAlertUploading] = useState(false);
   const [settingsStatus, setSettingsStatus] = useState("");
   const [settingsStatusType, setSettingsStatusType] = useState("success");
   const [discoveryProviders, setDiscoveryProviders] = useState([]);
@@ -389,6 +409,47 @@ export default function App() {
 
     void refreshUsers();
   }, [user, token]);
+
+  useEffect(() => {
+    // Avviso operativo: se i cookie YouTube stanno scadendo, l'admin viene richiamato ogni 10 minuti.
+    if (!token || user?.role !== "admin") {
+      setCookieAlert(null);
+      setCookieAlertVisible(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    async function checkYouTubeCookies() {
+      try {
+        const payload = await fetchYouTubeCookieStatus(token);
+        if (cancelled) {
+          return;
+        }
+
+        const cookies = payload.cookies || null;
+        setCookieAlert(cookies);
+        if (cookies?.warning?.shouldAlert) {
+          setCookieAlertStatus("");
+          setCookieAlertVisible(true);
+        } else {
+          setCookieAlertVisible(false);
+          setCookieAlertStatus("");
+        }
+      } catch {
+        if (!cancelled) {
+          setCookieAlert(null);
+        }
+      }
+    }
+
+    void checkYouTubeCookies();
+    const timerId = window.setInterval(checkYouTubeCookies, COOKIE_ALERT_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timerId);
+    };
+  }, [token, user?.role]);
 
   useEffect(() => {
     if (user?.role !== "admin" && (activeSection === "admin" || activeSection === "discovery")) {
@@ -926,11 +987,54 @@ export default function App() {
       const payload = await uploadYouTubeCookies(token, cookiesText);
       setAdminStatusType("success");
       setAdminStatus(payload.message || "Cookie YouTube installati.");
+      const cookies = payload.cookies || null;
+      setCookieAlert(cookies);
+      if (cookies?.warning?.shouldAlert) {
+        setCookieAlertVisible(true);
+      } else {
+        setCookieAlertVisible(false);
+        setCookieAlertStatus("");
+      }
       return payload;
     } catch (error) {
       setAdminStatusType("error");
       setAdminStatus(error.message || "Installazione cookie YouTube non riuscita.");
       throw error;
+    }
+  }
+
+  async function handleCookieAlertUpload(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+
+    try {
+      setCookieAlertUploading(true);
+      setCookieAlertStatusType("success");
+      setCookieAlertStatus("Caricamento cookies.txt in corso...");
+      const payload = await uploadYouTubeCookies(token, await file.text());
+      const statusPayload = await fetchYouTubeCookieStatus(token);
+      const cookies = statusPayload.cookies || payload.cookies || null;
+      setCookieAlert(cookies);
+      setAdminStatusType("success");
+      setAdminStatus(payload.message || "Cookie YouTube installati.");
+
+      if (cookies?.warning?.shouldAlert) {
+        setCookieAlertStatusType(cookies.warning.level === "error" ? "error" : "success");
+        setCookieAlertStatus(cookies.warning.message || "Cookie caricati, ma serve ancora una verifica.");
+        setCookieAlertVisible(true);
+      } else {
+        setCookieAlertStatusType("success");
+        setCookieAlertStatus("Cookie aggiornati: avviso automatico disattivato.");
+        setCookieAlertVisible(false);
+      }
+    } catch (error) {
+      setCookieAlertStatusType("error");
+      setCookieAlertStatus(error.message || "Installazione cookie YouTube non riuscita.");
+    } finally {
+      setCookieAlertUploading(false);
     }
   }
 
@@ -1639,6 +1743,54 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      {cookieAlertVisible && cookieAlert?.warning?.shouldAlert ? (
+        <div className="app-modal-backdrop cookie-alert-backdrop" role="presentation">
+          <section
+            className={`app-modal cookie-alert-modal is-${cookieAlert.warning.level || "warning"}`}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="cookie-alert-title"
+          >
+            <span className="eyebrow">YouTube cookies</span>
+            <h3 id="cookie-alert-title">Cookie YouTube da aggiornare</h3>
+            <p>{cookieAlert.warning.message}</p>
+            <div className="cookie-alert-meta">
+              <span>Prossima scadenza critica</span>
+              <strong>{formatCookieExpiryDate(cookieAlert.analysis?.earliestExpiresAt || cookieAlert.analysis?.expiresAt)}</strong>
+            </div>
+            {cookieAlertStatus ? (
+              <p className={`status-banner is-${cookieAlertStatusType === "error" ? "error" : "success"}`}>
+                {cookieAlertStatus}
+              </p>
+            ) : null}
+            <div className="modal-actions">
+              <button type="button" className="secondary-button" onClick={() => setCookieAlertVisible(false)}>
+                Ricordamelo tra 10 min
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  setCookieAlertVisible(false);
+                  navigateToSection("settings");
+                }}
+              >
+                Apri admin
+              </button>
+              <label className={`file-button ${cookieAlertUploading ? "is-disabled" : ""}`}>
+                {cookieAlertUploading ? "Carico..." : "Carica cookies.txt"}
+                <input
+                  type="file"
+                  accept=".txt,text/plain"
+                  disabled={cookieAlertUploading}
+                  onChange={handleCookieAlertUpload}
+                />
+              </label>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <PlayerDock
         activeTrack={activeTrack}
