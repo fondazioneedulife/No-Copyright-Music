@@ -3649,6 +3649,73 @@ function classifyYtdlCookieProbe(result) {
   };
 }
 
+function ytdlCookieAccountAuthorization(classified, probeTarget) {
+  const targetSource = firstString(probeTarget?.source, "default");
+  const usesProblemTrack = !["default", "manual"].includes(targetSource);
+
+  if (classified.ok && usesProblemTrack) {
+    return {
+      status: "authorized",
+      label: "Account YouTube autorizzato",
+      conclusive: true,
+      message: "Account YouTube autorizzato: il Raspberry ha aperto una traccia che prima chiedeva login/eta.",
+    };
+  }
+
+  if (classified.ok && targetSource === "manual") {
+    return {
+      status: "authorized",
+      label: "Account YouTube autorizzato sul video test",
+      conclusive: true,
+      message: "Account YouTube autorizzato su questo video: il Raspberry lo ha letto con i cookie caricati.",
+    };
+  }
+
+  if (classified.ok) {
+    return {
+      status: "inconclusive",
+      label: "Test non conclusivo",
+      conclusive: false,
+      message:
+        "Cookie leggibili, ma il test ha usato un video pubblico: serve una traccia problematica per confermare l'account.",
+    };
+  }
+
+  if (classified.reason === "youtube-age-or-login") {
+    return {
+      status: "not_authorized",
+      label: "Account YouTube non autorizzato",
+      conclusive: true,
+      message: "Account YouTube non autorizzato dal Raspberry: YouTube chiede ancora login, eta o verifica anti-bot.",
+    };
+  }
+
+  if (classified.reason === "youtube-unavailable") {
+    return {
+      status: "inconclusive",
+      label: "Video test non disponibile",
+      conclusive: false,
+      message: "Il video usato per il test non e' disponibile: prova un altro link con -ProbeUrl.",
+    };
+  }
+
+  if (classified.reason === "youtube-js-runtime" || classified.reason === "network") {
+    return {
+      status: "infrastructure_error",
+      label: "Test account bloccato dal runtime",
+      conclusive: false,
+      message: classified.message,
+    };
+  }
+
+  return {
+    status: "unknown",
+    label: "Test account non riuscito",
+    conclusive: false,
+    message: classified.message,
+  };
+}
+
 function isYtdlCookieLoginProblem(value) {
   return /youtube-age-or-login|sign in to confirm|not a bot|inappropriate for some users|use --cookies|cookies-from-browser/i.test(
     String(value || "")
@@ -3736,11 +3803,13 @@ async function probeYtdlCookies(payload = {}) {
 
   const result = await diagnosticCommandResult(ytDlpCommand(), args, 35000);
   const classified = classifyYtdlCookieProbe(result);
+  const authorization = ytdlCookieAccountAuthorization(classified, probeTarget);
 
   return {
     ok: classified.ok,
     reason: classified.reason,
-    message: classified.message.slice(0, 600),
+    message: firstString(authorization.message, classified.message).slice(0, 600),
+    authorization,
     cookies: ytdlCookieStatus(),
     probe: {
       url: testUrl,
@@ -3749,6 +3818,7 @@ async function probeYtdlCookies(payload = {}) {
       candidateReason: probeTarget.reason,
       durationMs: result.durationMs,
       exitCode: result.code ?? null,
+      message: classified.message.slice(0, 600),
       title: classified.ok ? String(result.stdout || "").split(/\r?\n/).find(Boolean) || "" : "",
     },
   };

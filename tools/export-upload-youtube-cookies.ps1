@@ -630,12 +630,25 @@ try {
       $probeSource = if ($probeResponse.probe.source) { $probeResponse.probe.source } else { "default" }
       $probeTitle = if ($probeResponse.probe.candidateTitle) { " - $($probeResponse.probe.candidateTitle)" } else { "" }
       Write-Host "Probe: $probeSource$probeTitle"
+      if ($probeResponse.authorization) {
+        $authLabel = if ($probeResponse.authorization.label) { $probeResponse.authorization.label } else { $probeResponse.authorization.status }
+        $authColor = if ($probeResponse.authorization.status -eq "authorized") { "Green" } elseif ($probeResponse.authorization.conclusive) { "Red" } else { "Yellow" }
+        Write-Host "Account: $authLabel" -ForegroundColor $authColor
+        if (-not $probeResponse.authorization.conclusive) {
+          Write-Host "Nota: $($probeResponse.authorization.message)" -ForegroundColor Yellow
+          Write-Host "Per confermare davvero l'account, rilancia con -ProbeUrl usando un video che dava login/eta/bot." -ForegroundColor Yellow
+        }
+      }
 
       if (-not $probeResponse.ok) {
         Stop-WithMessage "Cookie caricati, ma YouTube li rifiuta ancora dal Raspberry: $($probeResponse.message)"
       }
 
-      Write-Host "Test cookie Raspberry superato: $($probeResponse.message)" -ForegroundColor Green
+      if ($probeResponse.authorization -and $probeResponse.authorization.status -ne "authorized") {
+        Write-Host "Test cookie Raspberry superato, ma autorizzazione account non confermata." -ForegroundColor Yellow
+      } else {
+        Write-Host "Test cookie Raspberry superato: $($probeResponse.message)" -ForegroundColor Green
+      }
     }
   }
 

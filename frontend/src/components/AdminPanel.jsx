@@ -351,7 +351,11 @@ export function AdminPanel({
         setDiagnostics(payload.diagnostics);
       }
       setDiagnosticsStatusType(payload.ok ? "success" : "error");
-      setDiagnosticsStatus(payload.message || "Test cookie YouTube completato.");
+      setDiagnosticsStatus(
+        payload.authorization?.label
+          ? `${payload.authorization.label}: ${payload.message || "Test cookie YouTube completato."}`
+          : payload.message || "Test cookie YouTube completato."
+      );
     } catch (error) {
       setDiagnosticsStatusType("error");
       setDiagnosticsStatus(error.message || "Test cookie YouTube non riuscito.");

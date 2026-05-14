@@ -691,18 +691,32 @@ Risposta:
 {
   "ok": true,
   "reason": "ok",
-  "message": "Me at the zoo | public",
+  "message": "Account YouTube autorizzato: il Raspberry ha aperto una traccia che prima chiedeva login/eta.",
+  "authorization": {
+    "status": "authorized",
+    "label": "Account YouTube autorizzato",
+    "conclusive": true,
+    "message": "Account YouTube autorizzato: il Raspberry ha aperto una traccia che prima chiedeva login/eta."
+  },
   "probe": {
     "url": "https://www.youtube.com/watch?v=jNQXAC9IVRw",
-    "source": "default",
-    "candidateTitle": "",
-    "candidateReason": "",
+    "source": "audio-replacement-list",
+    "candidateTitle": "Titolo traccia problematica",
+    "candidateReason": "youtube-age-or-login",
     "durationMs": 1200,
     "exitCode": 0,
+    "message": "Me at the zoo | public",
     "title": "Me at the zoo | public"
   }
 }
 ```
+
+`authorization.status` puo' essere:
+
+- `authorized`: account/cookie accettati sul video test;
+- `not_authorized`: YouTube chiede ancora login, eta o anti-bot;
+- `inconclusive`: cookie leggibili, ma il test non prova l'accesso a una traccia problematica;
+- `infrastructure_error`: runtime, rete o Deno impediscono di valutare l'account.
 
 ### `GET /api/admin/export/catalog.json`
 

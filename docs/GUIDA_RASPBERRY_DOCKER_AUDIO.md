@@ -229,6 +229,7 @@ Dopo una nuova installazione puo' servire riaprire PowerShell. Lo script prova a
 Se `yt-dlp` risponde `Could not copy Chrome cookie database`, rilancia con `-CloseBrowser`: lo script chiude il browser scelto per sbloccare il file cookie prima dell'export.
 Se risponde `Failed to decrypt with DPAPI`, segui il prompt: esporta `youtube-cookies.txt` con l'estensione Chrome e premi Invio. In alternativa passa direttamente `-ExistingCookieFile`.
 Per testare un video specifico che dava login/bot, aggiungi `-ProbeUrl "https://www.youtube.com/watch?v=ID_VIDEO"`.
+Se lo script stampa `Account YouTube autorizzato`, l'account dietro ai cookie e' stato accettato dal Raspberry. Se stampa `Test non conclusivo`, il file cookie e' leggibile ma devi riprovare con `-ProbeUrl` su un video realmente bloccato.
 
 ## Errori comuni
 

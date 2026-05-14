@@ -227,6 +227,7 @@ cd "C:\Users\Riccardo\Documents\New project"
 
 Lo script prova prima `yt-dlp --cookies-from-browser chrome`; se Chrome risponde con errore DPAPI o blocca DevTools, apre la pagina dell'estensione Chrome e ti chiede di esportare un solo `cookies.txt`. Appena premi Invio, lo script cerca il file in Download/Desktop e lo invia all'endpoint admin `/api/admin/youtube-cookies`.
 Dopo l'upload lo script chiama anche il test server `/api/admin/youtube-cookies/probe`: il Raspberry prova i cookie con `yt-dlp` usando una traccia gia' finita nei report `youtube-age-or-login` quando disponibile. Se quel test fallisce, il file cookie non e' ancora quello giusto per sbloccare YouTube dal container.
+Il risultato importante e' `Account YouTube autorizzato`: significa che i cookie sono stati accettati proprio su una traccia problematica. Se invece leggi `Test non conclusivo`, i cookie sono leggibili ma manca ancora una prova su un video che prima chiedeva login/eta/bot.
 
 Se `yt-dlp` non e' installato sul PC:
 
