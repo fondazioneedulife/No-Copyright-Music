@@ -6,8 +6,10 @@ param(
   [string]$YtDlpPath = "",
   [string]$CookieFile = "",
   [string]$ExistingCookieFile = "",
+  [string[]]$ProbeUrl = @(),
   [switch]$CloseBrowser,
-  [switch]$KeepFile
+  [switch]$KeepFile,
+  [switch]$SkipServerProbe
 )
 
 $ErrorActionPreference = "Stop"
@@ -597,6 +599,44 @@ try {
 
   if (-not $uploadResponse.cookies.available) {
     Stop-WithMessage "Cookie inviati, ma ClearWave non li vede come disponibili."
+  }
+
+  if (-not $SkipServerProbe) {
+    $probeTargets = @($ProbeUrl | Where-Object { $_ -and $_.Trim() })
+    if ($probeTargets.Count -eq 0) {
+      # Senza URL manuale il backend sceglie una traccia gia' fallita per login dai report recenti;
+      # se non ne trova, usa il video pubblico configurato in CLEARWAVE_YTDL_COOKIE_PROBE_URL.
+      $probeTargets = @("")
+    }
+
+    foreach ($targetUrl in $probeTargets) {
+      $probePayload = @{}
+      if ($targetUrl) {
+        $probePayload.url = $targetUrl
+      }
+
+      Write-Host "Verifico cookie dal Raspberry con yt-dlp..."
+      try {
+        $probeResponse = Invoke-RestMethod `
+          -Uri "$baseUrl/api/admin/youtube-cookies/probe" `
+          -Method Post `
+          -ContentType "application/json; charset=utf-8" `
+          -Headers @{ Authorization = "Bearer $($loginResponse.token)" } `
+          -Body ($probePayload | ConvertTo-Json -Compress)
+      } catch {
+        Stop-WithHttpError $_ "Test cookie Raspberry non riuscito."
+      }
+
+      $probeSource = if ($probeResponse.probe.source) { $probeResponse.probe.source } else { "default" }
+      $probeTitle = if ($probeResponse.probe.candidateTitle) { " - $($probeResponse.probe.candidateTitle)" } else { "" }
+      Write-Host "Probe: $probeSource$probeTitle"
+
+      if (-not $probeResponse.ok) {
+        Stop-WithMessage "Cookie caricati, ma YouTube li rifiuta ancora dal Raspberry: $($probeResponse.message)"
+      }
+
+      Write-Host "Test cookie Raspberry superato: $($probeResponse.message)" -ForegroundColor Green
+    }
   }
 
   Write-Host ""

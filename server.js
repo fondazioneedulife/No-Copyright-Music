@@ -3649,6 +3649,61 @@ function classifyYtdlCookieProbe(result) {
   };
 }
 
+function isYtdlCookieLoginProblem(value) {
+  return /youtube-age-or-login|sign in to confirm|not a bot|inappropriate for some users|use --cookies|cookies-from-browser/i.test(
+    String(value || "")
+  );
+}
+
+function youtubeProbeUrlFromTrack(track) {
+  const normalized = attachComputedFields(track || {});
+  return firstString(normalized.sourceUrl, youtubeWatchUrl(normalized));
+}
+
+async function selectYtdlCookieProbeTarget(payload = {}) {
+  const explicitUrl = firstString(payload.url);
+  if (explicitUrl) {
+    return {
+      url: explicitUrl,
+      source: "manual",
+      title: "",
+      reason: "",
+    };
+  }
+
+  try {
+    const loginItem = await audioReplacementService.cookieProbeCandidate?.();
+    if (loginItem?.source) {
+      return {
+        url: loginItem.source,
+        source: firstString(loginItem.from, "audio-replacement-list"),
+        title: firstString(loginItem.title),
+        reason: firstString(loginItem.reason),
+      };
+    }
+  } catch {
+    // Se il file replacement non esiste o non e' leggibile, usiamo il video di probe standard.
+  }
+
+  const lastFailedTrack = serverPlayer.lastFailedTrack;
+  const lastFailedUrl = youtubeProbeUrlFromTrack(lastFailedTrack);
+  if (lastFailedUrl && isYtdlCookieLoginProblem(serverPlayer.lastError)) {
+    return {
+      url: lastFailedUrl,
+      source: "last-player-failure",
+      title: firstString(lastFailedTrack?.title),
+      reason: "youtube-age-or-login",
+    };
+  }
+
+  return {
+    url: serverPlayerYtdlCookieProbeUrl,
+    source: "default",
+    title: "",
+    reason: "",
+  };
+}
+
 async function probeYtdlCookies(payload = {}) {
   const cookies = ytdlCookieStatus();
   if (!cookies.available) {
@@ -3662,7 +3717,8 @@ async function probeYtdlCookies(payload = {}) {
     );
   }
 
-  const testUrl = firstString(payload.url, serverPlayerYtdlCookieProbeUrl);
+  const probeTarget = await selectYtdlCookieProbeTarget(payload);
+  const testUrl = probeTarget.url;
   const args = [
     "--no-warnings",
     "--no-playlist",
@@ -3688,6 +3744,9 @@ async function probeYtdlCookies(payload = {}) {
     cookies: ytdlCookieStatus(),
     probe: {
       url: testUrl,
+      source: probeTarget.source,
+      candidateTitle: probeTarget.title,
+      candidateReason: probeTarget.reason,
       durationMs: result.durationMs,
       exitCode: result.code ?? null,
       title: classified.ok ? String(result.stdout || "").split(/\r?\n/).find(Boolean) || "" : "",

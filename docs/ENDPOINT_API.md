@@ -675,6 +675,15 @@ Risposta:
 ### `POST /api/admin/youtube-cookies/probe`
 
 Solo admin. Esegue un test singolo con `yt-dlp`, Deno e i cookie caricati per capire se YouTube accetta davvero la sessione dal Raspberry. Non stampa mai i valori dei cookie.
+Se il body non contiene `url`, il backend prova prima una traccia YouTube gia' finita nei report con `youtube-age-or-login`; se non ne trova usa `CLEARWAVE_YTDL_COOKIE_PROBE_URL`.
+
+Body opzionale:
+
+```json
+{
+  "url": "https://www.youtube.com/watch?v=ID_VIDEO_PROBLEMATICO"
+}
+```
 
 Risposta:
 
@@ -685,6 +694,9 @@ Risposta:
   "message": "Me at the zoo | public",
   "probe": {
     "url": "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    "source": "default",
+    "candidateTitle": "",
+    "candidateReason": "",
     "durationMs": 1200,
     "exitCode": 0,
     "title": "Me at the zoo | public"

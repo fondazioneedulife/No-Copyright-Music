@@ -226,6 +226,7 @@ cd "C:\Users\Riccardo\Documents\New project"
 ```
 
 Lo script prova prima `yt-dlp --cookies-from-browser chrome`; se Chrome risponde con errore DPAPI o blocca DevTools, apre la pagina dell'estensione Chrome e ti chiede di esportare un solo `cookies.txt`. Appena premi Invio, lo script cerca il file in Download/Desktop e lo invia all'endpoint admin `/api/admin/youtube-cookies`.
+Dopo l'upload lo script chiama anche il test server `/api/admin/youtube-cookies/probe`: il Raspberry prova i cookie con `yt-dlp` usando una traccia gia' finita nei report `youtube-age-or-login` quando disponibile. Se quel test fallisce, il file cookie non e' ancora quello giusto per sbloccare YouTube dal container.
 
 Se `yt-dlp` non e' installato sul PC:
 
@@ -252,6 +253,13 @@ Se preferisci esportare il file tu, puoi saltare ogni tentativo automatico e far
 ```
 
 Con `-ExistingCookieFile` il file locale non viene cancellato: ClearWave ne legge il contenuto e salva una copia nel volume `data` del server.
+Se vuoi forzare il test su uno dei video che ti dava errore login/bot, aggiungi `-ProbeUrl`:
+
+```powershell
+.\tools\export-upload-youtube-cookies.ps1 -ClearWaveUrl "http://10.30.10.142:3000" -Username admin -ExistingCookieFile "$env:USERPROFILE\Desktop\youtube-cookies.txt" -ProbeUrl "https://www.youtube.com/watch?v=ID_VIDEO_PROBLEMATICO"
+```
+
+Un solo file cookie valido basta per tutte le tracce YouTube accessibili da quell'account. Non recupera video rimossi, privati, bloccati per regione o non consentiti dall'account.
 
 Procedura manuale via SSH:
 
