@@ -153,6 +153,8 @@ Il JSON contiene:
 | `youtube-format` | `yt-dlp` non trova un formato audio compatibile. | Controlla versione `yt-dlp` e `CLEARWAVE_YTDL_FORMAT`. |
 | `youtube-js-runtime` | `yt-dlp` non trova un runtime JavaScript per risolvere YouTube. | Ricostruisci Docker: l'immagine aggiornata installa Deno e usa `CLEARWAVE_YTDL_JS_RUNTIME`. |
 | `youtube-error` | `yt-dlp` e' uscito con errore generico su una traccia YouTube. | Leggi il messaggio nella UI o nel report: spesso indica login, rete o video non piu' disponibile. |
+| `youtube-expired-url` | Nel catalogo e' rimasto solo un URL `googlevideo.com`, cioe' uno stream firmato e temporaneo. | Reimporta il video YouTube originale o aggiungi `youtubeVideoId`; ClearWave non deve salvare questi URL come sorgente stabile. |
+| `youtube-stream-open-failed` | `yt-dlp` ha risolto il video, ma `mpv` non e' riuscito ad aprire lo stream `googlevideo.com` firmato. | Riprova; se succede spesso controlla cookie/account YouTube, rete del container e carico Raspberry. |
 | `exit-1` | Motivo generico presente nei report vecchi quando un comando usciva con codice 1 senza dettagli. | Rilancia il check aggiornato: le nuove righe mostrano il messaggio breve e classificano YouTube come `youtube-error`. |
 | `forbidden` | Stream vietato o URL firmato non piu' valido. | Per Jamendo controlla `JAMENDO_CLIENT_ID`; per altri provider reimporta. |
 | `missing-source` | La traccia non ha una sorgente audio reale. | Rimuovi o correggi la traccia. |

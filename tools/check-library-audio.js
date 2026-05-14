@@ -235,9 +235,18 @@ function isYouTubeUrl(value) {
   return /(?:youtube\.com|youtu\.be)/i.test(String(value || ""));
 }
 
+function isGoogleVideoTemporaryUrl(value) {
+  return /googlevideo\.com\/videoplayback/i.test(String(value || ""));
+}
+
 function youtubeWatchUrl(track) {
   const videoId = firstString(track.youtubeVideoId);
   return videoId ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}` : "";
+}
+
+function canonicalYouTubePlaybackUrl(track) {
+  // Non usare URL googlevideo salvati: sono temporanei e fanno falsi KO quando scadono.
+  return firstString(youtubeWatchUrl(track), isYouTubeUrl(track?.sourceUrl) ? track.sourceUrl : "");
 }
 
 function jamendoTrackIdFromTrack(track) {
@@ -344,7 +353,10 @@ async function sourceForTrack(track, options) {
   }
 
   if (provider === "youtube") {
-    const source = firstString(sourceUrl, youtubeWatchUrl(track));
+    const source = canonicalYouTubePlaybackUrl(track);
+    if (!source && isGoogleVideoTemporaryUrl(firstString(sourceUrl, audioPath))) {
+      return { provider, source: "", sourceKind: "expired-youtube-url" };
+    }
     return { provider, source, sourceKind: "youtube" };
   }
 
@@ -355,6 +367,9 @@ async function sourceForTrack(track, options) {
   }
 
   if (isHttpUrl(audioPath)) {
+    if (isGoogleVideoTemporaryUrl(audioPath)) {
+      return { provider: "youtube", source: "", sourceKind: "expired-youtube-url" };
+    }
     return { provider, source: audioPath, sourceKind: "direct" };
   }
 
@@ -363,6 +378,9 @@ async function sourceForTrack(track, options) {
   }
 
   if (isHttpUrl(sourceUrl)) {
+    if (isGoogleVideoTemporaryUrl(sourceUrl)) {
+      return { provider: "youtube", source: "", sourceKind: "expired-youtube-url" };
+    }
     return { provider, source: sourceUrl, sourceKind: isYouTubeUrl(sourceUrl) ? "youtube" : "direct" };
   }
 
@@ -584,6 +602,9 @@ function classifyFailure(message, code, timedOut, sourceKind) {
   if (/requested format is not available|no video formats|no formats/i.test(text)) {
     return "youtube-format";
   }
+  if (/failed to open .*googlevideo\.com|googlevideo\.com\/videoplayback/i.test(text)) {
+    return "youtube-stream-open-failed";
+  }
   if (/403|401|forbidden|unauthorized/i.test(text)) {
     return "forbidden";
   }
@@ -622,8 +643,11 @@ async function checkTrack(track, catalogIndex, options) {
     return {
       ...base,
       status: "failed",
-      reason: "missing-source",
-      message: "La traccia non ha audioPath, sourceUrl o youtubeVideoId utilizzabile.",
+      reason: sourceKind === "expired-youtube-url" ? "youtube-expired-url" : "missing-source",
+      message:
+        sourceKind === "expired-youtube-url"
+          ? "La traccia contiene solo un URL googlevideo temporaneo: reimporta il video YouTube originale o aggiungi youtubeVideoId."
+          : "La traccia non ha audioPath, sourceUrl o youtubeVideoId utilizzabile.",
       durationMs: Date.now() - startedAt,
     };
   }

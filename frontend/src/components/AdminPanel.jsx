@@ -36,6 +36,16 @@ const diagnosticReasonInfo = {
     detail:
       "yt-dlp e' uscito con errore generico. Da ora il log mostra anche il messaggio breve per capire se e' login, rete o video non valido.",
   },
+  "youtube-expired-url": {
+    label: "URL YouTube temporaneo",
+    detail:
+      "La traccia contiene solo un link googlevideo scadibile. Va reimportato il video YouTube originale o aggiunto lo youtubeVideoId.",
+  },
+  "youtube-stream-open-failed": {
+    label: "Stream YouTube non aperto",
+    detail:
+      "yt-dlp ha risolto il video, ma mpv non ha aperto lo stream googlevideo firmato. Riprova e controlla cookie/account se succede spesso.",
+  },
   "exit-1": {
     label: "Exit 1",
     detail:
@@ -48,6 +58,8 @@ const diagnosticReasonOrder = [
   "youtube-unavailable",
   "youtube-age-or-login",
   "youtube-error",
+  "youtube-expired-url",
+  "youtube-stream-open-failed",
   "exit-1",
 ];
 

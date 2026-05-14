@@ -186,6 +186,8 @@ Quando il check finisce, leggi prima il report:
 - `youtube-age-or-login`: carica cookie nuovi e usa `Test cookie YouTube`;
 - `timeout`: riprova con rete stabile o concorrenza piu' bassa;
 - `youtube-error` o `exit-1`: leggi il messaggio breve nella diagnostica o nel report JSON; e' il caso generico di `yt-dlp`/`mpv`;
+- `youtube-expired-url`: reimporta il video YouTube originale, perche' `googlevideo.com` e' solo uno stream temporaneo;
+- `youtube-stream-open-failed`: riprova e controlla cookie/account se l'errore si ripete su tante tracce;
 - `youtube-unavailable` o `missing-source`: usa `Archivia non disponibili`;
 - tracce archiviate dopo cookie nuovi: usa `Riverifica archiviate`.
 

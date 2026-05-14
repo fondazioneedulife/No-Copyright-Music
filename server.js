@@ -5358,6 +5358,19 @@ function youtubeWatchUrl(track) {
   return videoId ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}` : "";
 }
 
+function isYouTubeWatchUrl(value) {
+  return /(?:youtube\.com|youtu\.be)/i.test(String(value || ""));
+}
+
+function isGoogleVideoTemporaryUrl(value) {
+  return /googlevideo\.com\/videoplayback/i.test(String(value || ""));
+}
+
+function canonicalYouTubePlaybackUrl(track) {
+  // I link googlevideo sono firmati e scadono: al play torniamo sempre al video YouTube.
+  return firstString(youtubeWatchUrl(track), isYouTubeWatchUrl(track?.sourceUrl) ? track.sourceUrl : "");
+}
+
 async function freshJamendoAudioSource(track) {
   const jamendoTrackId = jamendoTrackIdFromTrack(track);
   if (!jamendoClientId || !jamendoTrackId) {
@@ -5382,9 +5395,16 @@ async function serverPlayerSourceForTrack(track) {
     return localAudioPath;
   }
 
-  const youtubeUrl = firstString(normalized.sourceUrl, youtubeWatchUrl(normalized));
-  if (normalized.youtubeVideoId && youtubeUrl) {
+  const youtubeUrl = canonicalYouTubePlaybackUrl(normalized);
+  if ((normalized.youtubeVideoId || isYouTubeWatchUrl(normalized.sourceUrl)) && youtubeUrl) {
     return youtubeUrl;
+  }
+
+  if (isGoogleVideoTemporaryUrl(firstString(normalized.sourceUrl, normalized.audioPath, normalized.playbackPath))) {
+    throw httpError(
+      400,
+      "Questa traccia contiene solo un URL googlevideo temporaneo scadibile. Reimporta il video YouTube originale o aggiungi youtubeVideoId."
+    );
   }
 
   if (firstString(normalized.externalProvider) === "jamendo") {
@@ -5655,6 +5675,10 @@ function serverPlayerFriendlyError(message) {
     return "YouTube login/bot: traccia saltata. Configura cookie o sostituiscila.";
   }
 
+  if (/failed to open .*googlevideo\.com|googlevideo\.com\/videoplayback/i.test(text)) {
+    return `${text} Stream YouTube temporaneo non apribile: riprova, verifica cookie/account YouTube e lascia che ClearWave passi alla traccia successiva.`;
+  }
+
   if (/Unknown error 524|Playback open error|Could not open\/initialize audio device/i.test(text)) {
     return `${text} ALSA non riesce ad aprire quel device: lascia CLEARWAVE_AUDIO_DEVICE e ALSA_CARD vuoti oppure prova sysdefault/default dal Raspberry.`;
   }
@@ -5706,7 +5730,7 @@ function isServerPlayerSkippablePlaybackFailure(message, code, source) {
     return false;
   }
 
-  return /login\/conferma eta|youtube.*(?:login|eta|bot)|sign in to confirm|not a bot|inappropriate for some users|use --cookies|video unavailable|private video|requested format is not available|failed to recognize file format|youtube-dl failed/i.test(
+  return /login\/conferma eta|youtube.*(?:login|eta|bot)|sign in to confirm|not a bot|inappropriate for some users|use --cookies|video unavailable|private video|requested format is not available|failed to recognize file format|youtube-dl failed|failed to open .*googlevideo\.com|googlevideo\.com\/videoplayback/i.test(
     text
   );
 }

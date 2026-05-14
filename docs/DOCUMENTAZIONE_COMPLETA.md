@@ -534,6 +534,8 @@ Regola pratica:
 
 - se l'audit produce subito molti `youtube-age-or-login`, prima controlla cookie/account con `Test cookie YouTube`;
 - se compaiono molti `timeout`, aspetta il report finale e riprova con concorrenza piu' bassa prima di archiviare;
+- se compare `youtube-expired-url`, reimporta il video YouTube originale: gli URL `googlevideo.com` sono stream temporanei e non fonti stabili;
+- se compare spesso `youtube-stream-open-failed`, `yt-dlp` ha trovato uno stream YouTube ma `mpv` non lo apre: controlla cookie/account, rete e carico Raspberry prima di archiviare;
 - se il report finale conferma `youtube-unavailable`, `missing-source`, `missing-file`, `forbidden` o `stream-not-playable`, usa `Archivia non disponibili`;
 - dopo avere caricato cookie nuovi usa `Riverifica archiviate` per recuperare tracce nascoste che tornano OK.
 
