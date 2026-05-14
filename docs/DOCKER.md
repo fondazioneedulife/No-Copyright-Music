@@ -57,6 +57,15 @@ Per una checklist completa di aggiornamento, rebuild, Git, ALSA e log, usa anche
 docker compose up -d --build
 ```
 
+Per aggiornare un Raspberry gia' installato usa lo script dedicato, cosi' non accumuli cache Docker fino a riempire la SD:
+
+```bash
+cd ~/No-Copyright-Music
+sh tools/update-raspberry.sh
+```
+
+Lo script fa `git pull --ff-only`, build normale, `up -d --force-recreate` e poi pulisce solo cache/immagini/container inutilizzati. Non usa `docker prune --volumes`, quindi non cancella catalogo, utenti, cookie o upload. Usa `CLEARWAVE_NO_CACHE=1 sh tools/update-raspberry.sh` solo per build davvero pulite.
+
 Nel `.env` del Raspberry imposta almeno:
 
 ```env

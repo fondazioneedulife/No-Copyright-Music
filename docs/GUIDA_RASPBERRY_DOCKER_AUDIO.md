@@ -66,7 +66,20 @@ senza `tentativo`, il container sta usando codice vecchio.
 
 ## Aggiornare il progetto sul Raspberry
 
-Prima controlla dove sei:
+Procedura consigliata: usa lo script unico. Aggiorna Git, ricostruisce il container, riavvia ClearWave e pulisce cache/immagini Docker inutilizzate senza toccare i volumi.
+
+```bash
+cd ~/No-Copyright-Music
+sh tools/update-raspberry.sh
+```
+
+Lo script usa una build normale con cache. Sul Raspberry evita `--no-cache` come routine, perche' ricrea molta cache e puo' riempire la SD. Per forzare una build completamente pulita solo quando serve:
+
+```bash
+CLEARWAVE_NO_CACHE=1 sh tools/update-raspberry.sh
+```
+
+Prima di aggiornare a mano controlla dove sei:
 
 ```bash
 pwd
@@ -75,11 +88,14 @@ ls -la
 
 Se nella lista non vedi `.git`, quella cartella non e' un clone Git. Devi entrare nella cartella corretta o clonare il progetto.
 
-Se `.git` esiste:
+Se `.git` esiste e vuoi fare il giro manuale:
 
 ```bash
-git fetch
-git pull
+git pull --ff-only
+docker compose build clearwave
+docker compose up -d --force-recreate
+docker builder prune -af
+docker image prune -af
 ```
 
 Se `git pull` non cambia nulla ma il container resta vecchio, controlla che Docker stia buildando questa stessa cartella:
@@ -112,12 +128,20 @@ Imposta `ALSA_CARD` o `CLEARWAVE_AUDIO_DEVICE` solo dopo aver letto `aplay -l` e
 
 ## Rebuild pulito
 
-Quando devi essere sicuro che il container stia usando il codice nuovo:
+Quando devi essere sicuro che il container stia usando il codice nuovo, preferisci:
+
+```bash
+sh tools/update-raspberry.sh
+```
+
+Usa `--no-cache` solo se e' cambiato il Dockerfile, sono cambiate dipendenze di sistema/Node oppure il container continua a risultare vecchio dopo una build normale:
 
 ```bash
 docker compose down --remove-orphans
 docker compose build --no-cache clearwave
 docker compose up -d --force-recreate
+docker builder prune -af
+docker image prune -af
 docker compose logs -f clearwave
 ```
 

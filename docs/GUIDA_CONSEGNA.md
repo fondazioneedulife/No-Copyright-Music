@@ -18,12 +18,10 @@ Esegui sempre i comandi nella cartella del progetto sull'host Raspberry:
 
 ```bash
 cd ~/No-Copyright-Music
-git pull --ff-only
-docker compose down
-docker compose build --no-cache clearwave
-docker compose up -d --force-recreate
-docker compose logs -f clearwave
+sh tools/update-raspberry.sh
 ```
+
+Lo script evita `--no-cache` di default e pulisce cache/immagini Docker inutilizzate senza cancellare volumi. Se serve davvero una build pulita per Dockerfile o dipendenze cambiate, usa `CLEARWAVE_NO_CACHE=1 sh tools/update-raspberry.sh`.
 
 Nei log iniziali devono comparire:
 
