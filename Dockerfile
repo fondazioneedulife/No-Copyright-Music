@@ -20,8 +20,11 @@ ENV NODE_ENV=production \
     CLEARWAVE_AUTO_EXPAND=0 \
     CLEARWAVE_UPDATE_YTDLP_ON_START=1 \
     CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno \
-    CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari \
-    CLEARWAVE_YTDL_PO_TOKEN_CLIENT=mweb.gvs
+    CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=mweb \
+    CLEARWAVE_YTDL_PO_TOKEN_CLIENT=mweb.gvs \
+    CLEARWAVE_YTDL_BGUTIL_PROVIDER=1 \
+    CLEARWAVE_YTDL_BGUTIL_PORT=4416 \
+    CLEARWAVE_YTDL_BGUTIL_VERSION=1.3.1
 
 WORKDIR /app
 
@@ -51,6 +54,21 @@ RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o 
   && ln -sf /usr/bin/yt-dlp /usr/local/bin/yt-dlp \
   && /usr/bin/yt-dlp --version
 
+# Provider PO token in-process: evita un secondo container e aiuta YouTube quando cookie validi ricevono 403 GVS.
+RUN set -eux; \
+  mkdir -p /etc/yt-dlp/plugins /opt; \
+  curl -fL "https://github.com/Brainicism/bgutil-ytdlp-pot-provider/releases/download/${CLEARWAVE_YTDL_BGUTIL_VERSION}/bgutil-ytdlp-pot-provider.zip" \
+    -o /etc/yt-dlp/plugins/bgutil-ytdlp-pot-provider.zip; \
+  curl -fL "https://github.com/Brainicism/bgutil-ytdlp-pot-provider/archive/refs/tags/${CLEARWAVE_YTDL_BGUTIL_VERSION}.tar.gz" \
+    -o /tmp/bgutil-ytdlp-pot-provider.tar.gz; \
+  tar -xzf /tmp/bgutil-ytdlp-pot-provider.tar.gz -C /opt; \
+  mv "/opt/bgutil-ytdlp-pot-provider-${CLEARWAVE_YTDL_BGUTIL_VERSION}" /opt/bgutil-ytdlp-pot-provider; \
+  cd /opt/bgutil-ytdlp-pot-provider/server; \
+  npm ci; \
+  npx tsc; \
+  npm prune --omit=dev; \
+  rm -f /tmp/bgutil-ytdlp-pot-provider.tar.gz
+
 COPY package.json ./
 COPY server.js app.js index.html styles.css ./
 COPY assets ./assets
@@ -70,4 +88,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-CMD ["sh", "-c", "if [ \"${CLEARWAVE_UPDATE_YTDLP_ON_START:-1}\" = \"1\" ]; then echo '[startup] Controllo aggiornamento yt-dlp...'; if curl -fL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /tmp/yt-dlp.new; then chmod a+rx /tmp/yt-dlp.new && mv /tmp/yt-dlp.new /usr/bin/yt-dlp && ln -sf /usr/bin/yt-dlp /usr/bin/youtube-dl && ln -sf /usr/bin/yt-dlp /usr/local/bin/yt-dlp && echo '[startup] yt-dlp aggiornato:' && /usr/bin/yt-dlp --version; else echo '[startup] yt-dlp non aggiornato: uso quello gia presente.'; rm -f /tmp/yt-dlp.new; fi; fi; exec node server.js"]
+CMD ["sh", "-c", "if [ \"${CLEARWAVE_YTDL_BGUTIL_PROVIDER:-1}\" = \"1\" ]; then echo '[startup] Avvio provider PO token bgutil...'; node /opt/bgutil-ytdlp-pot-provider/server/build/main.js --port \"${CLEARWAVE_YTDL_BGUTIL_PORT:-4416}\" & sleep 1; fi; if [ \"${CLEARWAVE_UPDATE_YTDLP_ON_START:-1}\" = \"1\" ]; then echo '[startup] Controllo aggiornamento yt-dlp...'; if curl -fL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /tmp/yt-dlp.new; then chmod a+rx /tmp/yt-dlp.new && mv /tmp/yt-dlp.new /usr/bin/yt-dlp && ln -sf /usr/bin/yt-dlp /usr/bin/youtube-dl && ln -sf /usr/bin/yt-dlp /usr/local/bin/yt-dlp && echo '[startup] yt-dlp aggiornato:' && /usr/bin/yt-dlp --version; else echo '[startup] yt-dlp non aggiornato: uso quello gia presente.'; rm -f /tmp/yt-dlp.new; fi; fi; exec node server.js"]

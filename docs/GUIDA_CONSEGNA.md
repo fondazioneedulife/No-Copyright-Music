@@ -63,7 +63,9 @@ CLEARWAVE_AUDIO_PREFLIGHT=1
 CLEARWAVE_UPDATE_YTDLP_ON_START=1
 CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
-CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari
+CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=mweb
+CLEARWAVE_YTDL_BGUTIL_PROVIDER=1
+CLEARWAVE_YTDL_BGUTIL_PORT=4416
 ```
 
 All'inizio lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`. Se la diagnostica mostra un device stabile, puoi fissarlo dopo.
@@ -125,7 +127,7 @@ Il report non sostituisce la verifica legale finale: serve a sapere da dove arri
 | Tanti `timeout` nel check YouTube | Rete lenta, Raspberry carico o YouTube lento | Aspetta il report finale; se restano molti timeout, rifai il giro con meno concorrenza. |
 | `youtube-error` o `exit-1` | Errore generico di `yt-dlp`/`mpv`; nei nuovi report c'e' anche il messaggio breve | Leggi la riga nella diagnostica o apri il JSON in `data/reports`; spesso serve cookie nuovo, rete stabile o archiviazione del video. |
 | `youtube-expired-url` o URL `googlevideo.com` | E' stato salvato uno stream temporaneo invece del video YouTube originale | Reimporta dal link YouTube o aggiungi `youtubeVideoId`; lo stream diretto scade e non va usato come sorgente stabile. |
-| `youtube-stream-open-failed` | `yt-dlp` risolve YouTube ma `mpv` non apre lo stream firmato (`403`, `Failed to open`, `avformat_open_input`) | Riprova; se si ripete con cookie validi, serve PO token yt-dlp o una sostituzione della traccia. |
+| `youtube-stream-open-failed` | `yt-dlp` risolve YouTube ma `mpv` non apre lo stream firmato (`403`, `Failed to open`, `avformat_open_input`) | Controlla che la diagnostica mostri `PO token` attivo; poi rifai il check. Se resta KO in piu' report, sostituisci la traccia. |
 | `mpv precedente chiuso per cambio traccia/comando` | Un nuovo comando ha sostituito il vecchio mpv | Non e' un errore se la traccia successiva parte. |
 | `mpv ha completato ... codice 0` | Traccia terminata correttamente | Normale. |
 | Importa poche tracce | Molti duplicati o filtri durata/licenza | Usa lotto piu' grande o reset scan YouTube. |

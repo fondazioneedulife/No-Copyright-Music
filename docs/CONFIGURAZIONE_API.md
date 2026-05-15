@@ -54,9 +54,11 @@ npm start
 | `ALSA_CARD` | Docker/Raspberry | Scheda audio ALSA opzionale. Se vuota usa il default ALSA del Raspberry. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | `server.js` | File cookie YouTube Netscape nel container. Se vuoto, ClearWave usa automaticamente `/app/data/youtube-cookies.txt` quando il file esiste. |
 | `CLEARWAVE_YTDL_JS_RUNTIME` | `server.js`, `tools/check-library-audio.js` | Runtime JavaScript per `yt-dlp`, default `deno:/usr/local/bin/deno`. Serve quando YouTube richiede decifratura JS. |
-| `CLEARWAVE_YTDL_EXTRACTOR_ARGS` | `server.js`, `tools/check-library-audio.js` | Argomenti extractor per `yt-dlp`, default `youtube:player_client=web_safari`, utile contro `HTTP 403` sugli stream `googlevideo.com`. |
+| `CLEARWAVE_YTDL_EXTRACTOR_ARGS` | `server.js`, `tools/check-library-audio.js` | Argomenti extractor per `yt-dlp`, default `youtube:player_client=mweb` quando il provider PO token e' attivo. |
 | `CLEARWAVE_YTDL_PO_TOKEN` | `server.js`, `tools/check-library-audio.js` | PO token opzionale per yt-dlp quando YouTube rifiuta gli stream firmati anche con cookie validi. Viene mascherato nei log e nei report. |
 | `CLEARWAVE_YTDL_PO_TOKEN_CLIENT` | `server.js`, `tools/check-library-audio.js` | Contesto del PO token, default `mweb.gvs`; se il token contiene gia' `mweb.gvs+...`, ClearWave lo usa cosi'. |
+| `CLEARWAVE_YTDL_BGUTIL_PROVIDER` | Docker, `server.js`, `tools/check-library-audio.js` | Se `1`, avvia e usa il provider PO token bgutil nello stesso container per ridurre i `403` YouTube/GVS. |
+| `CLEARWAVE_YTDL_BGUTIL_PORT` | Docker, `server.js` | Porta locale del provider bgutil, default `4416`. |
 | `CLEARWAVE_YTDL_COOKIE_PROBE_URL` | `server.js` | Video pubblico usato dal pulsante admin `Test cookie YouTube` per verificare se i cookie sono accettati dal Raspberry. |
 | `CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS` | `server.js`, React | Giorni prima della scadenza dei cookie YouTube in cui mostrare un popup admin ricorrente, default `14`. |
 | `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | `lib/audio-replacement-service.js` | Numero massimo di tracce YouTube/login ricontrollate dal pulsante admin, default `80`. |

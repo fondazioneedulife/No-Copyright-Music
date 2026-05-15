@@ -18,10 +18,12 @@ const DEFAULT_YTDL_COOKIES_FILE = process.env.CLEARWAVE_YTDL_COOKIES_FILE || "";
 const DEFAULT_YTDL_JS_RUNTIME = process.env.CLEARWAVE_YTDL_JS_RUNTIME || "";
 const DEFAULT_YTDL_PO_TOKEN = process.env.CLEARWAVE_YTDL_PO_TOKEN || "";
 const DEFAULT_YTDL_PO_TOKEN_CLIENT = process.env.CLEARWAVE_YTDL_PO_TOKEN_CLIENT || "mweb.gvs";
+const DEFAULT_YTDL_BGUTIL_PROVIDER = process.env.CLEARWAVE_YTDL_BGUTIL_PROVIDER === "1";
 const DEFAULT_YTDL_EXTRACTOR_ARGS = buildYtdlExtractorArgs(
   process.env.CLEARWAVE_YTDL_EXTRACTOR_ARGS || "",
   DEFAULT_YTDL_PO_TOKEN,
-  DEFAULT_YTDL_PO_TOKEN_CLIENT
+  DEFAULT_YTDL_PO_TOKEN_CLIENT,
+  DEFAULT_YTDL_BGUTIL_PROVIDER
 );
 
 function ytdlPoTokenClientContext(rawValue) {
@@ -48,17 +50,18 @@ function normalizedYtdlPoToken(rawToken, rawClientContext) {
   return `${ytdlPoTokenClientContext(rawClientContext)}+${token}`;
 }
 
-function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient) {
+function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient, useBgutilProvider = false) {
   const token = normalizedYtdlPoToken(rawPoToken, rawPoTokenClient);
   const legacyDefault = "youtube:player_client=web_safari";
   const poTokenClient = ytdlPoTokenPlayerClient(token || rawPoTokenClient);
+  const shouldUseMweb = Boolean(token || useBgutilProvider);
   let extractorArgs = String(rawExtractorArgs || "").trim();
 
   if (!extractorArgs) {
-    extractorArgs = token ? `youtube:player_client=${poTokenClient}` : legacyDefault;
-  } else if (token && extractorArgs === legacyDefault) {
+    extractorArgs = shouldUseMweb ? `youtube:player_client=${poTokenClient}` : legacyDefault;
+  } else if (shouldUseMweb && extractorArgs === legacyDefault) {
     extractorArgs = `youtube:player_client=${poTokenClient}`;
-  } else if (token && /youtube:[^,\s]*player_client=web_safari/i.test(extractorArgs)) {
+  } else if (shouldUseMweb && /youtube:[^,\s]*player_client=web_safari/i.test(extractorArgs)) {
     extractorArgs = extractorArgs.replace(/player_client=web_safari/i, `player_client=${poTokenClient}`);
   }
 
@@ -118,6 +121,7 @@ function parseArgs(argv) {
     ytdlExtractorArgs: DEFAULT_YTDL_EXTRACTOR_ARGS,
     ytdlPoToken: DEFAULT_YTDL_PO_TOKEN,
     ytdlPoTokenClient: DEFAULT_YTDL_PO_TOKEN_CLIENT,
+    ytdlBgutilProvider: DEFAULT_YTDL_BGUTIL_PROVIDER,
     ids: [],
     idSet: new Set(),
     verbose: false,
@@ -202,6 +206,9 @@ function parseArgs(argv) {
       case "ytdl-po-token-client":
         options.ytdlPoTokenClient = nextValue();
         break;
+      case "ytdl-bgutil-provider":
+        options.ytdlBgutilProvider = nextValue() !== "0";
+        break;
       case "ids":
         options.ids = nextValue()
           .split(",")
@@ -252,7 +259,8 @@ function parseArgs(argv) {
   options.ytdlExtractorArgs = buildYtdlExtractorArgs(
     options.ytdlExtractorArgs,
     options.ytdlPoToken,
-    options.ytdlPoTokenClient
+    options.ytdlPoTokenClient,
+    options.ytdlBgutilProvider
   );
   return options;
 }
@@ -284,8 +292,9 @@ Opzioni utili:
   --sample-seconds 6
   --ytdl-cookies /app/data/youtube-cookies.txt
   --ytdl-js-runtime deno:/usr/local/bin/deno
-  --ytdl-extractor-args youtube:player_client=web_safari
+  --ytdl-extractor-args youtube:player_client=mweb
   --ytdl-po-token mweb.gvs+TOKEN
+  --ytdl-bgutil-provider 1
   --ids track-a,track-b
   --only-errors
   --fail-on-broken
@@ -920,6 +929,7 @@ async function main() {
       ytdlPoTokenClient: options.ytdlPoToken
         ? ytdlPoTokenClientContext(normalizedYtdlPoToken(options.ytdlPoToken, options.ytdlPoTokenClient))
         : options.ytdlPoTokenClient,
+      ytdlBgutilProvider: Boolean(options.ytdlBgutilProvider),
       ytdlCookiesConfigured: Boolean(options.ytdlCookiesFile),
       ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable(options)),
       ids: options.ids,

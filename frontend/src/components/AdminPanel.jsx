@@ -225,6 +225,15 @@ function diagnosticHealthChecks(diagnostics) {
       detail: commandSummary(diagnostics.tools?.ytdlJsRuntime),
     },
     {
+      label: "PO token",
+      ok: Boolean(diagnostics.tools?.bgutilProvider?.ok || diagnostics.config?.ytdlPoTokenConfigured),
+      detail: diagnostics.tools?.bgutilProvider?.ok
+        ? "Provider bgutil attivo"
+        : diagnostics.config?.ytdlPoTokenConfigured
+          ? `Manuale ${diagnostics.config?.ytdlPoTokenClient || "attivo"}`
+          : "Non attivo",
+    },
+    {
       label: "Audio",
       ok: audioOk,
       detail: audioOk ? "Almeno un output apribile" : "Nessun output apribile",
@@ -706,6 +715,7 @@ export function AdminPanel({
         ["mpv", diagnostics.tools?.mpv],
         ["yt-dlp", diagnostics.tools?.ytdlp],
         ["deno/js", diagnostics.tools?.ytdlJsRuntime],
+        ["provider PO", diagnostics.tools?.bgutilProvider],
         ["aplay -l", diagnostics.alsa?.listDevices],
       ]
     : [];
@@ -1012,9 +1022,11 @@ export function AdminPanel({
                 <strong>{diagnostics.config?.ytdlExtractorArgs || "default"}</strong>
                 <small>
                   {diagnostics.config?.ytdlFormat || "audio-only"}
-                  {diagnostics.config?.ytdlPoTokenConfigured
-                    ? ` | PO token ${diagnostics.config?.ytdlPoTokenClient || "attivo"}`
-                    : " | PO token non configurato"}
+                  {diagnostics.tools?.bgutilProvider?.ok
+                    ? " | PO provider bgutil"
+                    : diagnostics.config?.ytdlPoTokenConfigured
+                      ? ` | PO token ${diagnostics.config?.ytdlPoTokenClient || "attivo"}`
+                      : " | PO token non configurato"}
                 </small>
               </div>
               <div>

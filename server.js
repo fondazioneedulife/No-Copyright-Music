@@ -48,6 +48,11 @@ const serverPlayerYtdlFormat = String(
     "bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
 ).trim();
 const serverPlayerYtdlJsRuntime = String(process.env.CLEARWAVE_YTDL_JS_RUNTIME || "").trim();
+const serverPlayerYtdlBgutilProvider = process.env.CLEARWAVE_YTDL_BGUTIL_PROVIDER === "1";
+const serverPlayerYtdlBgutilBaseUrl = String(
+  process.env.CLEARWAVE_YTDL_BGUTIL_BASE_URL ||
+    `http://127.0.0.1:${process.env.CLEARWAVE_YTDL_BGUTIL_PORT || 4416}`
+).trim();
 const serverPlayerYtdlExtractorArgsFromEnv = String(process.env.CLEARWAVE_YTDL_EXTRACTOR_ARGS || "").trim();
 const serverPlayerYtdlPoToken = String(process.env.CLEARWAVE_YTDL_PO_TOKEN || "").trim();
 const serverPlayerYtdlPoTokenClient = String(process.env.CLEARWAVE_YTDL_PO_TOKEN_CLIENT || "mweb.gvs").trim();
@@ -57,7 +62,8 @@ const serverPlayerYtdlPoTokenContext = ytdlPoTokenClientContext(
 const serverPlayerYtdlExtractorArgs = buildYtdlExtractorArgs(
   serverPlayerYtdlExtractorArgsFromEnv,
   serverPlayerYtdlPoToken,
-  serverPlayerYtdlPoTokenClient
+  serverPlayerYtdlPoTokenClient,
+  serverPlayerYtdlBgutilProvider
 );
 const serverPlayerYtdlCookiesFileFromEnv = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
 const serverPlayerYtdlCookiesFile = serverPlayerYtdlCookiesFileFromEnv || DEFAULT_YTDL_COOKIES_FILE;
@@ -126,18 +132,19 @@ function normalizedYtdlPoToken(rawToken, rawClientContext) {
   return `${ytdlPoTokenClientContext(rawClientContext)}+${token}`;
 }
 
-function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient) {
+function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient, useBgutilProvider = false) {
   const token = normalizedYtdlPoToken(rawPoToken, rawPoTokenClient);
   const legacyDefault = "youtube:player_client=web_safari";
   const poTokenClient = ytdlPoTokenPlayerClient(token || rawPoTokenClient);
+  const shouldUseMweb = Boolean(token || useBgutilProvider);
   let extractorArgs = String(rawExtractorArgs || "").trim();
 
   if (!extractorArgs) {
-    extractorArgs = token ? `youtube:player_client=${poTokenClient}` : legacyDefault;
-  } else if (token && extractorArgs === legacyDefault) {
-    // Un PO token GVS e' legato al client: se usiamo il default vecchio passiamo a mweb.
+    extractorArgs = shouldUseMweb ? `youtube:player_client=${poTokenClient}` : legacyDefault;
+  } else if (shouldUseMweb && extractorArgs === legacyDefault) {
+    // PO token e provider bgutil lavorano meglio con mweb; web_safari crea spesso HLS 403.
     extractorArgs = `youtube:player_client=${poTokenClient}`;
-  } else if (token && /youtube:[^,\s]*player_client=web_safari/i.test(extractorArgs)) {
+  } else if (shouldUseMweb && /youtube:[^,\s]*player_client=web_safari/i.test(extractorArgs)) {
     extractorArgs = extractorArgs.replace(/player_client=web_safari/i, `player_client=${poTokenClient}`);
   }
 
@@ -5251,6 +5258,8 @@ function serverPlayerStatus() {
     ytdlExtractorArgs: redactYtdlSecrets(serverPlayerYtdlExtractorArgs),
     ytdlPoTokenConfigured: Boolean(serverPlayerYtdlPoToken),
     ytdlPoTokenClient: serverPlayerYtdlPoToken ? serverPlayerYtdlPoTokenContext : "",
+    ytdlBgutilProvider: serverPlayerYtdlBgutilProvider,
+    ytdlBgutilBaseUrl: serverPlayerYtdlBgutilBaseUrl,
     ytdlCookiesConfigured: ytdlCookiesConfigured(),
     ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable()),
     mpvMsgLevel: serverPlayerMpvMsgLevel,
@@ -5327,6 +5336,39 @@ function diagnosticCommandResult(command, args = [], timeoutMs = 3500) {
   });
 }
 
+async function bgutilProviderDiagnostic(timeoutMs = 2500) {
+  if (!serverPlayerYtdlBgutilProvider) {
+    return {
+      ok: false,
+      url: serverPlayerYtdlBgutilBaseUrl,
+      error: "Provider PO token disattivato da CLEARWAVE_YTDL_BGUTIL_PROVIDER.",
+    };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(serverPlayerYtdlBgutilBaseUrl, { signal: controller.signal });
+    const text = await response.text();
+    const reachable = response.status < 500;
+    return {
+      ok: reachable,
+      url: serverPlayerYtdlBgutilBaseUrl,
+      status: response.status,
+      stdout: text.trim().slice(0, 1200),
+      error: reachable ? "" : `HTTP ${response.status}`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      url: serverPlayerYtdlBgutilBaseUrl,
+      error: error.name === "AbortError" ? `Timeout dopo ${timeoutMs}ms` : error.message,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function readDiagnosticTextFile(filePath) {
   try {
     return (await fs.readFile(filePath, "utf8")).trim().slice(0, 4000);
@@ -5351,12 +5393,13 @@ async function buildServerDiagnostics() {
     });
   }
 
-  const [mpv, ytdlp, ytdlJsRuntime, aplayList, aplayNames, asoundCards] = await Promise.all([
+  const [mpv, ytdlp, ytdlJsRuntime, bgutilProvider, aplayList, aplayNames, asoundCards] = await Promise.all([
     diagnosticCommandResult(serverPlayerCommand, ["--version"], 3500),
     diagnosticCommandResult(serverPlayerYtdlPath, ["--version"], 5000),
     ytdlJsRuntimeCommand
       ? diagnosticCommandResult(ytdlJsRuntimeCommand, ["--version"], 5000)
       : Promise.resolve({ ok: false, command: "", args: [], error: "Runtime JavaScript yt-dlp non configurato." }),
+    bgutilProviderDiagnostic(),
     process.platform === "linux"
       ? diagnosticCommandResult("aplay", ["-l"], 3500)
       : Promise.resolve({ ok: false, command: "aplay", args: ["-l"], error: "Disponibile solo su Linux." }),
@@ -5391,6 +5434,8 @@ async function buildServerDiagnostics() {
       ytdlExtractorArgs: redactYtdlSecrets(serverPlayerYtdlExtractorArgs),
       ytdlPoTokenConfigured: Boolean(serverPlayerYtdlPoToken),
       ytdlPoTokenClient: serverPlayerYtdlPoToken ? serverPlayerYtdlPoTokenContext : serverPlayerYtdlPoTokenClient,
+      ytdlBgutilProvider: serverPlayerYtdlBgutilProvider,
+      ytdlBgutilBaseUrl: serverPlayerYtdlBgutilBaseUrl,
       ytdlFormat: serverPlayerYtdlFormat,
       ytdlCookiesConfigured: cookies.configured,
       ytdlCookiesAvailable: cookies.available,
@@ -5416,6 +5461,7 @@ async function buildServerDiagnostics() {
       mpv,
       ytdlp,
       ytdlJsRuntime,
+      bgutilProvider,
     },
     alsa: {
       cards: asoundCards,
@@ -5756,7 +5802,7 @@ function serverPlayerFriendlyError(message) {
   }
 
   if (/(failed to open|avformat_open_input).*googlevideo\.com|googlevideo\.com\/videoplayback/i.test(text)) {
-    return `${text} Stream YouTube temporaneo non apribile: riprova, verifica cookie/account YouTube e, se continua su tante tracce, configura un PO token per yt-dlp.`;
+    return `${text} Stream YouTube temporaneo non apribile: controlla che il provider PO token sia attivo in diagnostica e lascia che ClearWave passi alla traccia successiva.`;
   }
 
   if (/Unknown error 524|Playback open error|Could not open\/initialize audio device/i.test(text)) {
@@ -7044,7 +7090,7 @@ if (require.main === module) {
         console.log(
           `[server-player] Stream YouTube: extractor=${redactYtdlSecrets(serverPlayerYtdlExtractorArgs)}, poToken=${
             serverPlayerYtdlPoToken ? `on/${serverPlayerYtdlPoTokenContext}` : "off"
-          }`
+          }, bgutil=${serverPlayerYtdlBgutilProvider ? "on" : "off"}`
         );
 
         if (process.env.CLEARWAVE_AUTO_EXPAND === "1") {
