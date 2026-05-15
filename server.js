@@ -67,8 +67,8 @@ const serverPlayerYtdlExtractorArgs = buildYtdlExtractorArgs(
 );
 const serverPlayerYtdlFallbackProfiles = process.env.CLEARWAVE_YTDL_FALLBACK_PROFILES !== "0";
 const serverPlayerYoutubeStartStableMs = Math.min(
-  15000,
-  Math.max(850, Number(process.env.CLEARWAVE_YOUTUBE_START_STABLE_MS || 4500) || 4500)
+  30000,
+  Math.max(850, Number(process.env.CLEARWAVE_YOUTUBE_START_STABLE_MS || 12000) || 12000)
 );
 const serverPlayerYtdlCookiesFileFromEnv = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
 const serverPlayerYtdlCookiesFile = serverPlayerYtdlCookiesFileFromEnv || DEFAULT_YTDL_COOKIES_FILE;
@@ -6375,6 +6375,10 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
   const duration = parseDurationSeconds(track.duration || track.durationSeconds);
   const audioConfigs = serverPlayerAudioConfigs();
   const ytdlProfiles = serverPlayerYtdlPlaybackProfiles(source);
+  const firstYtdlProfileIndex = Math.min(
+    Math.max(0, Number(payload?.youtubeFallbackProfileIndex) || 0),
+    Math.max(0, ytdlProfiles.length - 1)
+  );
 
   stopServerPlayerProcess();
   const runId = serverPlayer.runId + 1;
@@ -6395,7 +6399,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
 
   let lastStartError = "";
 
-  for (let profileIndex = 0; profileIndex < ytdlProfiles.length; profileIndex += 1) {
+  for (let profileIndex = firstYtdlProfileIndex; profileIndex < ytdlProfiles.length; profileIndex += 1) {
     const ytdlProfile = ytdlProfiles[profileIndex];
     for (let attemptIndex = 0; attemptIndex < audioConfigs.length; attemptIndex += 1) {
       const audioConfig = audioConfigs[attemptIndex];
@@ -6589,6 +6593,35 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
       }
 
       const shouldSkipFailure = code && !serverPlayer.isStopping && isServerPlayerSkippablePlaybackFailure(serverPlayer.lastError, code, source);
+      const canRetryYoutubeProfile =
+        shouldSkipFailure && serverPlayerNeedsYtdl(source) && profileIndex + 1 < ytdlProfiles.length;
+      if (canRetryYoutubeProfile) {
+        const nextProfile = ytdlProfiles[profileIndex + 1];
+        recordServerPlayerEvent("retry", `Retry YouTube con profilo ${nextProfile.label}: ${firstString(track?.title, track?.id)}`, {
+          runId,
+          code,
+          trackId: firstString(track?.id),
+          profile: nextProfile.label,
+        });
+        setTimeout(() => {
+          if (serverPlayer.process || serverPlayer.runId !== runId) {
+            return;
+          }
+
+          void enqueueServerPlayerPlay(null, {
+            track,
+            startAt,
+            volumePercent: volume,
+            serverAutoplay: true,
+            youtubeFallbackProfileIndex: profileIndex + 1,
+          }).catch((error) => {
+            serverPlayer.lastError = serverPlayerFriendlyError(error.message || error).slice(0, 400);
+            recordServerPlayerEvent("error", serverPlayer.lastError);
+          });
+        }, 250);
+        return;
+      }
+
       if (shouldAutoplayNext || shouldSkipFailure) {
         scheduleServerPlayerAutoplay(runId, {
           reason: shouldSkipFailure ? "skip" : "complete",

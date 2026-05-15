@@ -661,7 +661,7 @@ Variabili principali:
 | `CLEARWAVE_YTDL_BGUTIL_PROVIDER` | `1` | Avvia il provider PO token bgutil dentro il container ClearWave, senza secondo servizio Docker. |
 | `CLEARWAVE_YTDL_BGUTIL_PORT` | `4416` | Porta locale del provider PO token. |
 | `CLEARWAVE_YTDL_FALLBACK_PROFILES` | `1` | Se il primo profilo YouTube fallisce subito, prova `web_safari`/HLS e `tv` prima di saltare traccia. |
-| `CLEARWAVE_YOUTUBE_START_STABLE_MS` | `4500` | Tempo minimo di stabilita' per capire se uno stream YouTube e' partito davvero. |
+| `CLEARWAVE_YOUTUBE_START_STABLE_MS` | `12000` | Tempo minimo di stabilita' per capire se uno stream YouTube e' partito davvero. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | vuoto | File cookie YouTube Netscape nel container. Se vuoto, ClearWave usa automaticamente `/app/data/youtube-cookies.txt` quando esiste. |
 | `CLEARWAVE_YTDL_COOKIE_PROBE_URL` | video pubblico | URL usato da `Test cookie YouTube` quando non ci sono tracce problematiche note. |
 | `CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS` | `14` | Giorni prima della scadenza cookie in cui mostrare il popup admin. |

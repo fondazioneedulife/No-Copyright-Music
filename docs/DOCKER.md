@@ -224,7 +224,7 @@ Variabili principali:
 | `CLEARWAVE_YTDL_BGUTIL_PROVIDER` | Se `1`, avvia il provider PO token bgutil dentro lo stesso container ClearWave. |
 | `CLEARWAVE_YTDL_BGUTIL_PORT` | Porta locale del provider PO token, default `4416`. |
 | `CLEARWAVE_YTDL_FALLBACK_PROFILES` | Se `1`, prova profili YouTube alternativi quando `mweb` fallisce subito. |
-| `CLEARWAVE_YOUTUBE_START_STABLE_MS` | Millisecondi di stabilita' iniziale prima di considerare riuscito un avvio YouTube, default `4500`. |
+| `CLEARWAVE_YOUTUBE_START_STABLE_MS` | Millisecondi di stabilita' iniziale prima di considerare riuscito un avvio YouTube, default `12000`. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | File cookie YouTube Netscape dentro al container, opzionale per video che richiedono login/conferma eta. |
 | `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | Massimo di tracce YouTube/login ricontrollate dal pulsante admin in un giro, default `80`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | Modalita del controllo completo YouTube da Admin, default `metadata`. |
