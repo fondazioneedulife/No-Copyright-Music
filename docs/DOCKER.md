@@ -124,9 +124,9 @@ docker compose exec clearwave aplay -L
 Poi puoi scegliere la scheda con `ALSA_CARD` oppure passare direttamente `CLEARWAVE_AUDIO_DEVICE` nel file `.env`. Preferisci `alsa/sysdefault:CARD=1` o `alsa/default`; `alsa/plughw:1,0` resta supportato ma puo' fallire se il device e' gia' occupato.
 
 Se invece nei log compare `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato un formato riproducibile. L'immagine Docker installa `yt-dlp` aggiornato da `/usr/bin/yt-dlp` e il backend passa a `mpv` un formato audio-only tramite `CLEARWAVE_YTDL_FORMAT`.
-Se invece compare `HTTP error 403 Forbidden`, `[lavf] avformat_open_input() failed` o `Failed to open ... googlevideo.com`, YouTube ha dato uno stream firmato ma lo ha rifiutato quando `mpv` lo ha aperto. ClearWave usa `player_client=mweb` e avvia nello stesso container il provider PO token `bgutil-ytdlp-pot-provider`: nei log devi vedere `Avvio provider PO token bgutil...` e poi `bgutil=on`. Se vuoi passare un token manuale, usa `CLEARWAVE_YTDL_PO_TOKEN`; se il valore non contiene gia' il prefisso, ClearWave usa `CLEARWAVE_YTDL_PO_TOKEN_CLIENT=mweb.gvs`. Il token non viene stampato nei log: la diagnostica mostra solo se e' attivo.
+Se invece compare `HTTP error 403 Forbidden`, `[lavf] avformat_open_input() failed` o `Failed to open ... googlevideo.com`, YouTube ha dato uno stream firmato ma lo ha rifiutato quando `mpv` lo ha aperto. ClearWave usa `player_client=mweb`, avvia nello stesso container il provider PO token `bgutil-ytdlp-pot-provider` e, se il primo avvio fallisce subito, prova profili fallback `web_safari` e `tv` prima di saltare traccia. Nei log devi vedere `Avvio provider PO token bgutil...`, `bgutil=on` e, sui fallback, etichette come `youtube/web-safari-hls`.
 
-Docker puo' riusare la cache del layer `RUN curl ... latest/download/yt-dlp`. Per questo il container prova anche ad aggiornare `/usr/bin/yt-dlp` ad ogni avvio quando `CLEARWAVE_UPDATE_YTDLP_ON_START=1`. Nei log devi vedere:
+Docker puo' riusare la cache del layer `RUN curl ... yt-dlp`. Per questo il container prova anche ad aggiornare `/usr/bin/yt-dlp` ad ogni avvio quando `CLEARWAVE_UPDATE_YTDLP_ON_START=1`. Di default usa il canale nightly configurato da `CLEARWAVE_YTDLP_DOWNLOAD_URL`, per ricevere prima i fix YouTube/PO token. Nei log devi vedere:
 
 ```text
 [startup] Controllo aggiornamento yt-dlp...
@@ -198,7 +198,8 @@ Variabili principali:
 | `CLEARWAVE_ENABLE_DEMOS` | Se `1`, abilita demo al primo catalogo vuoto. |
 | `CLEARWAVE_AUTO_EXPAND` | Se `1`, prova import automatico all'avvio. |
 | `CLEARWAVE_DOCKER_PRIVILEGED` | Se `true`, il container puo' accedere ai device host audio del Raspberry. |
-| `CLEARWAVE_UPDATE_YTDLP_ON_START` | Se `1`, riscarica `yt-dlp` latest all'avvio del container. |
+| `CLEARWAVE_UPDATE_YTDLP_ON_START` | Se `1`, riscarica `yt-dlp` all'avvio del container. |
+| `CLEARWAVE_YTDLP_DOWNLOAD_URL` | URL del binario yt-dlp da scaricare; default nightly per fix YouTube piu' rapidi. |
 | `CLEARWAVE_AUDIO_CHECK_ENABLED` | Se `1`, abilita il check automatico del catalogo in background. |
 | `CLEARWAVE_AUDIO_CHECK_ON_START` | Se `1`, esegue un check dopo l'avvio del backend. |
 | `CLEARWAVE_AUDIO_CHECK_MODE` | `source`, `metadata` o `probe`, default `probe`. |
@@ -222,6 +223,8 @@ Variabili principali:
 | `CLEARWAVE_YTDL_PO_TOKEN_CLIENT` | Contesto del PO token, default `mweb.gvs`. Se `CLEARWAVE_YTDL_PO_TOKEN` contiene gia' `mweb.gvs+...`, questo valore non serve. |
 | `CLEARWAVE_YTDL_BGUTIL_PROVIDER` | Se `1`, avvia il provider PO token bgutil dentro lo stesso container ClearWave. |
 | `CLEARWAVE_YTDL_BGUTIL_PORT` | Porta locale del provider PO token, default `4416`. |
+| `CLEARWAVE_YTDL_FALLBACK_PROFILES` | Se `1`, prova profili YouTube alternativi quando `mweb` fallisce subito. |
+| `CLEARWAVE_YOUTUBE_START_STABLE_MS` | Millisecondi di stabilita' iniziale prima di considerare riuscito un avvio YouTube, default `4500`. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | File cookie YouTube Netscape dentro al container, opzionale per video che richiedono login/conferma eta. |
 | `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | Massimo di tracce YouTube/login ricontrollate dal pulsante admin in un giro, default `80`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | Modalita del controllo completo YouTube da Admin, default `metadata`. |

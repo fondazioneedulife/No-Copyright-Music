@@ -65,6 +65,11 @@ const serverPlayerYtdlExtractorArgs = buildYtdlExtractorArgs(
   serverPlayerYtdlPoTokenClient,
   serverPlayerYtdlBgutilProvider
 );
+const serverPlayerYtdlFallbackProfiles = process.env.CLEARWAVE_YTDL_FALLBACK_PROFILES !== "0";
+const serverPlayerYoutubeStartStableMs = Math.min(
+  15000,
+  Math.max(850, Number(process.env.CLEARWAVE_YOUTUBE_START_STABLE_MS || 4500) || 4500)
+);
 const serverPlayerYtdlCookiesFileFromEnv = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
 const serverPlayerYtdlCookiesFile = serverPlayerYtdlCookiesFileFromEnv || DEFAULT_YTDL_COOKIES_FILE;
 const serverPlayerYtdlCookieProbeUrl = String(
@@ -5260,6 +5265,8 @@ function serverPlayerStatus() {
     ytdlPoTokenClient: serverPlayerYtdlPoToken ? serverPlayerYtdlPoTokenContext : "",
     ytdlBgutilProvider: serverPlayerYtdlBgutilProvider,
     ytdlBgutilBaseUrl: serverPlayerYtdlBgutilBaseUrl,
+    ytdlFallbackProfiles: serverPlayerYtdlFallbackProfiles,
+    youtubeStartStableMs: serverPlayerYoutubeStartStableMs,
     ytdlCookiesConfigured: ytdlCookiesConfigured(),
     ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable()),
     mpvMsgLevel: serverPlayerMpvMsgLevel,
@@ -5436,6 +5443,8 @@ async function buildServerDiagnostics() {
       ytdlPoTokenClient: serverPlayerYtdlPoToken ? serverPlayerYtdlPoTokenContext : serverPlayerYtdlPoTokenClient,
       ytdlBgutilProvider: serverPlayerYtdlBgutilProvider,
       ytdlBgutilBaseUrl: serverPlayerYtdlBgutilBaseUrl,
+      ytdlFallbackProfiles: serverPlayerYtdlFallbackProfiles,
+      youtubeStartStableMs: serverPlayerYoutubeStartStableMs,
       ytdlFormat: serverPlayerYtdlFormat,
       ytdlCookiesConfigured: cookies.configured,
       ytdlCookiesAvailable: cookies.available,
@@ -5739,15 +5748,17 @@ function serverPlayerNeedsYtdl(source) {
   return /(?:youtube\.com|youtu\.be)/i.test(String(source || ""));
 }
 
-function serverPlayerYtdlConfig(source) {
+function serverPlayerYtdlConfig(source, overrides = {}) {
   // YouTube cambia spesso formati disponibili: sul Raspberry chiediamo audio-only e yt-dlp recente.
   if (!serverPlayerNeedsYtdl(source)) {
     return ["--ytdl=no"];
   }
 
   const args = ["--ytdl=yes"];
-  if (serverPlayerYtdlFormat) {
-    args.push(`--ytdl-format=${serverPlayerYtdlFormat}`);
+  const ytdlFormat = firstString(overrides.format, serverPlayerYtdlFormat);
+  const ytdlExtractorArgs = firstString(overrides.extractorArgs, serverPlayerYtdlExtractorArgs);
+  if (ytdlFormat) {
+    args.push(`--ytdl-format=${ytdlFormat}`);
   }
 
   if (serverPlayerYtdlPath) {
@@ -5759,8 +5770,8 @@ function serverPlayerYtdlConfig(source) {
   if (serverPlayerYtdlJsRuntime) {
     rawOptions.push(`js-runtimes=${serverPlayerYtdlJsRuntime}`);
   }
-  if (serverPlayerYtdlExtractorArgs) {
-    rawOptions.push(`extractor-args=${serverPlayerYtdlExtractorArgs}`);
+  if (ytdlExtractorArgs) {
+    rawOptions.push(`extractor-args=${ytdlExtractorArgs}`);
   }
   if (cookiesFile) {
     rawOptions.push(`cookies=${cookiesFile}`);
@@ -5770,6 +5781,48 @@ function serverPlayerYtdlConfig(source) {
   }
 
   return args;
+}
+
+function serverPlayerYtdlPlaybackProfiles(source) {
+  if (!serverPlayerNeedsYtdl(source)) {
+    return [{ label: "direct", args: serverPlayerYtdlConfig(source) }];
+  }
+
+  const profiles = [
+    {
+      label: "youtube/default",
+      args: serverPlayerYtdlConfig(source),
+    },
+  ];
+
+  if (serverPlayerYtdlFallbackProfiles) {
+    profiles.push(
+      {
+        label: "youtube/web-safari-hls",
+        args: serverPlayerYtdlConfig(source, {
+          extractorArgs: "youtube:player_client=web_safari",
+          format: "bestaudio[protocol^=m3u8]/best[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best",
+        }),
+      },
+      {
+        label: "youtube/tv",
+        args: serverPlayerYtdlConfig(source, {
+          extractorArgs: "youtube:player_client=tv",
+          format: "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best",
+        }),
+      }
+    );
+  }
+
+  const seen = new Set();
+  return profiles.filter((profile) => {
+    const key = profile.args.join("\u0000");
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 function isServerPlayerErrorMessage(message) {
@@ -6299,7 +6352,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
   const mpvVolume = serverPlayerMpvVolumePercent(volume);
   const duration = parseDurationSeconds(track.duration || track.durationSeconds);
   const audioConfigs = serverPlayerAudioConfigs();
-  const ytdlArgs = serverPlayerYtdlConfig(source);
+  const ytdlProfiles = serverPlayerYtdlPlaybackProfiles(source);
 
   stopServerPlayerProcess();
   const runId = serverPlayer.runId + 1;
@@ -6308,7 +6361,6 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     "--no-video",
     "--force-window=no",
     "--idle=no",
-    ...ytdlArgs,
     "--cache=yes",
     `--msg-level=${serverPlayerMpvMsgLevel}`,
     `--volume-max=${serverPlayerVolumeMax}`,
@@ -6321,20 +6373,25 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
 
   let lastStartError = "";
 
-  for (let attemptIndex = 0; attemptIndex < audioConfigs.length; attemptIndex += 1) {
-    const audioConfig = audioConfigs[attemptIndex];
-    const socketPath = serverPlayerSocketPath(`${runId}-${attemptIndex + 1}`);
+  for (let profileIndex = 0; profileIndex < ytdlProfiles.length; profileIndex += 1) {
+    const ytdlProfile = ytdlProfiles[profileIndex];
+    for (let attemptIndex = 0; attemptIndex < audioConfigs.length; attemptIndex += 1) {
+      const audioConfig = audioConfigs[attemptIndex];
+      const socketPath = serverPlayerSocketPath(`${runId}-${profileIndex + 1}-${attemptIndex + 1}`);
     cleanupServerPlayerSocket(socketPath);
 
     const args = [
       ...baseArgs,
+      ...ytdlProfile.args,
       `--input-ipc-server=${socketPath}`,
       ...audioConfig.args,
       source,
     ];
 
-    const attemptLabel =
+    const audioAttemptLabel =
       audioConfigs.length > 1 ? `${audioConfig.label} tentativo ${attemptIndex + 1}/${audioConfigs.length}` : audioConfig.label;
+    const attemptLabel =
+      ytdlProfiles.length > 1 ? `${audioAttemptLabel}, ${ytdlProfile.label}` : audioAttemptLabel;
 
     if (isServerPlayerPlaySuperseded(playToken)) {
       return serverPlayerStatus();
@@ -6388,6 +6445,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     serverPlayer.lastExitCode = null;
     serverPlayer.lastFailedTrack = null;
     serverPlayer.volume = volume;
+    let launchSettled = false;
 
     processRef.stdout.on("data", (chunk) => {
       if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
@@ -6420,6 +6478,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     processRef.once("exit", (code) => {
       cleanupServerPlayerSocket(socketPath);
       const shouldAutoplayNext = code === 0 && !serverPlayer.isStopping;
+      const failedDuringLaunch = Boolean(code && !serverPlayer.isStopping && !launchSettled);
       if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
         console.log(
           `[server-player] mpv precedente chiuso per cambio traccia/comando (codice ${code ?? "n/d"})`
@@ -6447,11 +6506,18 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
           trackId: firstString(track?.id),
         });
         if (shouldSkipFailure) {
-          recordServerPlayerEvent("skip", `Traccia YouTube saltata automaticamente: ${firstString(track?.title, track?.id)}`, {
-            runId,
-            code,
-            trackId: firstString(track?.id),
-          });
+          recordServerPlayerEvent(
+            failedDuringLaunch ? "warn" : "skip",
+            failedDuringLaunch
+              ? `Tentativo YouTube fallito (${attemptLabel}), provo fallback se disponibile.`
+              : `Traccia YouTube saltata automaticamente: ${firstString(track?.title, track?.id)}`,
+            {
+              runId,
+              code,
+              trackId: firstString(track?.id),
+              profile: ytdlProfile.label,
+            }
+          );
         }
       } else {
         const completedTitle = firstString(track?.title, track?.name, "traccia");
@@ -6476,6 +6542,10 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
         serverPlayer.pausedAt = 0;
       }
 
+      if (failedDuringLaunch) {
+        return;
+      }
+
       const shouldSkipFailure = code && !serverPlayer.isStopping && isServerPlayerSkippablePlaybackFailure(serverPlayer.lastError, code, source);
       if (shouldAutoplayNext || shouldSkipFailure) {
         scheduleServerPlayerAutoplay(runId, {
@@ -6487,20 +6557,26 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
 
     try {
       await waitForServerPlayerReady(processRef, socketPath);
-      await waitForServerPlayerStable(processRef);
+      await waitForServerPlayerStable(
+        processRef,
+        serverPlayerNeedsYtdl(source) ? serverPlayerYoutubeStartStableMs : undefined
+      );
       if (isServerPlayerPlaySuperseded(playToken)) {
         stopServerPlayerProcess();
         return serverPlayerStatus();
       }
 
+      launchSettled = true;
       return serverPlayerStatus();
     } catch (error) {
       lastStartError = firstString(serverPlayer.lastError, error.message);
-      console.log(`[server-player] Tentativo audio fallito (${audioConfig.label}): ${lastStartError}`);
-      recordServerPlayerEvent("error", `Tentativo audio fallito (${audioConfig.label}): ${lastStartError}`, {
+      console.log(`[server-player] Tentativo audio fallito (${attemptLabel}): ${lastStartError}`);
+      recordServerPlayerEvent("error", `Tentativo audio fallito (${attemptLabel}): ${lastStartError}`, {
         runId,
+        profile: ytdlProfile.label,
       });
       stopServerPlayerProcess();
+    }
     }
   }
 

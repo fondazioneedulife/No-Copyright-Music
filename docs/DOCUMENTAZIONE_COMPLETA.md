@@ -652,6 +652,7 @@ Variabili principali:
 | `CLEARWAVE_AUDIO_PREFLIGHT_TIMEOUT_MS` | `2500` | Timeout preflight. |
 | `ALSA_CARD` | vuoto | Scheda ALSA preferita. |
 | `CLEARWAVE_YTDL_PATH` | `/usr/bin/yt-dlp` | Binario yt-dlp. |
+| `CLEARWAVE_YTDLP_DOWNLOAD_URL` | nightly yt-dlp | URL usato in build e all'avvio per aggiornare yt-dlp; default nightly per i fix YouTube piu' recenti. |
 | `CLEARWAVE_YTDL_FORMAT` | audio-only HLS first | Formato YouTube richiesto; preferisce HLS/m3u8 per ridurre i 403 sugli stream `googlevideo.com`. |
 | `CLEARWAVE_YTDL_JS_RUNTIME` | `deno:/usr/local/bin/deno` | Runtime JavaScript usato da yt-dlp per decifrare YouTube. |
 | `CLEARWAVE_YTDL_EXTRACTOR_ARGS` | `youtube:player_client=mweb` | Client extractor YouTube usato da yt-dlp quando il provider PO token e' attivo. |
@@ -659,6 +660,8 @@ Variabili principali:
 | `CLEARWAVE_YTDL_PO_TOKEN_CLIENT` | `mweb.gvs` | Contesto del PO token. Se il token contiene gia' `mweb.gvs+...`, ClearWave lo riconosce automaticamente. |
 | `CLEARWAVE_YTDL_BGUTIL_PROVIDER` | `1` | Avvia il provider PO token bgutil dentro il container ClearWave, senza secondo servizio Docker. |
 | `CLEARWAVE_YTDL_BGUTIL_PORT` | `4416` | Porta locale del provider PO token. |
+| `CLEARWAVE_YTDL_FALLBACK_PROFILES` | `1` | Se il primo profilo YouTube fallisce subito, prova `web_safari`/HLS e `tv` prima di saltare traccia. |
+| `CLEARWAVE_YOUTUBE_START_STABLE_MS` | `4500` | Tempo minimo di stabilita' per capire se uno stream YouTube e' partito davvero. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | vuoto | File cookie YouTube Netscape nel container. Se vuoto, ClearWave usa automaticamente `/app/data/youtube-cookies.txt` quando esiste. |
 | `CLEARWAVE_YTDL_COOKIE_PROBE_URL` | video pubblico | URL usato da `Test cookie YouTube` quando non ci sono tracce problematiche note. |
 | `CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS` | `14` | Giorni prima della scadenza cookie in cui mostrare il popup admin. |

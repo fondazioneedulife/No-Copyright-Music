@@ -354,7 +354,7 @@ Se durante il giro compaiono alcuni `timeout`, non archiviarli subito: su Raspbe
 | Socket `/tmp/clearwave-mpv-1.sock` senza `tentativo` | Player vecchio | Ricostruisci immagine o verifica che Docker usi la cartella giusta |
 | `Playback open error` / `Unknown error 524` | ALSA non apre quel device | Lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`, poi usa `aplay -l` |
 | `Requested format is not available` | Problema YouTube/formato, non device audio | Verifica `yt-dlp --version` e `CLEARWAVE_YTDL_FORMAT` |
-| `HTTP error 403` su `googlevideo.com` | YouTube rifiuta lo stream firmato dopo la risoluzione yt-dlp | Usa il container aggiornato con `player_client=mweb` e provider PO token bgutil attivo; se resta KO, sostituisci la traccia |
+| `HTTP error 403` su `googlevideo.com` | YouTube rifiuta lo stream firmato dopo la risoluzione yt-dlp | Usa il container aggiornato: deve mostrare `yt-dlp` nightly, `bgutil=on` e fallback `youtube/web-safari-hls`/`youtube/tv` quando `mweb` fallisce subito |
 | `No supported JavaScript runtime could be found` | yt-dlp non trova Deno per i controlli JavaScript YouTube | Ricostruisci l'immagine aggiornata e controlla `deno --version` nel container |
 | `Sign in to confirm your age` / `not a bot` | YouTube richiede una sessione autenticata | Carica un `cookies.txt` Netscape dal pannello Admin oppure salvalo in `data/youtube-cookies.txt`; il container lo usa come `/app/data/youtube-cookies.txt`. |
 | Audit YouTube fermato dopo pochi KO | Le prime tracce chiedono tutte login/anti-bot | Rigenera `cookies.txt` da YouTube loggato, caricalo di nuovo e rilancia l'audit. |

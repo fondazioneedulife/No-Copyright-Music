@@ -19,6 +19,7 @@ const DEFAULT_YTDL_JS_RUNTIME = process.env.CLEARWAVE_YTDL_JS_RUNTIME || "";
 const DEFAULT_YTDL_PO_TOKEN = process.env.CLEARWAVE_YTDL_PO_TOKEN || "";
 const DEFAULT_YTDL_PO_TOKEN_CLIENT = process.env.CLEARWAVE_YTDL_PO_TOKEN_CLIENT || "mweb.gvs";
 const DEFAULT_YTDL_BGUTIL_PROVIDER = process.env.CLEARWAVE_YTDL_BGUTIL_PROVIDER === "1";
+const DEFAULT_YTDL_FALLBACK_PROFILES = process.env.CLEARWAVE_YTDL_FALLBACK_PROFILES !== "0";
 const DEFAULT_YTDL_EXTRACTOR_ARGS = buildYtdlExtractorArgs(
   process.env.CLEARWAVE_YTDL_EXTRACTOR_ARGS || "",
   DEFAULT_YTDL_PO_TOKEN,
@@ -122,6 +123,7 @@ function parseArgs(argv) {
     ytdlPoToken: DEFAULT_YTDL_PO_TOKEN,
     ytdlPoTokenClient: DEFAULT_YTDL_PO_TOKEN_CLIENT,
     ytdlBgutilProvider: DEFAULT_YTDL_BGUTIL_PROVIDER,
+    ytdlFallbackProfiles: DEFAULT_YTDL_FALLBACK_PROFILES,
     ids: [],
     idSet: new Set(),
     verbose: false,
@@ -209,6 +211,9 @@ function parseArgs(argv) {
       case "ytdl-bgutil-provider":
         options.ytdlBgutilProvider = nextValue() !== "0";
         break;
+      case "ytdl-fallback-profiles":
+        options.ytdlFallbackProfiles = nextValue() !== "0";
+        break;
       case "ids":
         options.ids = nextValue()
           .split(",")
@@ -295,6 +300,7 @@ Opzioni utili:
   --ytdl-extractor-args youtube:player_client=mweb
   --ytdl-po-token mweb.gvs+TOKEN
   --ytdl-bgutil-provider 1
+  --ytdl-fallback-profiles 1
   --ids track-a,track-b
   --only-errors
   --fail-on-broken
@@ -628,7 +634,27 @@ async function checkWithYtDlp(source, options) {
 }
 
 async function checkWithMpv(source, sourceKind, options) {
-  const args = [
+  const profiles =
+    sourceKind === "youtube" && options.ytdlFallbackProfiles
+      ? [
+          { label: "youtube/default", format: options.ytdlFormat, extractorArgs: options.ytdlExtractorArgs },
+          {
+            label: "youtube/web-safari-hls",
+            format: "bestaudio[protocol^=m3u8]/best[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best",
+            extractorArgs: "youtube:player_client=web_safari",
+          },
+          {
+            label: "youtube/tv",
+            format: "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best",
+            extractorArgs: "youtube:player_client=tv",
+          },
+        ]
+      : [{ label: "default", format: options.ytdlFormat, extractorArgs: options.ytdlExtractorArgs }];
+
+  let lastResult = null;
+
+  for (const profile of profiles) {
+    const args = [
     "--no-video",
     "--force-window=no",
     "--idle=no",
@@ -637,47 +663,60 @@ async function checkWithMpv(source, sourceKind, options) {
     "--volume=0",
     `--length=${options.sampleSeconds}`,
     "--msg-level=all=warn,ytdl_hook=info",
-  ];
+    ];
 
-  if (sourceKind === "youtube") {
-    args.push("--ytdl=yes");
-    if (options.ytdlFormat) {
-      args.push(`--ytdl-format=${options.ytdlFormat}`);
+    if (sourceKind === "youtube") {
+      args.push("--ytdl=yes");
+      if (profile.format) {
+        args.push(`--ytdl-format=${profile.format}`);
+      }
+      if (options.ytdlPath) {
+        args.push(`--script-opts=ytdl_hook-ytdl_path=${options.ytdlPath}`);
+      }
+      const cookiesFile = ytdlCookiesFileIfAvailable(options);
+      const rawOptions = [];
+      if (options.ytdlJsRuntime) {
+        rawOptions.push(`js-runtimes=${options.ytdlJsRuntime}`);
+      }
+      if (profile.extractorArgs) {
+        rawOptions.push(`extractor-args=${profile.extractorArgs}`);
+      }
+      if (cookiesFile) {
+        rawOptions.push(`cookies=${cookiesFile}`);
+      }
+      if (rawOptions.length > 0) {
+        args.push(`--ytdl-raw-options=${rawOptions.join(",")}`);
+      }
+    } else {
+      args.push("--ytdl=no");
     }
-    if (options.ytdlPath) {
-      args.push(`--script-opts=ytdl_hook-ytdl_path=${options.ytdlPath}`);
+
+    args.push(source);
+    const result = await runCommand("mpv", args, options.timeoutMs);
+    const fallbackMessage =
+      result.ok || result.timedOut
+        ? ""
+        : `mpv terminato con codice ${result.code ?? "n/d"} senza dettagli aggiuntivi.`;
+    lastResult = {
+      ok: result.ok,
+      code: result.code,
+      durationMs: result.durationMs,
+      message: firstString(result.stderr, result.stdout, result.error, fallbackMessage),
+      timedOut: result.timedOut,
+      profile: profile.label,
+    };
+
+    if (lastResult.ok) {
+      return lastResult;
     }
-    const cookiesFile = ytdlCookiesFileIfAvailable(options);
-    const rawOptions = [];
-    if (options.ytdlJsRuntime) {
-      rawOptions.push(`js-runtimes=${options.ytdlJsRuntime}`);
+
+    const reason = classifyFailure(lastResult.message, lastResult.code, lastResult.timedOut, sourceKind);
+    if (!["youtube-stream-open-failed", "youtube-format", "youtube-error"].includes(reason)) {
+      return lastResult;
     }
-    if (options.ytdlExtractorArgs) {
-      rawOptions.push(`extractor-args=${options.ytdlExtractorArgs}`);
-    }
-    if (cookiesFile) {
-      rawOptions.push(`cookies=${cookiesFile}`);
-    }
-    if (rawOptions.length > 0) {
-      args.push(`--ytdl-raw-options=${rawOptions.join(",")}`);
-    }
-  } else {
-    args.push("--ytdl=no");
   }
 
-  args.push(source);
-  const result = await runCommand("mpv", args, options.timeoutMs);
-  const fallbackMessage =
-    result.ok || result.timedOut
-      ? ""
-      : `mpv terminato con codice ${result.code ?? "n/d"} senza dettagli aggiuntivi.`;
-  return {
-    ok: result.ok,
-    code: result.code,
-    durationMs: result.durationMs,
-    message: firstString(result.stderr, result.stdout, result.error, fallbackMessage),
-    timedOut: result.timedOut,
-  };
+  return lastResult;
 }
 
 function classifyFailure(message, code, timedOut, sourceKind) {
