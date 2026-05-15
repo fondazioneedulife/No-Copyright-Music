@@ -79,6 +79,18 @@ const serverPlayerYtdlCookieExpiryWarningDays = Math.max(
   1,
   Math.min(60, Number(process.env.CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS || 14) || 14)
 );
+const youtubeAudioCacheEnabled = process.env.CLEARWAVE_YOUTUBE_CACHE_ENABLED === "1";
+const youtubeAudioCacheOnPlay = process.env.CLEARWAVE_YOUTUBE_CACHE_ON_PLAY !== "0";
+const youtubeAudioCacheDir = path.join(AUDIO_DIR, "youtube-cache");
+const youtubeAudioCacheRequestPrefix = "/uploads/audio/youtube-cache";
+const youtubeAudioCacheFormat = firstString(process.env.CLEARWAVE_YOUTUBE_CACHE_FORMAT, serverPlayerYtdlFormat);
+const youtubeAudioCacheAudioFormat = firstString(process.env.CLEARWAVE_YOUTUBE_CACHE_AUDIO_FORMAT, "mp3")
+  .replace(/[^a-z0-9]/gi, "")
+  .toLowerCase() || "mp3";
+const youtubeAudioCacheTimeoutMs = Math.max(
+  60000,
+  Math.min(1800000, Number(process.env.CLEARWAVE_YOUTUBE_CACHE_TIMEOUT_MS || 600000) || 600000)
+);
 const serverPlayerMpvMsgLevel = String(process.env.CLEARWAVE_MPV_MSG_LEVEL || "all=warn,ytdl_hook=info").trim();
 const serverPlayerAudioPreflight = process.env.CLEARWAVE_AUDIO_PREFLIGHT !== "0";
 const serverPlayerAudioPreflightTimeoutMs = Math.max(
@@ -199,6 +211,7 @@ const serverPlayer = {
     updatedAt: "",
   },
 };
+const youtubeAudioCacheDownloads = new Map();
 const automaticAudioCheck = createAutomaticAudioCheckService({
   rootDir: ROOT_DIR,
   dataDir: DATA_DIR,
@@ -1063,6 +1076,7 @@ async function ensureStorage() {
   // Prepara cartelle e file runtime. Se le demo sono disattivate, il catalogo parte pulito.
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.mkdir(AUDIO_DIR, { recursive: true });
+  await fs.mkdir(youtubeAudioCacheDir, { recursive: true });
   await fs.mkdir(LICENSES_DIR, { recursive: true });
   ensureAuthDatabase();
 
@@ -5182,6 +5196,232 @@ function localAudioPathForTrack(track) {
   return resolveUploadPath(audioPath);
 }
 
+function youtubeVideoIdFromUrl(value) {
+  const raw = firstString(value);
+  if (!raw) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(raw);
+    const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    if (host === "youtu.be") {
+      return firstString(parsed.pathname.split("/").filter(Boolean)[0]);
+    }
+    if (host.endsWith("youtube.com")) {
+      return firstString(
+        parsed.searchParams.get("v"),
+        parsed.pathname.match(/\/(?:embed|shorts|live)\/([^/?#]+)/i)?.[1]
+      );
+    }
+  } catch {
+    // I vecchi import possono contenere frammenti non URL; sotto proviamo un match testuale.
+  }
+
+  return firstString(
+    raw.match(/[?&]v=([^&#]+)/i)?.[1],
+    raw.match(/youtu\.be\/([^/?#]+)/i)?.[1],
+    raw.match(/youtube\.com\/(?:embed|shorts|live)\/([^/?#]+)/i)?.[1]
+  );
+}
+
+function youtubeCacheVideoIdForTrack(track) {
+  return firstString(track?.youtubeVideoId, youtubeVideoIdFromUrl(track?.sourceUrl), youtubeVideoIdFromUrl(track?.embedPath));
+}
+
+function youtubeAudioCachePathsForTrack(track) {
+  const videoId = youtubeCacheVideoIdForTrack(track).replace(/[^a-z0-9_-]/gi, "");
+  if (!videoId) {
+    return null;
+  }
+
+  const fileName = `youtube-${videoId}.${youtubeAudioCacheAudioFormat}`;
+  return {
+    videoId,
+    requestPath: `${youtubeAudioCacheRequestPrefix}/${fileName}`,
+    localPath: path.join(youtubeAudioCacheDir, fileName),
+  };
+}
+
+function isYouTubeAudioCacheEligibleTrack(track) {
+  // Cache solo per catalogo whitelist: le playlist temporanee restano prova utente e non vengono archiviate.
+  const normalized = normalizeTrack(track || {});
+  return Boolean(
+    youtubeAudioCacheEnabled &&
+      youtubeAudioCacheOnPlay &&
+      firstString(normalized.externalProvider) === "youtube_curated" &&
+      youtubeCacheVideoIdForTrack(normalized)
+  );
+}
+
+function appendYtDlpPlaybackArgs(args, overrides = {}) {
+  if (serverPlayerYtdlJsRuntime) {
+    args.push("--js-runtimes", serverPlayerYtdlJsRuntime);
+  }
+
+  const extractorArgs = firstString(overrides.extractorArgs, serverPlayerYtdlExtractorArgs);
+  if (extractorArgs) {
+    args.push("--extractor-args", extractorArgs);
+  }
+
+  const cookiesFile = ytdlCookiesFileIfAvailable();
+  if (cookiesFile) {
+    args.push("--cookies", cookiesFile);
+  }
+
+  return args;
+}
+
+async function cleanupYouTubeCacheTempFiles(tempStem) {
+  try {
+    const names = await fs.readdir(youtubeAudioCacheDir);
+    await Promise.all(
+      names
+        .filter((name) => name.startsWith(tempStem))
+        .map((name) => fs.unlink(path.join(youtubeAudioCacheDir, name)).catch(() => {}))
+    );
+  } catch {
+    // La pulizia e' best effort: non deve bloccare la riproduzione.
+  }
+}
+
+async function persistYouTubeCachePath(track, cacheRequestPath) {
+  const trackId = firstString(track?.id);
+  const videoId = youtubeCacheVideoIdForTrack(track);
+  if (!trackId && !videoId) {
+    return;
+  }
+
+  const library = await readLibrary();
+  let changed = false;
+  const updatedAt = new Date().toISOString();
+  const updatedLibrary = library.map((item) => {
+    const sameTrack = (trackId && firstString(item.id) === trackId) || (videoId && youtubeCacheVideoIdForTrack(item) === videoId);
+    if (!sameTrack || firstString(item.audioPath) === cacheRequestPath) {
+      return item;
+    }
+
+    changed = true;
+    return {
+      ...item,
+      audioPath: cacheRequestPath,
+      audioOriginalName: path.basename(cacheRequestPath),
+      cacheProvider: "youtube",
+      cacheStatus: "ready",
+      cachedAt: updatedAt,
+      updatedAt,
+    };
+  });
+
+  if (changed) {
+    await writeLibrary(updatedLibrary);
+  }
+}
+
+async function downloadYouTubeAudioToCache(track, cachePaths) {
+  const youtubeUrl = canonicalYouTubePlaybackUrl(track);
+  if (!youtubeUrl) {
+    throw httpError(400, "Traccia YouTube senza URL originale valido per la cache.");
+  }
+
+  await fs.mkdir(youtubeAudioCacheDir, { recursive: true });
+  const tempStem = `.tmp-${cachePaths.videoId}-${process.pid}-${Date.now()}`;
+  const tempOutput = path.join(youtubeAudioCacheDir, `${tempStem}.%(ext)s`);
+  const args = [
+    "--no-playlist",
+    "--no-continue",
+    "--force-overwrites",
+    "--socket-timeout",
+    "30",
+    "-f",
+    youtubeAudioCacheFormat,
+    "-x",
+    "--audio-format",
+    youtubeAudioCacheAudioFormat,
+    "--audio-quality",
+    "5",
+    "-o",
+    tempOutput,
+  ];
+  appendYtDlpPlaybackArgs(args);
+  args.push(youtubeUrl);
+
+  recordServerPlayerEvent("cache", `Cache YouTube in corso: ${firstString(track.title, cachePaths.videoId)}`, {
+    trackId: firstString(track.id),
+    videoId: cachePaths.videoId,
+  });
+  const result = await diagnosticCommandResult(ytDlpCommand(), args, youtubeAudioCacheTimeoutMs);
+  if (!result.ok) {
+    await cleanupYouTubeCacheTempFiles(tempStem);
+    const message = serverPlayerFriendlyError(
+      firstString(result.stderr, result.stdout, result.error, `yt-dlp terminato con codice ${result.code ?? "n/d"}`)
+    );
+    throw httpError(502, `Cache YouTube non riuscita: ${message}`);
+  }
+
+  const expectedTempPath = path.join(youtubeAudioCacheDir, `${tempStem}.${youtubeAudioCacheAudioFormat}`);
+  let producedPath = expectedTempPath;
+  if (!fsSync.existsSync(producedPath)) {
+    const names = await fs.readdir(youtubeAudioCacheDir);
+    const producedName = names.find((name) => name.startsWith(`${tempStem}.`));
+    if (producedName) {
+      producedPath = path.join(youtubeAudioCacheDir, producedName);
+    }
+  }
+
+  if (!fsSync.existsSync(producedPath)) {
+    await cleanupYouTubeCacheTempFiles(tempStem);
+    throw httpError(502, "Cache YouTube non riuscita: yt-dlp non ha prodotto un file audio.");
+  }
+
+  await fs.rm(cachePaths.localPath, { force: true });
+  await fs.rename(producedPath, cachePaths.localPath);
+  await cleanupYouTubeCacheTempFiles(tempStem);
+  await persistYouTubeCachePath(track, cachePaths.requestPath);
+  recordServerPlayerEvent("cache", `Cache YouTube pronta: ${firstString(track.title, cachePaths.videoId)}`, {
+    trackId: firstString(track.id),
+    videoId: cachePaths.videoId,
+    path: cachePaths.requestPath,
+  });
+
+  return cachePaths;
+}
+
+async function ensureYouTubeAudioCachedForTrack(track) {
+  if (!isYouTubeAudioCacheEligibleTrack(track)) {
+    return null;
+  }
+
+  const cachePaths = youtubeAudioCachePathsForTrack(track);
+  if (!cachePaths) {
+    return null;
+  }
+
+  if (fsSync.existsSync(cachePaths.localPath)) {
+    await persistYouTubeCachePath(track, cachePaths.requestPath);
+    return cachePaths;
+  }
+
+  const existingDownload = youtubeAudioCacheDownloads.get(cachePaths.videoId);
+  if (existingDownload) {
+    return existingDownload;
+  }
+
+  const downloadPromise = downloadYouTubeAudioToCache(track, cachePaths)
+    .catch((error) => {
+      recordServerPlayerEvent("warn", serverPlayerFriendlyError(error.message || error), {
+        trackId: firstString(track.id),
+        videoId: cachePaths.videoId,
+      });
+      throw error;
+    })
+    .finally(() => {
+      youtubeAudioCacheDownloads.delete(cachePaths.videoId);
+    });
+  youtubeAudioCacheDownloads.set(cachePaths.videoId, downloadPromise);
+  return downloadPromise;
+}
+
 function serverPlayerSocketPath(runId = serverPlayer.runId || "main") {
   // Ogni avvio mpv ha un socket dedicato: cosi' un processo vecchio non scollega quello nuovo.
   const safeRunId = String(runId || "main").replace(/[^a-z0-9_-]/gi, "");
@@ -5267,6 +5507,13 @@ function serverPlayerStatus() {
     ytdlBgutilBaseUrl: serverPlayerYtdlBgutilBaseUrl,
     ytdlFallbackProfiles: serverPlayerYtdlFallbackProfiles,
     youtubeStartStableMs: serverPlayerYoutubeStartStableMs,
+    youtubeCache: {
+      enabled: youtubeAudioCacheEnabled,
+      onPlay: youtubeAudioCacheOnPlay,
+      audioFormat: youtubeAudioCacheAudioFormat,
+      timeoutMs: youtubeAudioCacheTimeoutMs,
+      pendingDownloads: youtubeAudioCacheDownloads.size,
+    },
     ytdlCookiesConfigured: ytdlCookiesConfigured(),
     ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable()),
     mpvMsgLevel: serverPlayerMpvMsgLevel,
@@ -5445,6 +5692,11 @@ async function buildServerDiagnostics() {
       ytdlBgutilBaseUrl: serverPlayerYtdlBgutilBaseUrl,
       ytdlFallbackProfiles: serverPlayerYtdlFallbackProfiles,
       youtubeStartStableMs: serverPlayerYoutubeStartStableMs,
+      youtubeCacheEnabled: youtubeAudioCacheEnabled,
+      youtubeCacheOnPlay: youtubeAudioCacheOnPlay,
+      youtubeCacheDir: youtubeAudioCacheDir,
+      youtubeCacheAudioFormat: youtubeAudioCacheAudioFormat,
+      youtubeCacheTimeoutMs: youtubeAudioCacheTimeoutMs,
       ytdlFormat: serverPlayerYtdlFormat,
       ytdlCookiesConfigured: cookies.configured,
       ytdlCookiesAvailable: cookies.available,
@@ -5529,6 +5781,16 @@ async function serverPlayerSourceForTrack(track) {
 
   const youtubeUrl = canonicalYouTubePlaybackUrl(normalized);
   if ((normalized.youtubeVideoId || isYouTubeWatchUrl(normalized.sourceUrl)) && youtubeUrl) {
+    try {
+      const cached = await ensureYouTubeAudioCachedForTrack(normalized);
+      if (cached?.localPath && fsSync.existsSync(cached.localPath)) {
+        return cached.localPath;
+      }
+    } catch (error) {
+      // Se YouTube rifiuta anche il download, non blocchiamo subito: il vecchio fallback live puo' ancora provare.
+      serverPlayer.lastError = serverPlayerFriendlyError(error.message || error).slice(0, 400);
+    }
+
     return youtubeUrl;
   }
 

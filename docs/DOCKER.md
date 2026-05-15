@@ -125,6 +125,7 @@ Poi puoi scegliere la scheda con `ALSA_CARD` oppure passare direttamente `CLEARW
 
 Se invece nei log compare `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato un formato riproducibile. L'immagine Docker installa `yt-dlp` aggiornato da `/usr/bin/yt-dlp` e il backend passa a `mpv` un formato audio-only tramite `CLEARWAVE_YTDL_FORMAT`.
 Se invece compare `HTTP error 403 Forbidden`, `[lavf] avformat_open_input() failed` o `Failed to open ... googlevideo.com`, YouTube ha dato uno stream firmato ma lo ha rifiutato quando `mpv` lo ha aperto. ClearWave usa `player_client=mweb`, avvia nello stesso container il provider PO token `bgutil-ytdlp-pot-provider` e, se il primo avvio fallisce subito, prova profili fallback `web_safari` e `tv` prima di saltare traccia. Nei log devi vedere `Avvio provider PO token bgutil...`, `bgutil=on` e, sui fallback, etichette come `youtube/web-safari-hls`.
+Per i brani YouTube whitelist del catalogo, la soluzione piu' stabile e' la cache locale: con `CLEARWAVE_YOUTUBE_CACHE_ENABLED=1` il primo play scarica l'audio in `uploads/audio/youtube-cache/` e aggiorna il catalogo. Dal secondo play `mpv` apre un file locale, quindi non dipende piu' dal link `googlevideo.com` temporaneo. Serve spazio su disco: controlla `df -h` se inizi a cacheare molte tracce.
 
 Docker puo' riusare la cache del layer `RUN curl ... yt-dlp`. Per questo il container prova anche ad aggiornare `/usr/bin/yt-dlp` ad ogni avvio quando `CLEARWAVE_UPDATE_YTDLP_ON_START=1`. Di default usa il canale nightly configurato da `CLEARWAVE_YTDLP_DOWNLOAD_URL`, per ricevere prima i fix YouTube/PO token. Nei log devi vedere:
 
@@ -225,6 +226,10 @@ Variabili principali:
 | `CLEARWAVE_YTDL_BGUTIL_PORT` | Porta locale del provider PO token, default `4416`. |
 | `CLEARWAVE_YTDL_FALLBACK_PROFILES` | Se `1`, prova profili YouTube alternativi quando `mweb` fallisce subito. |
 | `CLEARWAVE_YOUTUBE_START_STABLE_MS` | Millisecondi di stabilita' iniziale prima di considerare riuscito un avvio YouTube, default `12000`. |
+| `CLEARWAVE_YOUTUBE_CACHE_ENABLED` | Se `1`, abilita la cache locale dei brani YouTube whitelist in `uploads/audio/youtube-cache`. |
+| `CLEARWAVE_YOUTUBE_CACHE_ON_PLAY` | Se `1`, scarica/cachea automaticamente al primo play server-side. |
+| `CLEARWAVE_YOUTUBE_CACHE_AUDIO_FORMAT` | Formato locale della cache, default `mp3`. |
+| `CLEARWAVE_YOUTUBE_CACHE_TIMEOUT_MS` | Timeout download cache per traccia, default `600000` ms. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | File cookie YouTube Netscape dentro al container, opzionale per video che richiedono login/conferma eta. |
 | `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | Massimo di tracce YouTube/login ricontrollate dal pulsante admin in un giro, default `80`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | Modalita del controllo completo YouTube da Admin, default `metadata`. |

@@ -93,8 +93,9 @@ Non sostituire migliaia di video a mano. Se l'audit mostra tantissimi KO YouTube
 1. controlla prima `Cookie YouTube`, `yt-dlp` e `Deno/JS` nella diagnostica;
 2. usa `Test cookie YouTube`: fa una prova singola dal Raspberry con i cookie caricati;
 3. ricostruisci il container se manca Deno o compare `No supported JavaScript runtime`;
-4. rilancia `Verifica tutto YouTube`;
-5. sostituisci in blocco solo i KO residui confermati dal report finale.
+4. abilita la cache locale YouTube se vuoi stabilizzare i brani whitelist che passano da `yt-dlp`;
+5. rilancia `Verifica tutto YouTube`;
+6. sostituisci in blocco solo i KO residui confermati dal report finale.
 
 L'audit completo ha una protezione anti-report-sporco: se le prime tracce controllate sono tutte `youtube-age-or-login`, il backend ferma automaticamente il job. In quel caso il problema non sono migliaia di brani singoli, ma cookie YouTube non accettati o account bloccato da verifica anti-bot.
 Il controllo cookie distingue tre livelli: file presente, cookie di sessione dentro al file, e prova reale `yt-dlp` accettata da YouTube. Solo il terzo conferma che il Raspberry puo' riprodurre YouTube in quel momento.
@@ -154,7 +155,7 @@ Il JSON contiene:
 | `youtube-js-runtime` | `yt-dlp` non trova un runtime JavaScript per risolvere YouTube. | Ricostruisci Docker: l'immagine aggiornata installa Deno e usa `CLEARWAVE_YTDL_JS_RUNTIME`. |
 | `youtube-error` | `yt-dlp` e' uscito con errore generico su una traccia YouTube. | Leggi il messaggio nella UI o nel report: spesso indica login, rete o video non piu' disponibile. |
 | `youtube-expired-url` | Nel catalogo e' rimasto solo un URL `googlevideo.com`, cioe' uno stream firmato e temporaneo. | Reimporta il video YouTube originale o aggiungi `youtubeVideoId`; ClearWave non deve salvare questi URL come sorgente stabile. |
-| `youtube-stream-open-failed` | `yt-dlp` ha risolto il video, ma `mpv` non e' riuscito ad aprire lo stream `googlevideo.com` firmato (`403`, `Failed to open`, oppure `avformat_open_input`). | Controlla in diagnostica `PO token`: deve essere `Provider bgutil attivo` oppure token manuale. Poi rilancia il check; se resta KO in piu' report, sostituisci la traccia. |
+| `youtube-stream-open-failed` | `yt-dlp` ha risolto il video, ma `mpv` non e' riuscito ad aprire lo stream `googlevideo.com` firmato (`403`, `Failed to open`, oppure `avformat_open_input`). | Controlla in diagnostica `PO token`: deve essere `Provider bgutil attivo` oppure token manuale. Per brani whitelist abilita la cache locale (`CLEARWAVE_YOUTUBE_CACHE_ENABLED=1`), cosi' il play usa un file locale quando il download riesce. |
 | `exit-1` | Motivo generico presente nei report vecchi quando un comando usciva con codice 1 senza dettagli. | Rilancia il check aggiornato: le nuove righe mostrano il messaggio breve e classificano YouTube come `youtube-error` o `youtube-stream-open-failed`. |
 | `forbidden` | Stream vietato o URL firmato non piu' valido. | Per Jamendo controlla `JAMENDO_CLIENT_ID`; per altri provider reimporta. |
 | `missing-source` | La traccia non ha una sorgente audio reale. | Rimuovi o correggi la traccia. |

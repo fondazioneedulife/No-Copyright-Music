@@ -65,6 +65,7 @@ ClearWave non sostituisce una verifica legale finale. Il report licenze aiuta a 
 | Admin | Utenti, reset password, elimina utente, reset scan YouTube. |
 | Diagnostica | Runtime, mpv, yt-dlp, ALSA, preflight audio, ultimo errore ed eventi player. |
 | Audit audio | Check catalogo automatico, verifica completa YouTube, lista sostituzioni e auto-refresh UI. |
+| Cache YouTube | Cache locale Raspberry dei brani YouTube whitelist per evitare stream `googlevideo.com` instabili. |
 | Backup | Export JSON del catalogo e ripristino con copia automatica preventiva. |
 | Report | Export CSV e HTML licenze/fonti. |
 | Docker | Un solo container con backend, React, mpv, ffmpeg, yt-dlp. |
@@ -224,6 +225,9 @@ CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno
 CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=mweb
 CLEARWAVE_YTDL_BGUTIL_PROVIDER=1
 CLEARWAVE_YTDL_BGUTIL_PORT=4416
+CLEARWAVE_YOUTUBE_CACHE_ENABLED=1
+CLEARWAVE_YOUTUBE_CACHE_ON_PLAY=1
+CLEARWAVE_YOUTUBE_CACHE_AUDIO_FORMAT=mp3
 ```
 
 All'inizio lascia vuoti:
@@ -443,6 +447,7 @@ Il backend:
 Quando React avvia una traccia in modalita' `Pi`, manda anche `serverContext` con lista, repeat e shuffle.
 Se il browser viene chiuso, `mpv` resta attivo sul Raspberry e il backend puo' passare alla traccia successiva senza dipendere dal frontend.
 Se YouTube blocca un video con richiesta login/conferma eta, il backend non chiede cookie al Raspberry: registra l'errore, salta quella traccia e prova la successiva nella coda server.
+Per aumentare l'affidabilita' dei brani YouTube whitelist, abilita `CLEARWAVE_YOUTUBE_CACHE_ENABLED=1`: al primo play ClearWave scarica l'audio con `yt-dlp`, lo salva in `uploads/audio/youtube-cache/`, aggiorna `audioPath` nel catalogo e poi riproduce il file locale. Questo e' molto piu' stabile dello streaming live YouTube, ma richiede spazio sul Raspberry e va usato solo per brani con licenza/policy verificata.
 
 Il volume accetta sia formato normalizzato che percentuale:
 
@@ -662,6 +667,10 @@ Variabili principali:
 | `CLEARWAVE_YTDL_BGUTIL_PORT` | `4416` | Porta locale del provider PO token. |
 | `CLEARWAVE_YTDL_FALLBACK_PROFILES` | `1` | Se il primo profilo YouTube fallisce subito, prova `web_safari`/HLS e `tv` prima di saltare traccia. |
 | `CLEARWAVE_YOUTUBE_START_STABLE_MS` | `12000` | Tempo minimo di stabilita' per capire se uno stream YouTube e' partito davvero. |
+| `CLEARWAVE_YOUTUBE_CACHE_ENABLED` | `0` | Abilita cache locale dei brani YouTube whitelist. Lo script Raspberry la porta a `1`. |
+| `CLEARWAVE_YOUTUBE_CACHE_ON_PLAY` | `1` | Scarica/cachea al primo play server-side. |
+| `CLEARWAVE_YOUTUBE_CACHE_AUDIO_FORMAT` | `mp3` | Formato del file locale in `uploads/audio/youtube-cache/`. |
+| `CLEARWAVE_YOUTUBE_CACHE_TIMEOUT_MS` | `600000` | Timeout per scaricare una traccia in cache. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | vuoto | File cookie YouTube Netscape nel container. Se vuoto, ClearWave usa automaticamente `/app/data/youtube-cookies.txt` quando esiste. |
 | `CLEARWAVE_YTDL_COOKIE_PROBE_URL` | video pubblico | URL usato da `Test cookie YouTube` quando non ci sono tracce problematiche note. |
 | `CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS` | `14` | Giorni prima della scadenza cookie in cui mostrare il popup admin. |

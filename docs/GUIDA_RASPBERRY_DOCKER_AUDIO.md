@@ -198,10 +198,13 @@ CLEARWAVE_YTDL_PO_TOKEN=
 CLEARWAVE_YTDL_PO_TOKEN_CLIENT=mweb.gvs
 CLEARWAVE_YTDL_BGUTIL_PROVIDER=1
 CLEARWAVE_YTDL_BGUTIL_PORT=4416
+CLEARWAVE_YOUTUBE_CACHE_ENABLED=1
+CLEARWAVE_YOUTUBE_CACHE_ON_PLAY=1
+CLEARWAVE_YOUTUBE_CACHE_AUDIO_FORMAT=mp3
 CLEARWAVE_MPV_MSG_LEVEL=all=warn,ytdl_hook=info
 ```
 
-Motivo: ClearWave prova prima il default ALSA e scarta automaticamente i device che non si aprono.
+Motivo: ClearWave prova prima il default ALSA e scarta automaticamente i device che non si aprono. Per i brani YouTube whitelist, il primo play puo' salvare una copia audio in `uploads/audio/youtube-cache`: i play successivi usano il file locale invece dello stream `googlevideo.com`.
 
 Imposta `ALSA_CARD` o `CLEARWAVE_AUDIO_DEVICE` solo dopo aver letto `aplay -l` e `aplay -L`.
 
@@ -302,6 +305,45 @@ docker compose exec clearwave npm run check:tracks:probe
 Il controllo usa `mpv --ao=null`, quindi prova le sorgenti senza far uscire audio fisico. I report finiscono in `/app/data/reports/`; la guida completa e' in `docs/VERIFICA_CATALOGO_AUDIO.md`.
 Per farlo partire da solo, imposta `CLEARWAVE_AUDIO_CHECK_ENABLED=1` nel `.env`: il backend lo esegue in background e la diagnostica admin mostra l'ultimo esito.
 Se il check catalogo o `Verifica tutto YouTube` sono in corso, la pagina Admin si aggiorna da sola. Il banner `Auto-refresh attivo` conferma che React sta rileggendo stato e log; premi `Aggiorna diagnostica` solo se vuoi forzare un refresh manuale fuori dai job lunghi.
+
+## Cache locale YouTube per stabilita'
+
+Lo streaming live YouTube non puo' essere garantito al 100%: anche con cookie, Deno e PO token YouTube puo' rifiutare lo stream `googlevideo.com` con `403`. Per rendere stabile l'uso operativo, ClearWave puo' cacheare sul Raspberry i brani YouTube del catalogo whitelist.
+
+Con questa configurazione:
+
+```env
+CLEARWAVE_YOUTUBE_CACHE_ENABLED=1
+CLEARWAVE_YOUTUBE_CACHE_ON_PLAY=1
+CLEARWAVE_YOUTUBE_CACHE_AUDIO_FORMAT=mp3
+CLEARWAVE_YOUTUBE_CACHE_TIMEOUT_MS=600000
+```
+
+succede questo:
+
+1. al primo play di una traccia YouTube whitelist, il backend prova a scaricare l'audio con `yt-dlp`;
+2. il file viene salvato in `uploads/audio/youtube-cache/`;
+3. `data/library.json` viene aggiornato con `audioPath`;
+4. i play successivi partono da file locale, quindi non dipendono piu' dal link temporaneo `googlevideo.com`.
+
+La cache non viene applicata alle playlist temporanee utente, perche' quelle non fanno parte del catalogo commercial-safe. Prima di affidarti alla cache in produzione conserva sempre la prova licenza/policy del canale.
+
+Controlla lo spazio prima di cacheare tanti brani:
+
+```bash
+df -h
+du -hxd1 ~/No-Copyright-Music/uploads/audio | sort -h
+```
+
+Se lo spazio scende troppo, cancella solo cache YouTube dopo avere fermato ClearWave:
+
+```bash
+docker compose stop clearwave
+rm -rf ~/No-Copyright-Music/uploads/audio/youtube-cache
+docker compose up -d
+```
+
+La cancellazione della cache non rimuove i brani dal catalogo, ma al play successivo ClearWave dovra' riscaricarli.
 
 ## Cookie YouTube automatici da PC Windows
 
