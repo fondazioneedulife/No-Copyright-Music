@@ -154,6 +154,8 @@ function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient, 
     extractorArgs = extractorArgs.replace(/player_client=web_safari/i, `player_client=${poTokenClient}`);
   }
 
+  extractorArgs = appendBgutilExtractorArgs(extractorArgs, useBgutilProvider);
+
   if (!token || /po_token=/i.test(extractorArgs)) {
     return extractorArgs;
   }
@@ -165,12 +167,37 @@ function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient, 
   return `${extractorArgs},youtube:player_client=${poTokenClient};po_token=${token}`;
 }
 
+function appendBgutilExtractorArgs(rawExtractorArgs, useBgutilProvider = false) {
+  const extractorArgs = String(rawExtractorArgs || "").trim();
+  if (!useBgutilProvider || !serverPlayerYtdlBgutilBaseUrl || /youtubepot-bgutilhttp:/i.test(extractorArgs)) {
+    return extractorArgs;
+  }
+
+  // yt-dlp usa una chiave extractor separata per dire al plugin bgutil dove chiedere i PO token GVS.
+  const bgutilArgs = `youtubepot-bgutilhttp:base_url=${serverPlayerYtdlBgutilBaseUrl}`;
+  return extractorArgs ? `${extractorArgs},${bgutilArgs}` : bgutilArgs;
+}
+
 function redactYtdlSecrets(value) {
   return String(value || "").replace(/(po_token=)([^,\s]+)/gi, "$1***");
 }
 
 function redactYtdlArgs(args) {
   return args.map((arg) => redactYtdlSecrets(arg));
+}
+
+function mpvRawOptionPair(key, value) {
+  return `${key}=${mpvSuboptionValue(value)}`;
+}
+
+function mpvSuboptionValue(value) {
+  const text = String(value || "");
+  if (!/[,\s\[\]'"%]/.test(text)) {
+    return text;
+  }
+
+  // mpv interpreta "," come separatore delle key/value list: il prefisso %n% passa il valore intatto.
+  return `%${Buffer.byteLength(text, "utf8")}%${text}`;
 }
 
 const serverPlayer = {
@@ -5797,7 +5824,12 @@ function serverPlayerYtdlConfig(source, overrides = {}) {
 
   const args = ["--ytdl=yes"];
   const ytdlFormat = firstString(overrides.format, serverPlayerYtdlFormat);
-  const ytdlExtractorArgs = firstString(overrides.extractorArgs, serverPlayerYtdlExtractorArgs);
+  const ytdlExtractorArgs = buildYtdlExtractorArgs(
+    firstString(overrides.extractorArgs, serverPlayerYtdlExtractorArgs),
+    serverPlayerYtdlPoToken,
+    serverPlayerYtdlPoTokenClient,
+    serverPlayerYtdlBgutilProvider
+  );
   if (ytdlFormat) {
     args.push(`--ytdl-format=${ytdlFormat}`);
   }
@@ -5809,13 +5841,13 @@ function serverPlayerYtdlConfig(source, overrides = {}) {
   const cookiesFile = ytdlCookiesFileIfAvailable();
   const rawOptions = [];
   if (serverPlayerYtdlJsRuntime) {
-    rawOptions.push(`js-runtimes=${serverPlayerYtdlJsRuntime}`);
+    rawOptions.push(mpvRawOptionPair("js-runtimes", serverPlayerYtdlJsRuntime));
   }
   if (ytdlExtractorArgs) {
-    rawOptions.push(`extractor-args=${ytdlExtractorArgs}`);
+    rawOptions.push(mpvRawOptionPair("extractor-args", ytdlExtractorArgs));
   }
   if (cookiesFile) {
-    rawOptions.push(`cookies=${cookiesFile}`);
+    rawOptions.push(mpvRawOptionPair("cookies", cookiesFile));
   }
   if (rawOptions.length > 0) {
     args.push(`--ytdl-raw-options=${rawOptions.join(",")}`);
@@ -5839,6 +5871,13 @@ function serverPlayerYtdlPlaybackProfiles(source) {
   if (serverPlayerYtdlFallbackProfiles) {
     profiles.push(
       {
+        label: "youtube/tv",
+        args: serverPlayerYtdlConfig(source, {
+          extractorArgs: "youtube:player_client=tv",
+          format: "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best",
+        }),
+      },
+      {
         label: "youtube/web-safari-hls",
         args: serverPlayerYtdlConfig(source, {
           extractorArgs: "youtube:player_client=web_safari",
@@ -5846,9 +5885,9 @@ function serverPlayerYtdlPlaybackProfiles(source) {
         }),
       },
       {
-        label: "youtube/tv",
+        label: "youtube/web-embedded",
         args: serverPlayerYtdlConfig(source, {
-          extractorArgs: "youtube:player_client=tv",
+          extractorArgs: "youtube:player_client=web_embedded",
           format: "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best",
         }),
       }
@@ -7305,7 +7344,7 @@ if (require.main === module) {
         console.log(
           `[server-player] Stream YouTube: extractor=${redactYtdlSecrets(serverPlayerYtdlExtractorArgs)}, poToken=${
             serverPlayerYtdlPoToken ? `on/${serverPlayerYtdlPoTokenContext}` : "off"
-          }, bgutil=${serverPlayerYtdlBgutilProvider ? "on" : "off"}`
+          }, bgutil=${serverPlayerYtdlBgutilProvider ? `on/${serverPlayerYtdlBgutilBaseUrl}` : "off"}`
         );
 
         if (process.env.CLEARWAVE_AUTO_EXPAND === "1") {

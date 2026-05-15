@@ -225,6 +225,7 @@ CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno
 CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=mweb
 CLEARWAVE_YTDL_BGUTIL_PROVIDER=1
 CLEARWAVE_YTDL_BGUTIL_PORT=4416
+CLEARWAVE_YTDL_BGUTIL_BASE_URL=http://127.0.0.1:4416
 CLEARWAVE_YOUTUBE_CACHE_ENABLED=1
 CLEARWAVE_YOUTUBE_CACHE_ON_PLAY=1
 CLEARWAVE_YOUTUBE_CACHE_AUDIO_FORMAT=mp3
@@ -665,7 +666,8 @@ Variabili principali:
 | `CLEARWAVE_YTDL_PO_TOKEN_CLIENT` | `mweb.gvs` | Contesto del PO token. Se il token contiene gia' `mweb.gvs+...`, ClearWave lo riconosce automaticamente. |
 | `CLEARWAVE_YTDL_BGUTIL_PROVIDER` | `1` | Avvia il provider PO token bgutil dentro il container ClearWave, senza secondo servizio Docker. |
 | `CLEARWAVE_YTDL_BGUTIL_PORT` | `4416` | Porta locale del provider PO token. |
-| `CLEARWAVE_YTDL_FALLBACK_PROFILES` | `1` | Se il primo profilo YouTube fallisce subito, prova `web_safari`/HLS e `tv` prima di saltare traccia. |
+| `CLEARWAVE_YTDL_BGUTIL_BASE_URL` | `http://127.0.0.1:4416` | URL locale del provider bgutil HTTP passato a `yt-dlp` negli `extractor-args`. |
+| `CLEARWAVE_YTDL_FALLBACK_PROFILES` | `1` | Se il primo profilo YouTube fallisce subito, prova `tv`, `web_safari`/HLS e `web_embedded` prima di saltare traccia. |
 | `CLEARWAVE_YOUTUBE_START_STABLE_MS` | `12000` | Tempo minimo di stabilita' per capire se uno stream YouTube e' partito davvero. |
 | `CLEARWAVE_YOUTUBE_CACHE_ENABLED` | `0` | Abilita cache locale dei brani YouTube whitelist. Lo script Raspberry la porta a `1`. |
 | `CLEARWAVE_YOUTUBE_CACHE_ON_PLAY` | `1` | Scarica/cachea al primo play server-side. |

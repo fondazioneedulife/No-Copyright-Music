@@ -102,6 +102,7 @@ CLEARWAVE_YTDL_PO_TOKEN=
 CLEARWAVE_YTDL_PO_TOKEN_CLIENT=mweb.gvs
 CLEARWAVE_YTDL_BGUTIL_PROVIDER=1
 CLEARWAVE_YTDL_BGUTIL_PORT=4416
+CLEARWAVE_YTDL_BGUTIL_BASE_URL=http://127.0.0.1:4416
 ```
 
 Poi apri l'app da un altro dispositivo nella rete usando l'IP del Raspberry:
@@ -124,7 +125,7 @@ docker compose exec clearwave aplay -L
 Poi puoi scegliere la scheda con `ALSA_CARD` oppure passare direttamente `CLEARWAVE_AUDIO_DEVICE` nel file `.env`. Preferisci `alsa/sysdefault:CARD=1` o `alsa/default`; `alsa/plughw:1,0` resta supportato ma puo' fallire se il device e' gia' occupato.
 
 Se invece nei log compare `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato un formato riproducibile. L'immagine Docker installa `yt-dlp` aggiornato da `/usr/bin/yt-dlp` e il backend passa a `mpv` un formato audio-only tramite `CLEARWAVE_YTDL_FORMAT`.
-Se invece compare `HTTP error 403 Forbidden`, `[lavf] avformat_open_input() failed` o `Failed to open ... googlevideo.com`, YouTube ha dato uno stream firmato ma lo ha rifiutato quando `mpv` lo ha aperto. ClearWave usa `player_client=mweb`, avvia nello stesso container il provider PO token `bgutil-ytdlp-pot-provider` e, se il primo avvio fallisce subito, prova profili fallback `web_safari` e `tv` prima di saltare traccia. Nei log devi vedere `Avvio provider PO token bgutil...`, `bgutil=on` e, sui fallback, etichette come `youtube/web-safari-hls`.
+Se invece compare `HTTP error 403 Forbidden`, `[lavf] avformat_open_input() failed` o `Failed to open ... googlevideo.com`, YouTube ha dato uno stream firmato ma lo ha rifiutato quando `mpv` lo ha aperto. ClearWave usa `player_client=mweb`, avvia nello stesso container il provider PO token `bgutil-ytdlp-pot-provider` e passa esplicitamente a `yt-dlp` `youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416`. Se il primo avvio fallisce subito, prova prima `youtube/tv`, poi `youtube/web-safari-hls` e infine `youtube/web-embedded` prima di saltare traccia. Nei log devi vedere `Avvio provider PO token bgutil...`, `bgutil=on/http://127.0.0.1:4416` e le etichette dei fallback.
 Per i brani YouTube whitelist del catalogo, la soluzione piu' stabile e' la cache locale: con `CLEARWAVE_YOUTUBE_CACHE_ENABLED=1` il primo play scarica l'audio in `uploads/audio/youtube-cache/` e aggiorna il catalogo. Dal secondo play `mpv` apre un file locale, quindi non dipende piu' dal link `googlevideo.com` temporaneo. Serve spazio su disco: controlla `df -h` se inizi a cacheare molte tracce.
 
 Docker puo' riusare la cache del layer `RUN curl ... yt-dlp`. Per questo il container prova anche ad aggiornare `/usr/bin/yt-dlp` ad ogni avvio quando `CLEARWAVE_UPDATE_YTDLP_ON_START=1`. Di default usa il canale nightly configurato da `CLEARWAVE_YTDLP_DOWNLOAD_URL`, per ricevere prima i fix YouTube/PO token. Nei log devi vedere:
@@ -224,6 +225,7 @@ Variabili principali:
 | `CLEARWAVE_YTDL_PO_TOKEN_CLIENT` | Contesto del PO token, default `mweb.gvs`. Se `CLEARWAVE_YTDL_PO_TOKEN` contiene gia' `mweb.gvs+...`, questo valore non serve. |
 | `CLEARWAVE_YTDL_BGUTIL_PROVIDER` | Se `1`, avvia il provider PO token bgutil dentro lo stesso container ClearWave. |
 | `CLEARWAVE_YTDL_BGUTIL_PORT` | Porta locale del provider PO token, default `4416`. |
+| `CLEARWAVE_YTDL_BGUTIL_BASE_URL` | URL locale passato a `yt-dlp` per il provider bgutil HTTP, default `http://127.0.0.1:4416`. |
 | `CLEARWAVE_YTDL_FALLBACK_PROFILES` | Se `1`, prova profili YouTube alternativi quando `mweb` fallisce subito. |
 | `CLEARWAVE_YOUTUBE_START_STABLE_MS` | Millisecondi di stabilita' iniziale prima di considerare riuscito un avvio YouTube, default `12000`. |
 | `CLEARWAVE_YOUTUBE_CACHE_ENABLED` | Se `1`, abilita la cache locale dei brani YouTube whitelist in `uploads/audio/youtube-cache`. |

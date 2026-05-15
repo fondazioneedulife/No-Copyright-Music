@@ -19,6 +19,8 @@ const DEFAULT_YTDL_JS_RUNTIME = process.env.CLEARWAVE_YTDL_JS_RUNTIME || "";
 const DEFAULT_YTDL_PO_TOKEN = process.env.CLEARWAVE_YTDL_PO_TOKEN || "";
 const DEFAULT_YTDL_PO_TOKEN_CLIENT = process.env.CLEARWAVE_YTDL_PO_TOKEN_CLIENT || "mweb.gvs";
 const DEFAULT_YTDL_BGUTIL_PROVIDER = process.env.CLEARWAVE_YTDL_BGUTIL_PROVIDER === "1";
+const DEFAULT_YTDL_BGUTIL_BASE_URL =
+  process.env.CLEARWAVE_YTDL_BGUTIL_BASE_URL || `http://127.0.0.1:${process.env.CLEARWAVE_YTDL_BGUTIL_PORT || 4416}`;
 const DEFAULT_YTDL_FALLBACK_PROFILES = process.env.CLEARWAVE_YTDL_FALLBACK_PROFILES !== "0";
 const DEFAULT_YTDL_EXTRACTOR_ARGS = buildYtdlExtractorArgs(
   process.env.CLEARWAVE_YTDL_EXTRACTOR_ARGS || "",
@@ -66,6 +68,8 @@ function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient, 
     extractorArgs = extractorArgs.replace(/player_client=web_safari/i, `player_client=${poTokenClient}`);
   }
 
+  extractorArgs = appendBgutilExtractorArgs(extractorArgs, useBgutilProvider);
+
   if (!token || /po_token=/i.test(extractorArgs)) {
     return extractorArgs;
   }
@@ -77,8 +81,31 @@ function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient, 
   return `${extractorArgs},youtube:player_client=${poTokenClient};po_token=${token}`;
 }
 
+function appendBgutilExtractorArgs(rawExtractorArgs, useBgutilProvider = false) {
+  const extractorArgs = String(rawExtractorArgs || "").trim();
+  if (!useBgutilProvider || !DEFAULT_YTDL_BGUTIL_BASE_URL || /youtubepot-bgutilhttp:/i.test(extractorArgs)) {
+    return extractorArgs;
+  }
+
+  const bgutilArgs = `youtubepot-bgutilhttp:base_url=${DEFAULT_YTDL_BGUTIL_BASE_URL}`;
+  return extractorArgs ? `${extractorArgs},${bgutilArgs}` : bgutilArgs;
+}
+
 function redactYtdlSecrets(value) {
   return String(value || "").replace(/(po_token=)([^,\s]+)/gi, "$1***");
+}
+
+function mpvRawOptionPair(key, value) {
+  return `${key}=${mpvSuboptionValue(value)}`;
+}
+
+function mpvSuboptionValue(value) {
+  const text = String(value || "");
+  if (!/[,\s\[\]'"%]/.test(text)) {
+    return text;
+  }
+
+  return `%${Buffer.byteLength(text, "utf8")}%${text}`;
 }
 
 function firstString(...values) {
@@ -639,14 +666,19 @@ async function checkWithMpv(source, sourceKind, options) {
       ? [
           { label: "youtube/default", format: options.ytdlFormat, extractorArgs: options.ytdlExtractorArgs },
           {
+            label: "youtube/tv",
+            format: "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best",
+            extractorArgs: "youtube:player_client=tv",
+          },
+          {
             label: "youtube/web-safari-hls",
             format: "bestaudio[protocol^=m3u8]/best[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best",
             extractorArgs: "youtube:player_client=web_safari",
           },
           {
-            label: "youtube/tv",
+            label: "youtube/web-embedded",
             format: "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best",
-            extractorArgs: "youtube:player_client=tv",
+            extractorArgs: "youtube:player_client=web_embedded",
           },
         ]
       : [{ label: "default", format: options.ytdlFormat, extractorArgs: options.ytdlExtractorArgs }];
@@ -676,13 +708,19 @@ async function checkWithMpv(source, sourceKind, options) {
       const cookiesFile = ytdlCookiesFileIfAvailable(options);
       const rawOptions = [];
       if (options.ytdlJsRuntime) {
-        rawOptions.push(`js-runtimes=${options.ytdlJsRuntime}`);
+        rawOptions.push(mpvRawOptionPair("js-runtimes", options.ytdlJsRuntime));
       }
-      if (profile.extractorArgs) {
-        rawOptions.push(`extractor-args=${profile.extractorArgs}`);
+      const profileExtractorArgs = buildYtdlExtractorArgs(
+        profile.extractorArgs,
+        options.ytdlPoToken,
+        options.ytdlPoTokenClient,
+        options.ytdlBgutilProvider
+      );
+      if (profileExtractorArgs) {
+        rawOptions.push(mpvRawOptionPair("extractor-args", profileExtractorArgs));
       }
       if (cookiesFile) {
-        rawOptions.push(`cookies=${cookiesFile}`);
+        rawOptions.push(mpvRawOptionPair("cookies", cookiesFile));
       }
       if (rawOptions.length > 0) {
         args.push(`--ytdl-raw-options=${rawOptions.join(",")}`);

@@ -60,6 +60,7 @@ npm start
 | `CLEARWAVE_YTDL_PO_TOKEN_CLIENT` | `server.js`, `tools/check-library-audio.js` | Contesto del PO token, default `mweb.gvs`; se il token contiene gia' `mweb.gvs+...`, ClearWave lo usa cosi'. |
 | `CLEARWAVE_YTDL_BGUTIL_PROVIDER` | Docker, `server.js`, `tools/check-library-audio.js` | Se `1`, avvia e usa il provider PO token bgutil nello stesso container per ridurre i `403` YouTube/GVS. |
 | `CLEARWAVE_YTDL_BGUTIL_PORT` | Docker, `server.js` | Porta locale del provider bgutil, default `4416`. |
+| `CLEARWAVE_YTDL_BGUTIL_BASE_URL` | Docker, `server.js`, `tools/check-library-audio.js` | URL locale del provider bgutil HTTP passato esplicitamente a `yt-dlp`, default `http://127.0.0.1:4416`. |
 | `CLEARWAVE_YTDL_FALLBACK_PROFILES` | `server.js` | Se `1`, prova profili YouTube alternativi quando il profilo principale cade subito con errore stream. |
 | `CLEARWAVE_YOUTUBE_START_STABLE_MS` | `server.js` | Millisecondi di stabilita' iniziale prima di considerare riuscito un avvio YouTube, default `12000`. |
 | `CLEARWAVE_YTDL_COOKIE_PROBE_URL` | `server.js` | Video pubblico usato dal pulsante admin `Test cookie YouTube` per verificare se i cookie sono accettati dal Raspberry. |

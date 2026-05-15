@@ -66,6 +66,7 @@ CLEARWAVE_YTDL_FORMAT=bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudi
 CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=mweb
 CLEARWAVE_YTDL_BGUTIL_PROVIDER=1
 CLEARWAVE_YTDL_BGUTIL_PORT=4416
+CLEARWAVE_YTDL_BGUTIL_BASE_URL=http://127.0.0.1:4416
 ```
 
 All'inizio lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`. Se la diagnostica mostra un device stabile, puoi fissarlo dopo.
