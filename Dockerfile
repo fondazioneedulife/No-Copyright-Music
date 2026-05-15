@@ -64,8 +64,8 @@ RUN set -eux; \
   tar -xzf /tmp/bgutil-ytdlp-pot-provider.tar.gz -C /opt; \
   mv "/opt/bgutil-ytdlp-pot-provider-${CLEARWAVE_YTDL_BGUTIL_VERSION}" /opt/bgutil-ytdlp-pot-provider; \
   cd /opt/bgutil-ytdlp-pot-provider/server; \
-  npm ci; \
-  npx tsc; \
+  npm ci --include=dev; \
+  if [ -x ./node_modules/.bin/tsc ]; then ./node_modules/.bin/tsc; else npx --yes --package typescript@5.9.3 tsc; fi; \
   npm prune --omit=dev; \
   rm -f /tmp/bgutil-ytdlp-pot-provider.tar.gz
 
