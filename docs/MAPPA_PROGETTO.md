@@ -48,6 +48,7 @@ Moduli backend estratti:
 | `lib/auth-service.js` | SQLite utenti, hash password, token sessione, ruoli admin/user e cambio password. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione server-side di `GET /api/tracks`. |
 | `lib/youtube-cache-service.js` | Cache locale dei brani YouTube whitelist: scarica audio con `yt-dlp`, salva in `uploads/audio/youtube-cache` e aggiorna `audioPath` nel catalogo. |
+| `lib/ytdl-options.js` | Costruisce opzioni `yt-dlp`/`mpv` condivise da backend e audit catalogo: PO token, bgutil, escaping `--ytdl-raw-options` e mascheramento segreti. |
 
 ## UI legacy
 

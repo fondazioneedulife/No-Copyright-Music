@@ -43,6 +43,60 @@ export function normalizeSearch(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+export function clampVolumeLevel(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 0.75;
+  }
+
+  return Math.max(0, Math.min(1, numeric));
+}
+
+export function compactPlayerNotice(message) {
+  const text = String(message || "").trim();
+  if (!text) {
+    return "";
+  }
+
+  if (/youtube.*(?:login|eta|age|bot)|cookie youtube|sign in to confirm|not a bot/i.test(text)) {
+    return "YouTube bloccata: traccia saltata. Vedi Admin.";
+  }
+
+  return text.length > 96 ? `${text.slice(0, 93).trim()}...` : text;
+}
+
+export function downloadBlob({ blob, filename }) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+export function playerConnectionMessage(error, fallback) {
+  const message = error?.message || "";
+  if (/backend.*non raggiungibile/i.test(message)) {
+    return "Connessione UI/backend momentaneamente persa. Se il Raspberry sta gia' suonando, la musica continua.";
+  }
+
+  return message || fallback;
+}
+
+export function formatCookieExpiryDate(value) {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) {
+    return "Scadenza non rilevata";
+  }
+
+  return new Intl.DateTimeFormat("it-IT", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
 export function trackMatchesSearch(track, query) {
   if (!query) {
     return true;

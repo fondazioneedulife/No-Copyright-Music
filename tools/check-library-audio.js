@@ -3,6 +3,13 @@ const fs = require("node:fs/promises");
 const fsSync = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
+const {
+  buildYtdlExtractorArgs,
+  mpvRawOptionPair,
+  normalizedYtdlPoToken,
+  redactYtdlSecrets,
+  ytdlPoTokenClientContext,
+} = require("../lib/ytdl-options");
 
 const ROOT_DIR = path.resolve(__dirname, "..");
 const DATA_DIR = process.env.CLEARWAVE_DATA_DIR || path.join(ROOT_DIR, "data");
@@ -26,87 +33,11 @@ const DEFAULT_YTDL_EXTRACTOR_ARGS = buildYtdlExtractorArgs(
   process.env.CLEARWAVE_YTDL_EXTRACTOR_ARGS || "",
   DEFAULT_YTDL_PO_TOKEN,
   DEFAULT_YTDL_PO_TOKEN_CLIENT,
-  DEFAULT_YTDL_BGUTIL_PROVIDER
+  {
+    bgutilBaseUrl: DEFAULT_YTDL_BGUTIL_BASE_URL,
+    useBgutilProvider: DEFAULT_YTDL_BGUTIL_PROVIDER,
+  }
 );
-
-function ytdlPoTokenClientContext(rawValue) {
-  const value = String(rawValue || "").trim();
-  if (!value) {
-    return "mweb.gvs";
-  }
-  return value.includes("+") ? value.split("+")[0] : value;
-}
-
-function ytdlPoTokenPlayerClient(rawValue) {
-  const context = ytdlPoTokenClientContext(rawValue);
-  return context.split(".")[0] || "mweb";
-}
-
-function normalizedYtdlPoToken(rawToken, rawClientContext) {
-  const token = String(rawToken || "").trim();
-  if (!token) {
-    return "";
-  }
-  if (/^[a-z0-9_]+(?:\.[a-z0-9_]+)?\+/i.test(token)) {
-    return token;
-  }
-  return `${ytdlPoTokenClientContext(rawClientContext)}+${token}`;
-}
-
-function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient, useBgutilProvider = false) {
-  const token = normalizedYtdlPoToken(rawPoToken, rawPoTokenClient);
-  const legacyDefault = "youtube:player_client=web_safari";
-  const poTokenClient = ytdlPoTokenPlayerClient(token || rawPoTokenClient);
-  const shouldUseMweb = Boolean(token || useBgutilProvider);
-  let extractorArgs = String(rawExtractorArgs || "").trim();
-
-  if (!extractorArgs) {
-    extractorArgs = shouldUseMweb ? `youtube:player_client=${poTokenClient}` : legacyDefault;
-  } else if (shouldUseMweb && extractorArgs === legacyDefault) {
-    extractorArgs = `youtube:player_client=${poTokenClient}`;
-  } else if (shouldUseMweb && /youtube:[^,\s]*player_client=web_safari/i.test(extractorArgs)) {
-    extractorArgs = extractorArgs.replace(/player_client=web_safari/i, `player_client=${poTokenClient}`);
-  }
-
-  extractorArgs = appendBgutilExtractorArgs(extractorArgs, useBgutilProvider);
-
-  if (!token || /po_token=/i.test(extractorArgs)) {
-    return extractorArgs;
-  }
-
-  if (/youtube:[^,\s]*/i.test(extractorArgs)) {
-    return extractorArgs.replace(/youtube:[^,\s]*/i, (value) => `${value};po_token=${token}`);
-  }
-
-  return `${extractorArgs},youtube:player_client=${poTokenClient};po_token=${token}`;
-}
-
-function appendBgutilExtractorArgs(rawExtractorArgs, useBgutilProvider = false) {
-  const extractorArgs = String(rawExtractorArgs || "").trim();
-  if (!useBgutilProvider || !DEFAULT_YTDL_BGUTIL_BASE_URL || /youtubepot-bgutilhttp:/i.test(extractorArgs)) {
-    return extractorArgs;
-  }
-
-  const bgutilArgs = `youtubepot-bgutilhttp:base_url=${DEFAULT_YTDL_BGUTIL_BASE_URL}`;
-  return extractorArgs ? `${extractorArgs},${bgutilArgs}` : bgutilArgs;
-}
-
-function redactYtdlSecrets(value) {
-  return String(value || "").replace(/(po_token=)([^,\s]+)/gi, "$1***");
-}
-
-function mpvRawOptionPair(key, value) {
-  return `${key}=${mpvSuboptionValue(value)}`;
-}
-
-function mpvSuboptionValue(value) {
-  const text = String(value || "");
-  if (!/[,\s\[\]'"%]/.test(text)) {
-    return text;
-  }
-
-  return `%${Buffer.byteLength(text, "utf8")}%${text}`;
-}
 
 function firstString(...values) {
   for (const value of values) {
@@ -150,6 +81,7 @@ function parseArgs(argv) {
     ytdlPoToken: DEFAULT_YTDL_PO_TOKEN,
     ytdlPoTokenClient: DEFAULT_YTDL_PO_TOKEN_CLIENT,
     ytdlBgutilProvider: DEFAULT_YTDL_BGUTIL_PROVIDER,
+    ytdlBgutilBaseUrl: DEFAULT_YTDL_BGUTIL_BASE_URL,
     ytdlFallbackProfiles: DEFAULT_YTDL_FALLBACK_PROFILES,
     ids: [],
     idSet: new Set(),
@@ -238,6 +170,9 @@ function parseArgs(argv) {
       case "ytdl-bgutil-provider":
         options.ytdlBgutilProvider = nextValue() !== "0";
         break;
+      case "ytdl-bgutil-base-url":
+        options.ytdlBgutilBaseUrl = nextValue();
+        break;
       case "ytdl-fallback-profiles":
         options.ytdlFallbackProfiles = nextValue() !== "0";
         break;
@@ -292,7 +227,10 @@ function parseArgs(argv) {
     options.ytdlExtractorArgs,
     options.ytdlPoToken,
     options.ytdlPoTokenClient,
-    options.ytdlBgutilProvider
+    {
+      bgutilBaseUrl: options.ytdlBgutilBaseUrl,
+      useBgutilProvider: options.ytdlBgutilProvider,
+    }
   );
   return options;
 }
@@ -327,6 +265,7 @@ Opzioni utili:
   --ytdl-extractor-args youtube:player_client=mweb
   --ytdl-po-token mweb.gvs+TOKEN
   --ytdl-bgutil-provider 1
+  --ytdl-bgutil-base-url http://127.0.0.1:4416
   --ytdl-fallback-profiles 1
   --ids track-a,track-b
   --only-errors
@@ -714,7 +653,10 @@ async function checkWithMpv(source, sourceKind, options) {
         profile.extractorArgs,
         options.ytdlPoToken,
         options.ytdlPoTokenClient,
-        options.ytdlBgutilProvider
+        {
+          bgutilBaseUrl: options.ytdlBgutilBaseUrl,
+          useBgutilProvider: options.ytdlBgutilProvider,
+        }
       );
       if (profileExtractorArgs) {
         rawOptions.push(mpvRawOptionPair("extractor-args", profileExtractorArgs));
@@ -1007,6 +949,7 @@ async function main() {
         ? ytdlPoTokenClientContext(normalizedYtdlPoToken(options.ytdlPoToken, options.ytdlPoTokenClient))
         : options.ytdlPoTokenClient,
       ytdlBgutilProvider: Boolean(options.ytdlBgutilProvider),
+      ytdlBgutilBaseUrl: options.ytdlBgutilBaseUrl,
       ytdlCookiesConfigured: Boolean(options.ytdlCookiesFile),
       ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable(options)),
       ids: options.ids,

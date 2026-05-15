@@ -53,71 +53,22 @@ import { StudioPanel } from "./components/StudioPanel.jsx";
 import { Topbar } from "./components/Topbar.jsx";
 import { useCatalogPage } from "./hooks/useCatalogPage.js";
 import {
+  clampVolumeLevel,
+  compactPlayerNotice,
+  downloadBlob,
   durationSecondsFor,
+  formatCookieExpiryDate,
   getGenre,
   getSource,
   isYouTubeTrack,
   normalizeSearch,
+  playerConnectionMessage,
   playableSourceFor,
   trackMatchesSearch,
   youtubeEmbedSourceFor,
 } from "./utils.js";
 
 const COOKIE_ALERT_INTERVAL_MS = 10 * 60 * 1000;
-
-function clampVolumeLevel(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return 0.75;
-  }
-
-  return Math.max(0, Math.min(1, numeric));
-}
-
-function compactPlayerNotice(message) {
-  const text = String(message || "").trim();
-  if (!text) {
-    return "";
-  }
-
-  if (/youtube.*(?:login|eta|age|bot)|cookie youtube|sign in to confirm|not a bot/i.test(text)) {
-    return "YouTube bloccata: traccia saltata. Vedi Admin.";
-  }
-
-  return text.length > 96 ? `${text.slice(0, 93).trim()}...` : text;
-}
-
-function downloadBlob({ blob, filename }) {
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = objectUrl;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-}
-
-function playerConnectionMessage(error, fallback) {
-  const message = error?.message || "";
-  if (/backend.*non raggiungibile/i.test(message)) {
-    return "Connessione UI/backend momentaneamente persa. Se il Raspberry sta gia' suonando, la musica continua.";
-  }
-
-  return message || fallback;
-}
-
-function formatCookieExpiryDate(value) {
-  const date = new Date(value || "");
-  if (Number.isNaN(date.getTime())) {
-    return "Scadenza non rilevata";
-  }
-
-  return new Intl.DateTimeFormat("it-IT", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
 
 export default function App() {
   // App contiene solo lo stato globale: i dettagli visivi sono nei componenti sotto components/.

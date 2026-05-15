@@ -10,6 +10,14 @@ const { createAudioReplacementService } = require("./lib/audio-replacement-servi
 const { createAuthService } = require("./lib/auth-service");
 const { catalogPageResponse } = require("./lib/catalog-page");
 const { createYouTubeAudioCacheService } = require("./lib/youtube-cache-service");
+const {
+  buildYtdlExtractorArgs,
+  mpvRawOptionPair,
+  normalizedYtdlPoToken,
+  redactYtdlArgs,
+  redactYtdlSecrets,
+  ytdlPoTokenClientContext,
+} = require("./lib/ytdl-options");
 
 // Percorsi principali dell'app: tutto resta locale e puo' essere spostato con variabili ambiente.
 const ROOT_DIR = __dirname;
@@ -64,7 +72,10 @@ const serverPlayerYtdlExtractorArgs = buildYtdlExtractorArgs(
   serverPlayerYtdlExtractorArgsFromEnv,
   serverPlayerYtdlPoToken,
   serverPlayerYtdlPoTokenClient,
-  serverPlayerYtdlBgutilProvider
+  {
+    bgutilBaseUrl: serverPlayerYtdlBgutilBaseUrl,
+    useBgutilProvider: serverPlayerYtdlBgutilProvider,
+  }
 );
 const serverPlayerYtdlFallbackProfiles = process.env.CLEARWAVE_YTDL_FALLBACK_PROFILES !== "0";
 const serverPlayerYoutubeStartStableMs = Math.min(
@@ -113,92 +124,6 @@ const ytdlSessionCookieNames = new Set([
   "__Secure-1PSIDCC",
   "__Secure-3PSIDCC",
 ]);
-
-function ytdlPoTokenClientContext(rawValue) {
-  const value = String(rawValue || "").trim();
-  if (!value) {
-    return "mweb.gvs";
-  }
-  return value.includes("+") ? value.split("+")[0] : value;
-}
-
-function ytdlPoTokenPlayerClient(rawValue) {
-  const context = ytdlPoTokenClientContext(rawValue);
-  return context.split(".")[0] || "mweb";
-}
-
-function normalizedYtdlPoToken(rawToken, rawClientContext) {
-  const token = String(rawToken || "").trim();
-  if (!token) {
-    return "";
-  }
-  if (/^[a-z0-9_]+(?:\.[a-z0-9_]+)?\+/i.test(token)) {
-    return token;
-  }
-  return `${ytdlPoTokenClientContext(rawClientContext)}+${token}`;
-}
-
-function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient, useBgutilProvider = false) {
-  const token = normalizedYtdlPoToken(rawPoToken, rawPoTokenClient);
-  const legacyDefault = "youtube:player_client=web_safari";
-  const poTokenClient = ytdlPoTokenPlayerClient(token || rawPoTokenClient);
-  const shouldUseMweb = Boolean(token || useBgutilProvider);
-  let extractorArgs = String(rawExtractorArgs || "").trim();
-
-  if (!extractorArgs) {
-    extractorArgs = shouldUseMweb ? `youtube:player_client=${poTokenClient}` : legacyDefault;
-  } else if (shouldUseMweb && extractorArgs === legacyDefault) {
-    // PO token e provider bgutil lavorano meglio con mweb; web_safari crea spesso HLS 403.
-    extractorArgs = `youtube:player_client=${poTokenClient}`;
-  } else if (shouldUseMweb && /youtube:[^,\s]*player_client=web_safari/i.test(extractorArgs)) {
-    extractorArgs = extractorArgs.replace(/player_client=web_safari/i, `player_client=${poTokenClient}`);
-  }
-
-  extractorArgs = appendBgutilExtractorArgs(extractorArgs, useBgutilProvider);
-
-  if (!token || /po_token=/i.test(extractorArgs)) {
-    return extractorArgs;
-  }
-
-  if (/youtube:[^,\s]*/i.test(extractorArgs)) {
-    return extractorArgs.replace(/youtube:[^,\s]*/i, (value) => `${value};po_token=${token}`);
-  }
-
-  return `${extractorArgs},youtube:player_client=${poTokenClient};po_token=${token}`;
-}
-
-function appendBgutilExtractorArgs(rawExtractorArgs, useBgutilProvider = false) {
-  const extractorArgs = String(rawExtractorArgs || "").trim();
-  if (!useBgutilProvider || !serverPlayerYtdlBgutilBaseUrl || /youtubepot-bgutilhttp:/i.test(extractorArgs)) {
-    return extractorArgs;
-  }
-
-  // yt-dlp usa una chiave extractor separata per dire al plugin bgutil dove chiedere i PO token GVS.
-  const bgutilArgs = `youtubepot-bgutilhttp:base_url=${serverPlayerYtdlBgutilBaseUrl}`;
-  return extractorArgs ? `${extractorArgs},${bgutilArgs}` : bgutilArgs;
-}
-
-function redactYtdlSecrets(value) {
-  return String(value || "").replace(/(po_token=)([^,\s]+)/gi, "$1***");
-}
-
-function redactYtdlArgs(args) {
-  return args.map((arg) => redactYtdlSecrets(arg));
-}
-
-function mpvRawOptionPair(key, value) {
-  return `${key}=${mpvSuboptionValue(value)}`;
-}
-
-function mpvSuboptionValue(value) {
-  const text = String(value || "");
-  if (!/[,\s\[\]'"%]/.test(text)) {
-    return text;
-  }
-
-  // mpv interpreta "," come separatore delle key/value list: il prefisso %n% passa il valore intatto.
-  return `%${Buffer.byteLength(text, "utf8")}%${text}`;
-}
 
 const serverPlayer = {
   // Stato del player lato Raspberry: React diventa telecomando, l'audio esce dal server.
@@ -5828,7 +5753,10 @@ function serverPlayerYtdlConfig(source, overrides = {}) {
     firstString(overrides.extractorArgs, serverPlayerYtdlExtractorArgs),
     serverPlayerYtdlPoToken,
     serverPlayerYtdlPoTokenClient,
-    serverPlayerYtdlBgutilProvider
+    {
+      bgutilBaseUrl: serverPlayerYtdlBgutilBaseUrl,
+      useBgutilProvider: serverPlayerYtdlBgutilProvider,
+    }
   );
   if (ytdlFormat) {
     args.push(`--ytdl-format=${ytdlFormat}`);
