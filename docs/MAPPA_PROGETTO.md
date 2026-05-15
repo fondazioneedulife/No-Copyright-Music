@@ -47,6 +47,7 @@ Moduli backend estratti:
 | `lib/audio-replacement-service.js` | Ricontrolla errori YouTube/login, avvia l'audit completo YouTube e mantiene la lista runtime delle tracce da sostituire. |
 | `lib/auth-service.js` | SQLite utenti, hash password, token sessione, ruoli admin/user e cambio password. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione server-side di `GET /api/tracks`. |
+| `lib/youtube-cache-service.js` | Cache locale dei brani YouTube whitelist: scarica audio con `yt-dlp`, salva in `uploads/audio/youtube-cache` e aggiorna `audioPath` nel catalogo. |
 
 ## UI legacy
 

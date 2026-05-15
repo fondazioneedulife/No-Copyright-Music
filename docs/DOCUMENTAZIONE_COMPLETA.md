@@ -769,6 +769,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `lib/audio-replacement-service.js` | Ricontrollo errori YouTube/login, audit completo YouTube e lista tracce da sostituire. |
 | `lib/auth-service.js` | SQLite utenti, password, token, ruoli. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione catalogo. |
+| `lib/youtube-cache-service.js` | Cache locale dei brani YouTube whitelist per rendere stabile il player Raspberry. |
 
 ### Frontend React
 
