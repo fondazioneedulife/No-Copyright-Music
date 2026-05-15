@@ -5835,9 +5835,31 @@ function isGenericMpvRecognitionFailure(message) {
   return /failed to recognize file format|youtube-dl failed: unexpected error/i.test(String(message || ""));
 }
 
+function isYouTubeStreamOpenFailureMessage(message) {
+  return /HTTP error 40[13]|forbidden|unauthorized|(failed to open|avformat_open_input).*googlevideo\.com|googlevideo\.com\/videoplayback|hls: Failed to open segment/i.test(
+    String(message || "")
+  );
+}
+
 function isYouTubeAuthChallengeMessage(message) {
   return /sign in to confirm|not a bot|inappropriate for some users|use --cookies-from-browser|use --cookies|cookies-from-browser/i.test(
     String(message || "")
+  );
+}
+
+function isServerPlayerLaunchFallbackMessage(message, source) {
+  if (!serverPlayerNeedsYtdl(source)) {
+    return false;
+  }
+
+  const text = String(message || "");
+  return (
+    isYouTubeAuthChallengeMessage(text) ||
+    isGenericMpvRecognitionFailure(text) ||
+    isYouTubeStreamOpenFailureMessage(text) ||
+    /requested format is not available|no video formats|no formats|video unavailable|private video|youtube-dl failed|No supported JavaScript runtime|js-runtimes|deno/i.test(
+      text
+    )
   );
 }
 
@@ -6446,6 +6468,24 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     serverPlayer.lastFailedTrack = null;
     serverPlayer.volume = volume;
     let launchSettled = false;
+    let rejectLaunchFailure = null;
+    const launchFailurePromise = new Promise((_, reject) => {
+      rejectLaunchFailure = reject;
+    });
+    const failLaunchEarly = (message) => {
+      if (launchSettled || !rejectLaunchFailure || !isServerPlayerLaunchFallbackMessage(message, source)) {
+        return;
+      }
+
+      const friendly = serverPlayerFriendlyError(message);
+      rejectLaunchFailure(new Error(friendly || message || "Tentativo YouTube fallito."));
+      rejectLaunchFailure = null;
+      try {
+        processRef.kill("SIGTERM");
+      } catch {
+        // Il processo puo' essere gia' uscito: il fallback prosegue comunque.
+      }
+    };
 
     processRef.stdout.on("data", (chunk) => {
       if (serverPlayer.process !== processRef || serverPlayer.runId !== runId) {
@@ -6457,6 +6497,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
         if (isServerPlayerErrorMessage(message)) {
           const rememberedError = rememberServerPlayerError(message);
           recordServerPlayerEvent("error", rememberedError, { runId, stream: "stdout" });
+          failLaunchEarly(rememberedError || message);
         }
         console.log(`[server-player] mpv stdout: ${serverPlayerLogMessage(message)}`);
       }
@@ -6471,6 +6512,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
         if (isServerPlayerErrorMessage(message)) {
           const rememberedError = rememberServerPlayerError(message);
           recordServerPlayerEvent("error", rememberedError, { runId, stream: "stderr" });
+          failLaunchEarly(rememberedError || message);
         }
         console.log(`[server-player] mpv stderr: ${serverPlayerLogMessage(message)}`);
       }
@@ -6556,11 +6598,15 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     });
 
     try {
-      await waitForServerPlayerReady(processRef, socketPath);
-      await waitForServerPlayerStable(
-        processRef,
-        serverPlayerNeedsYtdl(source) ? serverPlayerYoutubeStartStableMs : undefined
-      );
+      await Promise.race([waitForServerPlayerReady(processRef, socketPath), launchFailurePromise]);
+      await Promise.race([
+        waitForServerPlayerStable(
+          processRef,
+          serverPlayerNeedsYtdl(source) ? serverPlayerYoutubeStartStableMs : undefined
+        ),
+        launchFailurePromise,
+      ]);
+      rejectLaunchFailure = null;
       if (isServerPlayerPlaySuperseded(playToken)) {
         stopServerPlayerProcess();
         return serverPlayerStatus();
@@ -6569,6 +6615,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
       launchSettled = true;
       return serverPlayerStatus();
     } catch (error) {
+      rejectLaunchFailure = null;
       lastStartError = firstString(serverPlayer.lastError, error.message);
       console.log(`[server-player] Tentativo audio fallito (${attemptLabel}): ${lastStartError}`);
       recordServerPlayerEvent("error", `Tentativo audio fallito (${attemptLabel}): ${lastStartError}`, {
@@ -6581,6 +6628,24 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
   }
 
   serverPlayer.lastError = serverPlayerFriendlyError(lastStartError).slice(0, 400);
+  if (serverPlayerNeedsYtdl(source) && isServerPlayerSkippablePlaybackFailure(serverPlayer.lastError, 4, source)) {
+    serverPlayer.lastExitCode = 4;
+    serverPlayer.lastFailedTrack = {
+      id: firstString(track?.id),
+      title: firstString(track?.title, track?.name, "Traccia senza titolo"),
+    };
+    recordServerPlayerEvent("skip", `Traccia YouTube saltata dopo fallback: ${firstString(track?.title, track?.id)}`, {
+      runId,
+      code: 4,
+      trackId: firstString(track?.id),
+    });
+    scheduleServerPlayerAutoplay(runId, {
+      reason: "skip",
+      skipTrackId: firstString(track?.id),
+    });
+    return serverPlayerStatus();
+  }
+
   throw httpError(503, `Player Raspberry non avviato: ${serverPlayer.lastError || "nessun device audio disponibile."}`);
 }
 
