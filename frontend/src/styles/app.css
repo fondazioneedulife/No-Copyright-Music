@@ -615,6 +615,11 @@ body[data-theme="light"] .hero-panel::after {
   border-radius: 24px;
 }
 
+.admin-panel {
+  /* Diagnostica lunga: lascia spazio reale al player fisso, cosi' gli ultimi errori restano leggibili. */
+  margin-bottom: calc(var(--player-dock-height) + 24px);
+}
+
 .section-heading {
   display: flex;
   align-items: flex-end;

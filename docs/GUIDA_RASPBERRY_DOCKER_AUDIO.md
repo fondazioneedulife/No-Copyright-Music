@@ -194,6 +194,8 @@ CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
 CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno
 CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari
+CLEARWAVE_YTDL_PO_TOKEN=
+CLEARWAVE_YTDL_PO_TOKEN_CLIENT=mweb.gvs
 CLEARWAVE_MPV_MSG_LEVEL=all=warn,ytdl_hook=info
 ```
 
@@ -286,7 +288,7 @@ Nei log di avvio deve comparire:
 ```
 
 Se YouTube restituisce `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato uno stream compatibile. In quel caso ricrea il container e controlla `CLEARWAVE_YTDL_FORMAT`.
-Se invece vedi `HTTP error 403 Forbidden` o `Failed to open ... googlevideo.com`, YouTube ha firmato uno stream ma poi lo ha rifiutato. Usa il default aggiornato `CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari` e il formato con priorita `m3u8`; se continua, servira' un provider PO token per yt-dlp.
+Se invece vedi `HTTP error 403 Forbidden`, `[lavf] avformat_open_input() failed` o `Failed to open ... googlevideo.com`, YouTube ha firmato uno stream ma poi lo ha rifiutato. Usa il default aggiornato `CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari` e il formato con priorita `m3u8`; se continua anche con cookie validi, configura un PO token per yt-dlp tramite `CLEARWAVE_YTDL_PO_TOKEN`.
 Se compare `No supported JavaScript runtime could be found`, l'immagine non contiene ancora Deno: fai `git pull`, rebuild senza cache e ricrea il container.
 
 Per verificare in batch quali tracce del catalogo partono davvero:

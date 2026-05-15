@@ -16,8 +16,66 @@ const DEFAULT_YTDL_FORMAT =
   "bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best";
 const DEFAULT_YTDL_COOKIES_FILE = process.env.CLEARWAVE_YTDL_COOKIES_FILE || "";
 const DEFAULT_YTDL_JS_RUNTIME = process.env.CLEARWAVE_YTDL_JS_RUNTIME || "";
-const DEFAULT_YTDL_EXTRACTOR_ARGS =
-  process.env.CLEARWAVE_YTDL_EXTRACTOR_ARGS || "youtube:player_client=web_safari";
+const DEFAULT_YTDL_PO_TOKEN = process.env.CLEARWAVE_YTDL_PO_TOKEN || "";
+const DEFAULT_YTDL_PO_TOKEN_CLIENT = process.env.CLEARWAVE_YTDL_PO_TOKEN_CLIENT || "mweb.gvs";
+const DEFAULT_YTDL_EXTRACTOR_ARGS = buildYtdlExtractorArgs(
+  process.env.CLEARWAVE_YTDL_EXTRACTOR_ARGS || "",
+  DEFAULT_YTDL_PO_TOKEN,
+  DEFAULT_YTDL_PO_TOKEN_CLIENT
+);
+
+function ytdlPoTokenClientContext(rawValue) {
+  const value = String(rawValue || "").trim();
+  if (!value) {
+    return "mweb.gvs";
+  }
+  return value.includes("+") ? value.split("+")[0] : value;
+}
+
+function ytdlPoTokenPlayerClient(rawValue) {
+  const context = ytdlPoTokenClientContext(rawValue);
+  return context.split(".")[0] || "mweb";
+}
+
+function normalizedYtdlPoToken(rawToken, rawClientContext) {
+  const token = String(rawToken || "").trim();
+  if (!token) {
+    return "";
+  }
+  if (/^[a-z0-9_]+(?:\.[a-z0-9_]+)?\+/i.test(token)) {
+    return token;
+  }
+  return `${ytdlPoTokenClientContext(rawClientContext)}+${token}`;
+}
+
+function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient) {
+  const token = normalizedYtdlPoToken(rawPoToken, rawPoTokenClient);
+  const legacyDefault = "youtube:player_client=web_safari";
+  const poTokenClient = ytdlPoTokenPlayerClient(token || rawPoTokenClient);
+  let extractorArgs = String(rawExtractorArgs || "").trim();
+
+  if (!extractorArgs) {
+    extractorArgs = token ? `youtube:player_client=${poTokenClient}` : legacyDefault;
+  } else if (token && extractorArgs === legacyDefault) {
+    extractorArgs = `youtube:player_client=${poTokenClient}`;
+  } else if (token && /youtube:[^,\s]*player_client=web_safari/i.test(extractorArgs)) {
+    extractorArgs = extractorArgs.replace(/player_client=web_safari/i, `player_client=${poTokenClient}`);
+  }
+
+  if (!token || /po_token=/i.test(extractorArgs)) {
+    return extractorArgs;
+  }
+
+  if (/youtube:[^,\s]*/i.test(extractorArgs)) {
+    return extractorArgs.replace(/youtube:[^,\s]*/i, (value) => `${value};po_token=${token}`);
+  }
+
+  return `${extractorArgs},youtube:player_client=${poTokenClient};po_token=${token}`;
+}
+
+function redactYtdlSecrets(value) {
+  return String(value || "").replace(/(po_token=)([^,\s]+)/gi, "$1***");
+}
 
 function firstString(...values) {
   for (const value of values) {
@@ -58,6 +116,8 @@ function parseArgs(argv) {
     ytdlCookiesFile: DEFAULT_YTDL_COOKIES_FILE,
     ytdlJsRuntime: DEFAULT_YTDL_JS_RUNTIME,
     ytdlExtractorArgs: DEFAULT_YTDL_EXTRACTOR_ARGS,
+    ytdlPoToken: DEFAULT_YTDL_PO_TOKEN,
+    ytdlPoTokenClient: DEFAULT_YTDL_PO_TOKEN_CLIENT,
     ids: [],
     idSet: new Set(),
     verbose: false,
@@ -136,6 +196,12 @@ function parseArgs(argv) {
       case "ytdl-extractor-args":
         options.ytdlExtractorArgs = nextValue();
         break;
+      case "ytdl-po-token":
+        options.ytdlPoToken = nextValue();
+        break;
+      case "ytdl-po-token-client":
+        options.ytdlPoTokenClient = nextValue();
+        break;
       case "ids":
         options.ids = nextValue()
           .split(",")
@@ -183,6 +249,11 @@ function parseArgs(argv) {
       .filter(Boolean)
   );
   options.idSet = new Set(options.ids);
+  options.ytdlExtractorArgs = buildYtdlExtractorArgs(
+    options.ytdlExtractorArgs,
+    options.ytdlPoToken,
+    options.ytdlPoTokenClient
+  );
   return options;
 }
 
@@ -214,6 +285,7 @@ Opzioni utili:
   --ytdl-cookies /app/data/youtube-cookies.txt
   --ytdl-js-runtime deno:/usr/local/bin/deno
   --ytdl-extractor-args youtube:player_client=web_safari
+  --ytdl-po-token mweb.gvs+TOKEN
   --ids track-a,track-b
   --only-errors
   --fail-on-broken
@@ -616,7 +688,7 @@ function classifyFailure(message, code, timedOut, sourceKind) {
   if (/requested format is not available|no video formats|no formats/i.test(text)) {
     return "youtube-format";
   }
-  if (/failed to open .*googlevideo\.com|googlevideo\.com\/videoplayback/i.test(text)) {
+  if (/(failed to open|avformat_open_input).*googlevideo\.com|googlevideo\.com\/videoplayback/i.test(text)) {
     return "youtube-stream-open-failed";
   }
   if (/403|401|forbidden|unauthorized/i.test(text)) {
@@ -843,7 +915,11 @@ async function main() {
       ytdlPath: options.ytdlPath,
       ytdlFormat: options.ytdlFormat,
       ytdlJsRuntime: options.ytdlJsRuntime,
-      ytdlExtractorArgs: options.ytdlExtractorArgs,
+      ytdlExtractorArgs: redactYtdlSecrets(options.ytdlExtractorArgs),
+      ytdlPoTokenConfigured: Boolean(options.ytdlPoToken),
+      ytdlPoTokenClient: options.ytdlPoToken
+        ? ytdlPoTokenClientContext(normalizedYtdlPoToken(options.ytdlPoToken, options.ytdlPoTokenClient))
+        : options.ytdlPoTokenClient,
       ytdlCookiesConfigured: Boolean(options.ytdlCookiesFile),
       ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable(options)),
       ids: options.ids,

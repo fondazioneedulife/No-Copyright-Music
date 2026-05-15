@@ -98,6 +98,8 @@ CLEARWAVE_YTDL_PATH=/usr/bin/yt-dlp
 CLEARWAVE_YTDL_FORMAT=bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best
 CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno
 CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari
+CLEARWAVE_YTDL_PO_TOKEN=
+CLEARWAVE_YTDL_PO_TOKEN_CLIENT=mweb.gvs
 ```
 
 Poi apri l'app da un altro dispositivo nella rete usando l'IP del Raspberry:
@@ -120,7 +122,7 @@ docker compose exec clearwave aplay -L
 Poi puoi scegliere la scheda con `ALSA_CARD` oppure passare direttamente `CLEARWAVE_AUDIO_DEVICE` nel file `.env`. Preferisci `alsa/sysdefault:CARD=1` o `alsa/default`; `alsa/plughw:1,0` resta supportato ma puo' fallire se il device e' gia' occupato.
 
 Se invece nei log compare `Requested format is not available`, il problema non e' ALSA: `mpv` e' partito, ma YouTube non ha dato un formato riproducibile. L'immagine Docker installa `yt-dlp` aggiornato da `/usr/bin/yt-dlp` e il backend passa a `mpv` un formato audio-only tramite `CLEARWAVE_YTDL_FORMAT`.
-Se invece compare `HTTP error 403 Forbidden` o `Failed to open ... googlevideo.com`, YouTube ha dato uno stream firmato ma lo ha rifiutato quando `mpv` lo ha aperto. ClearWave ora preferisce `web_safari` e HLS con `CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari` e `CLEARWAVE_YTDL_FORMAT` con priorita `m3u8`: e' un tentativo leggero per ridurre i blocchi GVS. Se i 403 continuano anche con cookie validi, il prossimo passo e' configurare un provider PO token per yt-dlp.
+Se invece compare `HTTP error 403 Forbidden`, `[lavf] avformat_open_input() failed` o `Failed to open ... googlevideo.com`, YouTube ha dato uno stream firmato ma lo ha rifiutato quando `mpv` lo ha aperto. ClearWave ora preferisce `web_safari` e HLS con `CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari` e `CLEARWAVE_YTDL_FORMAT` con priorita `m3u8`: e' un tentativo leggero per ridurre i blocchi GVS. Se i 403 continuano anche con cookie validi, configura un PO token per yt-dlp. Puoi passarlo con `CLEARWAVE_YTDL_PO_TOKEN`; se il valore non contiene gia' il prefisso, ClearWave usa `CLEARWAVE_YTDL_PO_TOKEN_CLIENT=mweb.gvs` e passa a `player_client=mweb`. Il token non viene stampato nei log: la diagnostica mostra solo se e' attivo.
 
 Docker puo' riusare la cache del layer `RUN curl ... latest/download/yt-dlp`. Per questo il container prova anche ad aggiornare `/usr/bin/yt-dlp` ad ogni avvio quando `CLEARWAVE_UPDATE_YTDLP_ON_START=1`. Nei log devi vedere:
 
@@ -214,6 +216,8 @@ Variabili principali:
 | `CLEARWAVE_YTDL_FORMAT` | Formato richiesto a YouTube; default audio-only con preferenza HLS/m3u8 per ridurre i 403 sugli stream `googlevideo.com`. |
 | `CLEARWAVE_YTDL_JS_RUNTIME` | Runtime JavaScript passato a `yt-dlp`, default `deno:/usr/local/bin/deno`. |
 | `CLEARWAVE_YTDL_EXTRACTOR_ARGS` | Argomenti extractor passati a `yt-dlp`, default `youtube:player_client=web_safari`. |
+| `CLEARWAVE_YTDL_PO_TOKEN` | Token PO opzionale per YouTube quando cookie validi ricevono ancora `403` sugli stream `googlevideo.com`. Non committare mai un token reale. |
+| `CLEARWAVE_YTDL_PO_TOKEN_CLIENT` | Contesto del PO token, default `mweb.gvs`. Se `CLEARWAVE_YTDL_PO_TOKEN` contiene gia' `mweb.gvs+...`, questo valore non serve. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | File cookie YouTube Netscape dentro al container, opzionale per video che richiedono login/conferma eta. |
 | `CLEARWAVE_YOUTUBE_LOGIN_RECHECK_LIMIT` | Massimo di tracce YouTube/login ricontrollate dal pulsante admin in un giro, default `80`. |
 | `CLEARWAVE_YOUTUBE_FULL_AUDIT_MODE` | Modalita del controllo completo YouTube da Admin, default `metadata`. |

@@ -653,6 +653,8 @@ Variabili principali:
 | `CLEARWAVE_YTDL_FORMAT` | audio-only HLS first | Formato YouTube richiesto; preferisce HLS/m3u8 per ridurre i 403 sugli stream `googlevideo.com`. |
 | `CLEARWAVE_YTDL_JS_RUNTIME` | `deno:/usr/local/bin/deno` | Runtime JavaScript usato da yt-dlp per decifrare YouTube. |
 | `CLEARWAVE_YTDL_EXTRACTOR_ARGS` | `youtube:player_client=web_safari` | Client extractor YouTube usato da yt-dlp; `web_safari` favorisce stream HLS quando disponibili. |
+| `CLEARWAVE_YTDL_PO_TOKEN` | vuoto | PO token opzionale per yt-dlp quando cookie validi ricevono ancora `403` sugli stream `googlevideo.com`. Segreto: non committarlo. |
+| `CLEARWAVE_YTDL_PO_TOKEN_CLIENT` | `mweb.gvs` | Contesto del PO token. Se il token contiene gia' `mweb.gvs+...`, ClearWave lo riconosce automaticamente. |
 | `CLEARWAVE_YTDL_COOKIES_FILE` | vuoto | File cookie YouTube Netscape nel container. Se vuoto, ClearWave usa automaticamente `/app/data/youtube-cookies.txt` quando esiste. |
 | `CLEARWAVE_YTDL_COOKIE_PROBE_URL` | video pubblico | URL usato da `Test cookie YouTube` quando non ci sono tracce problematiche note. |
 | `CLEARWAVE_YTDL_COOKIE_EXPIRY_WARNING_DAYS` | `14` | Giorni prima della scadenza cookie in cui mostrare il popup admin. |

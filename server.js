@@ -48,9 +48,17 @@ const serverPlayerYtdlFormat = String(
     "bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best"
 ).trim();
 const serverPlayerYtdlJsRuntime = String(process.env.CLEARWAVE_YTDL_JS_RUNTIME || "").trim();
-const serverPlayerYtdlExtractorArgs = String(
-  process.env.CLEARWAVE_YTDL_EXTRACTOR_ARGS || "youtube:player_client=web_safari"
-).trim();
+const serverPlayerYtdlExtractorArgsFromEnv = String(process.env.CLEARWAVE_YTDL_EXTRACTOR_ARGS || "").trim();
+const serverPlayerYtdlPoToken = String(process.env.CLEARWAVE_YTDL_PO_TOKEN || "").trim();
+const serverPlayerYtdlPoTokenClient = String(process.env.CLEARWAVE_YTDL_PO_TOKEN_CLIENT || "mweb.gvs").trim();
+const serverPlayerYtdlPoTokenContext = ytdlPoTokenClientContext(
+  normalizedYtdlPoToken(serverPlayerYtdlPoToken, serverPlayerYtdlPoTokenClient)
+);
+const serverPlayerYtdlExtractorArgs = buildYtdlExtractorArgs(
+  serverPlayerYtdlExtractorArgsFromEnv,
+  serverPlayerYtdlPoToken,
+  serverPlayerYtdlPoTokenClient
+);
 const serverPlayerYtdlCookiesFileFromEnv = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
 const serverPlayerYtdlCookiesFile = serverPlayerYtdlCookiesFileFromEnv || DEFAULT_YTDL_COOKIES_FILE;
 const serverPlayerYtdlCookieProbeUrl = String(
@@ -93,6 +101,65 @@ const ytdlSessionCookieNames = new Set([
   "__Secure-1PSIDCC",
   "__Secure-3PSIDCC",
 ]);
+
+function ytdlPoTokenClientContext(rawValue) {
+  const value = String(rawValue || "").trim();
+  if (!value) {
+    return "mweb.gvs";
+  }
+  return value.includes("+") ? value.split("+")[0] : value;
+}
+
+function ytdlPoTokenPlayerClient(rawValue) {
+  const context = ytdlPoTokenClientContext(rawValue);
+  return context.split(".")[0] || "mweb";
+}
+
+function normalizedYtdlPoToken(rawToken, rawClientContext) {
+  const token = String(rawToken || "").trim();
+  if (!token) {
+    return "";
+  }
+  if (/^[a-z0-9_]+(?:\.[a-z0-9_]+)?\+/i.test(token)) {
+    return token;
+  }
+  return `${ytdlPoTokenClientContext(rawClientContext)}+${token}`;
+}
+
+function buildYtdlExtractorArgs(rawExtractorArgs, rawPoToken, rawPoTokenClient) {
+  const token = normalizedYtdlPoToken(rawPoToken, rawPoTokenClient);
+  const legacyDefault = "youtube:player_client=web_safari";
+  const poTokenClient = ytdlPoTokenPlayerClient(token || rawPoTokenClient);
+  let extractorArgs = String(rawExtractorArgs || "").trim();
+
+  if (!extractorArgs) {
+    extractorArgs = token ? `youtube:player_client=${poTokenClient}` : legacyDefault;
+  } else if (token && extractorArgs === legacyDefault) {
+    // Un PO token GVS e' legato al client: se usiamo il default vecchio passiamo a mweb.
+    extractorArgs = `youtube:player_client=${poTokenClient}`;
+  } else if (token && /youtube:[^,\s]*player_client=web_safari/i.test(extractorArgs)) {
+    extractorArgs = extractorArgs.replace(/player_client=web_safari/i, `player_client=${poTokenClient}`);
+  }
+
+  if (!token || /po_token=/i.test(extractorArgs)) {
+    return extractorArgs;
+  }
+
+  if (/youtube:[^,\s]*/i.test(extractorArgs)) {
+    return extractorArgs.replace(/youtube:[^,\s]*/i, (value) => `${value};po_token=${token}`);
+  }
+
+  return `${extractorArgs},youtube:player_client=${poTokenClient};po_token=${token}`;
+}
+
+function redactYtdlSecrets(value) {
+  return String(value || "").replace(/(po_token=)([^,\s]+)/gi, "$1***");
+}
+
+function redactYtdlArgs(args) {
+  return args.map((arg) => redactYtdlSecrets(arg));
+}
+
 const serverPlayer = {
   // Stato del player lato Raspberry: React diventa telecomando, l'audio esce dal server.
   process: null,
@@ -5181,7 +5248,9 @@ function serverPlayerStatus() {
     lastFailedTrack: serverPlayer.lastFailedTrack,
     ytdlFormat: serverPlayerYtdlFormat,
     ytdlPath: serverPlayerYtdlPath,
-    ytdlExtractorArgs: serverPlayerYtdlExtractorArgs,
+    ytdlExtractorArgs: redactYtdlSecrets(serverPlayerYtdlExtractorArgs),
+    ytdlPoTokenConfigured: Boolean(serverPlayerYtdlPoToken),
+    ytdlPoTokenClient: serverPlayerYtdlPoToken ? serverPlayerYtdlPoTokenContext : "",
     ytdlCookiesConfigured: ytdlCookiesConfigured(),
     ytdlCookiesAvailable: Boolean(ytdlCookiesFileIfAvailable()),
     mpvMsgLevel: serverPlayerMpvMsgLevel,
@@ -5319,7 +5388,9 @@ async function buildServerDiagnostics() {
       serverVolumeMax: serverPlayerVolumeMax,
       ytdlPath: serverPlayerYtdlPath,
       ytdlJsRuntime: serverPlayerYtdlJsRuntime,
-      ytdlExtractorArgs: serverPlayerYtdlExtractorArgs,
+      ytdlExtractorArgs: redactYtdlSecrets(serverPlayerYtdlExtractorArgs),
+      ytdlPoTokenConfigured: Boolean(serverPlayerYtdlPoToken),
+      ytdlPoTokenClient: serverPlayerYtdlPoToken ? serverPlayerYtdlPoTokenContext : serverPlayerYtdlPoTokenClient,
       ytdlFormat: serverPlayerYtdlFormat,
       ytdlCookiesConfigured: cookies.configured,
       ytdlCookiesAvailable: cookies.available,
@@ -5684,8 +5755,8 @@ function serverPlayerFriendlyError(message) {
     return "YouTube login/bot: traccia saltata. Configura cookie o sostituiscila.";
   }
 
-  if (/failed to open .*googlevideo\.com|googlevideo\.com\/videoplayback/i.test(text)) {
-    return `${text} Stream YouTube temporaneo non apribile: riprova, verifica cookie/account YouTube e lascia che ClearWave passi alla traccia successiva.`;
+  if (/(failed to open|avformat_open_input).*googlevideo\.com|googlevideo\.com\/videoplayback/i.test(text)) {
+    return `${text} Stream YouTube temporaneo non apribile: riprova, verifica cookie/account YouTube e, se continua su tante tracce, configura un PO token per yt-dlp.`;
   }
 
   if (/Unknown error 524|Playback open error|Could not open\/initialize audio device/i.test(text)) {
@@ -5739,7 +5810,7 @@ function isServerPlayerSkippablePlaybackFailure(message, code, source) {
     return false;
   }
 
-  return /login\/conferma eta|youtube.*(?:login|eta|bot)|sign in to confirm|not a bot|inappropriate for some users|use --cookies|video unavailable|private video|requested format is not available|failed to recognize file format|youtube-dl failed|failed to open .*googlevideo\.com|googlevideo\.com\/videoplayback/i.test(
+  return /login\/conferma eta|youtube.*(?:login|eta|bot)|sign in to confirm|not a bot|inappropriate for some users|use --cookies|video unavailable|private video|requested format is not available|failed to recognize file format|youtube-dl failed|(failed to open|avformat_open_input).*googlevideo\.com|googlevideo\.com\/videoplayback/i.test(
     text
   );
 }
@@ -6237,7 +6308,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
       return serverPlayerStatus();
     }
 
-    console.log(`[server-player] Avvio mpv (${attemptLabel}): ${serverPlayerCommand} ${args.join(" ")}`);
+    console.log(`[server-player] Avvio mpv (${attemptLabel}): ${serverPlayerCommand} ${redactYtdlArgs(args).join(" ")}`);
     recordServerPlayerEvent("start", `Avvio: ${firstString(track.title, track.name, track.id)}`, {
       runId,
       audio: attemptLabel,
@@ -6968,6 +7039,11 @@ if (require.main === module) {
               : cookies.configured
                 ? `configurati ma non leggibili: ${cookies.path}`
                 : `non configurati, percorso automatico: ${DEFAULT_YTDL_COOKIES_FILE}`
+          }`
+        );
+        console.log(
+          `[server-player] Stream YouTube: extractor=${redactYtdlSecrets(serverPlayerYtdlExtractorArgs)}, poToken=${
+            serverPlayerYtdlPoToken ? `on/${serverPlayerYtdlPoTokenContext}` : "off"
           }`
         );
 

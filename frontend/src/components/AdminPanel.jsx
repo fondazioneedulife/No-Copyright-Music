@@ -44,12 +44,12 @@ const diagnosticReasonInfo = {
   "youtube-stream-open-failed": {
     label: "Stream YouTube non aperto",
     detail:
-      "yt-dlp ha risolto il video, ma mpv non ha aperto lo stream googlevideo firmato. Riprova e controlla cookie/account se succede spesso.",
+      "yt-dlp ha risolto il video, ma mpv non ha aperto lo stream googlevideo firmato. Se succede spesso, oltre ai cookie serve configurare un PO token.",
   },
   "exit-1": {
     label: "Exit 1",
     detail:
-      "Motivo generico dei report vecchi. Nei nuovi check viene trasformato in Errore YouTube quando riguarda un video YouTube.",
+      "Motivo generico dei report vecchi o di yt-dlp. Apri l'evento/report: se parla di googlevideo, e' uno Stream YouTube non aperto.",
   },
 };
 const diagnosticReasonOrder = [
@@ -1010,7 +1010,12 @@ export function AdminPanel({
               <div>
                 <span>Stream YouTube</span>
                 <strong>{diagnostics.config?.ytdlExtractorArgs || "default"}</strong>
-                <small>{diagnostics.config?.ytdlFormat || "audio-only"}</small>
+                <small>
+                  {diagnostics.config?.ytdlFormat || "audio-only"}
+                  {diagnostics.config?.ytdlPoTokenConfigured
+                    ? ` | PO token ${diagnostics.config?.ytdlPoTokenClient || "attivo"}`
+                    : " | PO token non configurato"}
+                </small>
               </div>
               <div>
                 <span>Audit YouTube</span>

@@ -20,7 +20,8 @@ ENV NODE_ENV=production \
     CLEARWAVE_AUTO_EXPAND=0 \
     CLEARWAVE_UPDATE_YTDLP_ON_START=1 \
     CLEARWAVE_YTDL_JS_RUNTIME=deno:/usr/local/bin/deno \
-    CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari
+    CLEARWAVE_YTDL_EXTRACTOR_ARGS=youtube:player_client=web_safari \
+    CLEARWAVE_YTDL_PO_TOKEN_CLIENT=mweb.gvs
 
 WORKDIR /app
 

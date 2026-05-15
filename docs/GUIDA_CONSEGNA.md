@@ -125,7 +125,7 @@ Il report non sostituisce la verifica legale finale: serve a sapere da dove arri
 | Tanti `timeout` nel check YouTube | Rete lenta, Raspberry carico o YouTube lento | Aspetta il report finale; se restano molti timeout, rifai il giro con meno concorrenza. |
 | `youtube-error` o `exit-1` | Errore generico di `yt-dlp`/`mpv`; nei nuovi report c'e' anche il messaggio breve | Leggi la riga nella diagnostica o apri il JSON in `data/reports`; spesso serve cookie nuovo, rete stabile o archiviazione del video. |
 | `youtube-expired-url` o URL `googlevideo.com` | E' stato salvato uno stream temporaneo invece del video YouTube originale | Reimporta dal link YouTube o aggiungi `youtubeVideoId`; lo stream diretto scade e non va usato come sorgente stabile. |
-| `youtube-stream-open-failed` | `yt-dlp` risolve YouTube ma `mpv` non apre lo stream firmato | Riprova; se si ripete, controlla cookie/account YouTube e rete del container. |
+| `youtube-stream-open-failed` | `yt-dlp` risolve YouTube ma `mpv` non apre lo stream firmato (`403`, `Failed to open`, `avformat_open_input`) | Riprova; se si ripete con cookie validi, serve PO token yt-dlp o una sostituzione della traccia. |
 | `mpv precedente chiuso per cambio traccia/comando` | Un nuovo comando ha sostituito il vecchio mpv | Non e' un errore se la traccia successiva parte. |
 | `mpv ha completato ... codice 0` | Traccia terminata correttamente | Normale. |
 | Importa poche tracce | Molti duplicati o filtri durata/licenza | Usa lotto piu' grande o reset scan YouTube. |
