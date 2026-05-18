@@ -782,8 +782,11 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `frontend/src/App.jsx` | Stato globale e collegamento componenti/API. |
 | `frontend/src/api/client.js` | Wrapper fetch JSON/download. |
 | `frontend/src/hooks/useCatalogPage.js` | Paginazione e fetch catalogo. |
+| `frontend/src/hooks/useDiscoveryProviders.js` | Caricamento provider discovery/import dopo login. |
+| `frontend/src/hooks/useYouTubeCookieAlert.js` | Avviso periodico admin per cookie YouTube, upload `cookies.txt` e stato del pop-up. |
 | `frontend/src/components/AdminPanel.jsx` | Utenti, reset scan, diagnostica, backup, ripristino e report. |
 | `frontend/src/components/adminDiagnostics.js` | Helper puri per diagnostica admin, errori YouTube, cookie e riassunti check/audio. |
+| `frontend/src/components/CookieAlertModal.jsx` | Modale admin per cookie YouTube in scadenza o incompleti. |
 | `frontend/src/components/DiscoveryPanel.jsx` | Import brani e playlist temporanea. |
 | `frontend/src/components/PlayerDock.jsx` | Player inferiore. |
 | `frontend/src/components/Catalog.jsx` | Griglia catalogo e filtri. |
