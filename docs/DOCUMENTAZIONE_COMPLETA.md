@@ -785,7 +785,8 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `frontend/src/hooks/useDiscoveryProviders.js` | Caricamento provider discovery/import dopo login. |
 | `frontend/src/hooks/usePlayerRuntime.js` | Runtime player React: stato, coda, Pi/browser, seek, volume, YouTube embed e fallback audio. |
 | `frontend/src/hooks/useYouTubeCookieAlert.js` | Avviso periodico admin per cookie YouTube, upload `cookies.txt` e stato del pop-up. |
-| `frontend/src/components/AdminPanel.jsx` | Utenti, reset scan, diagnostica, backup, ripristino e report. |
+| `frontend/src/components/AdminPanel.jsx` | Utenti, reset scan YouTube, backup, ripristino e report. |
+| `frontend/src/components/AdminDiagnosticsPanel.jsx` | UI diagnostica Raspberry/admin: salute backend, cookie YouTube, audit, check catalogo, preflight ALSA/mpv e lista tracce da sostituire. |
 | `frontend/src/components/adminDiagnostics.js` | Helper puri per diagnostica admin, errori YouTube, cookie e riassunti check/audio. |
 | `frontend/src/components/CookieAlertModal.jsx` | Modale admin per cookie YouTube in scadenza o incompleti. |
 | `frontend/src/components/DiscoveryPanel.jsx` | Import brani e playlist temporanea. |

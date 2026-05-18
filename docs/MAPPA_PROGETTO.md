@@ -131,7 +131,8 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `Hero.jsx` | Riepilogo alto con numero tracce e coda. |
 | `Catalog.jsx` | Griglia tracce, filtri, paginazione e play. |
 | `QueuePanel.jsx` | Visualizza e svuota la coda React. |
-| `AdminPanel.jsx` | Crea utenti, resetta password temporanea, elimina utenti, resetta stato YouTube, mostra diagnostica Raspberry con auto-refresh, gestisce cookie/audit YouTube, archiviazione tracce e report licenze. |
+| `AdminPanel.jsx` | Crea utenti, resetta password temporanea, elimina utenti, resetta stato YouTube, backup, ripristino e report licenze. |
+| `AdminDiagnosticsPanel.jsx` | Pannello diagnostica Raspberry: salute backend, cookie YouTube, audit completo, log check catalogo, preflight audio, tracce da sostituire e ultimi eventi player. |
 | `adminDiagnostics.js` | Helper diagnostici dell'admin: etichette errori, salute Raspberry, riassunti audit/check e righe cookie. |
 | `CookieAlertModal.jsx` | Pop-up admin che avvisa quando i cookie YouTube vanno aggiornati e permette di caricare `cookies.txt`. |
 | `SettingsPanel.jsx` | Cambio password dell'utente loggato. |
