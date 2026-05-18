@@ -1,0 +1,290 @@
+.player-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(340px, 520px) minmax(200px, 1fr);
+  align-items: center;
+  gap: 14px;
+  min-height: var(--player-dock-height);
+  padding: 8px 24px;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  animation:
+    panelLiftIn 420ms ease both,
+    softGlowPulse 5s ease-in-out infinite;
+}
+
+.now-playing {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: min(100%, 500px);
+  gap: 12px;
+}
+
+.mini-cover {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+
+.mini-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.now-playing-copy {
+  /* Larghezza media: il titolo non invade i controlli centrali del player. */
+  display: grid;
+  width: clamp(240px, 28vw, 430px);
+  min-width: 0;
+  gap: 2px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 22px), transparent);
+}
+
+.marquee-line {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.now-playing-copy strong.marquee-line {
+  /* Testi dock piu' piccoli: il player resta leggibile senza pesare sul catalogo. */
+  font-size: 0.88rem;
+  line-height: 1.15;
+}
+
+.now-playing-copy span.marquee-line {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.marquee-track {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.marquee-track span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.marquee-line.is-marquee .marquee-track {
+  display: inline-flex;
+  min-width: max-content;
+  gap: 36px;
+  overflow: visible;
+  animation: playerTextMarquee 26s linear 5s infinite;
+}
+
+.marquee-line.is-marquee .marquee-track span {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.player-center {
+  display: grid;
+  gap: 7px;
+  width: min(520px, 100%);
+  justify-items: center;
+  justify-self: center;
+}
+
+.player-state {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.player-notice {
+  max-width: min(68vw, 420px);
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transport button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  min-height: 0;
+  place-items: center;
+  padding: 0;
+}
+
+.transport button.is-active {
+  color: #fff;
+  border-color: var(--accent-active-border);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 0 24px var(--accent-glow);
+  transform: translateY(-1px) scale(1.04);
+}
+
+body[data-theme="light"] .transport button.is-active {
+  color: #031018;
+}
+
+.player-toggle {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  min-height: 0;
+  place-items: center;
+  padding: 0;
+  border: 0;
+}
+
+.player-icon {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.time-row {
+  display: grid;
+  grid-template-columns: 44px minmax(180px, 1fr) 44px;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+}
+
+.time-row span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.time-row span:first-child {
+  text-align: left;
+}
+
+.time-row span:last-child {
+  text-align: right;
+}
+
+.progress-range {
+  width: 100%;
+  min-height: auto;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.progress-range::-webkit-slider-thumb,
+.volume-slider::-webkit-slider-thumb {
+  filter: drop-shadow(0 0 10px var(--accent-glow));
+}
+
+.volume-cluster {
+  /* Uscita compatta: il selettore Pi/PC sta accanto al volume senza rubare spazio al player. */
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.playback-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--muted);
+}
+
+.playback-target.is-active {
+  color: #fff;
+  border-color: var(--accent-active-border);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+body[data-theme="light"] .playback-target.is-active {
+  color: #031018;
+}
+
+.playback-target .player-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.volume-slider {
+  width: 136px;
+  min-height: auto;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.volume-number {
+  width: 58px;
+  min-height: 34px;
+  padding: 0 8px;
+  text-align: right;
+}
+
+.volume span {
+  min-width: 14px;
+}
+
+.embedded-audio-frame {
+  /* YouTube resta pilotato in pagina, ma non deve comparire come elemento esterno nella UI. */
+  position: fixed;
+  left: -20px;
+  bottom: -20px;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}

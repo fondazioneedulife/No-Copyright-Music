@@ -112,7 +112,8 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `frontend/src/api/client.js` | Wrapper unico per chiamate fetch: JSON, bearer token, player Raspberry e gestione errori. |
 | `frontend/src/hooks/useCatalogPage.js` | Stato e fetch della pagina catalogo, separati da `App.jsx`. |
 | `frontend/src/utils.js` | Helper React per classi CSS, sorgenti, ricerca, durate e YouTube embed. |
-| `frontend/src/styles/app.css` | Stile completo della UI React. |
+| `frontend/src/styles/app.css` | Tema, layout e componenti principali della UI React. |
+| `frontend/src/styles/player.css` | Stili isolati del player inferiore: dock, progress, volume, Pi/PC e marquee titolo. |
 
 ### Componenti React
 
@@ -125,6 +126,7 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `Catalog.jsx` | Griglia tracce, filtri, paginazione e play. |
 | `QueuePanel.jsx` | Visualizza e svuota la coda React. |
 | `AdminPanel.jsx` | Crea utenti, resetta password temporanea, elimina utenti, resetta stato YouTube, mostra diagnostica Raspberry con auto-refresh, gestisce cookie/audit YouTube, archiviazione tracce e report licenze. |
+| `adminDiagnostics.js` | Helper diagnostici dell'admin: etichette errori, salute Raspberry, riassunti audit/check e righe cookie. |
 | `SettingsPanel.jsx` | Cambio password dell'utente loggato. |
 | `PlayerDock.jsx` | Player inferiore React: play, prev, next, progress, shuffle, repeat, volume e uscita Pi/PC. |
 

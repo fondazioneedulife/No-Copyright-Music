@@ -783,10 +783,12 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `frontend/src/api/client.js` | Wrapper fetch JSON/download. |
 | `frontend/src/hooks/useCatalogPage.js` | Paginazione e fetch catalogo. |
 | `frontend/src/components/AdminPanel.jsx` | Utenti, reset scan, diagnostica, backup, ripristino e report. |
+| `frontend/src/components/adminDiagnostics.js` | Helper puri per diagnostica admin, errori YouTube, cookie e riassunti check/audio. |
 | `frontend/src/components/DiscoveryPanel.jsx` | Import brani e playlist temporanea. |
 | `frontend/src/components/PlayerDock.jsx` | Player inferiore. |
 | `frontend/src/components/Catalog.jsx` | Griglia catalogo e filtri. |
-| `frontend/src/styles/app.css` | Stile React completo. |
+| `frontend/src/styles/app.css` | Tema, layout e componenti React principali. |
+| `frontend/src/styles/player.css` | Stile separato del player inferiore, inclusi volume, seek, Pi/PC, shuffle/repeat e marquee. |
 
 ### Legacy
 
