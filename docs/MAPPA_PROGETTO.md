@@ -113,6 +113,9 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `frontend/src/hooks/useCatalogPage.js` | Stato e fetch della pagina catalogo, separati da `App.jsx`. |
 | `frontend/src/utils.js` | Helper React per classi CSS, sorgenti, ricerca, durate e YouTube embed. |
 | `frontend/src/styles/app.css` | Tema, layout e componenti principali della UI React. |
+| `frontend/src/styles/admin.css` | Stili admin: utenti, diagnostica Raspberry, cookie YouTube, modali e banner stato. |
+| `frontend/src/styles/catalog.css` | Stili catalogo: griglia brani, card, copertine, badge, pulsanti play e paginazione. |
+| `frontend/src/styles/hero.css` | Stili della hero React: headline, metriche, CTA e spotlight. |
 | `frontend/src/styles/player.css` | Stili isolati del player inferiore: dock, progress, volume, Pi/PC e marquee titolo. |
 
 ### Componenti React

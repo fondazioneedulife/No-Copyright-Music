@@ -1,0 +1,181 @@
+.track-grid {
+  display: grid;
+  /* Card leggermente piu' piccole: il catalogo respira e non sembra zoomato. */
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+  gap: 12px;
+}
+
+.track-card {
+  min-width: 0;
+  padding: 8px;
+  /* Aiuta Chrome sul Raspberry: le card fuori viewport non vengono dipinte subito. */
+  content-visibility: auto;
+  contain-intrinsic-size: 260px 190px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.07);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+  animation: panelLiftIn 360ms ease both;
+}
+
+.track-card:hover,
+.track-card.is-playing,
+.track-card.is-queued {
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.11);
+  transform: translateY(-2px);
+}
+
+.track-card.is-playing .track-play {
+  animation: playButtonBreath 1.5s ease-in-out infinite;
+}
+
+.track-cover {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.track-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-fallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  background:
+    radial-gradient(circle at 30% 25%, var(--accent), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent);
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.genre-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(12px);
+}
+
+.track-play {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  min-height: 0;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.track-play:hover {
+  box-shadow: 0 16px 34px rgba(255, 47, 66, 0.32);
+}
+
+.play-icon,
+.pause-icon {
+  position: relative;
+  display: block;
+  background: currentColor;
+  pointer-events: none;
+}
+
+.play-icon {
+  width: 17px;
+  height: 19px;
+  transform: translateX(2px);
+  clip-path: polygon(18% 8%, 18% 92%, 92% 50%);
+}
+
+.pause-icon {
+  width: 16px;
+  height: 18px;
+  background:
+    linear-gradient(90deg, currentColor 0 35%, transparent 35% 65%, currentColor 65% 100%);
+}
+
+.track-copy {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.track-copy strong,
+.track-copy span,
+.track-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-copy span,
+.track-copy small {
+  color: var(--muted);
+}
+
+.track-badges,
+.asset-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.track-badges span,
+.asset-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  max-width: 100%;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.asset-links a {
+  color: var(--accent);
+}
+
+.track-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination {
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.pagination .is-active {
+  border-color: var(--border-strong);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+}
+
+body[data-theme="light"] .pagination .is-active {
+  color: #031018;
+}

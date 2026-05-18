@@ -788,6 +788,9 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `frontend/src/components/PlayerDock.jsx` | Player inferiore. |
 | `frontend/src/components/Catalog.jsx` | Griglia catalogo e filtri. |
 | `frontend/src/styles/app.css` | Tema, layout e componenti React principali. |
+| `frontend/src/styles/admin.css` | Stile admin, diagnostica, cookie YouTube, modali e stato operativo. |
+| `frontend/src/styles/catalog.css` | Stile griglia catalogo, card brani, badge e paginazione. |
+| `frontend/src/styles/hero.css` | Stile hero iniziale, metriche e spotlight. |
 | `frontend/src/styles/player.css` | Stile separato del player inferiore, inclusi volume, seek, Pi/PC, shuffle/repeat e marquee. |
 
 ### Legacy
