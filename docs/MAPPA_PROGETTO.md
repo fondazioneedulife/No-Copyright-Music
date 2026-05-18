@@ -112,6 +112,7 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `frontend/src/api/client.js` | Wrapper unico per chiamate fetch: JSON, bearer token, player Raspberry e gestione errori. |
 | `frontend/src/hooks/useCatalogPage.js` | Stato e fetch della pagina catalogo, separati da `App.jsx`. |
 | `frontend/src/hooks/useDiscoveryProviders.js` | Caricamento provider discovery/import quando l'utente e' autenticato. |
+| `frontend/src/hooks/usePlayerRuntime.js` | Stato e comandi del player React: coda, Pi/browser, volume, seek, iframe YouTube e audio fallback. |
 | `frontend/src/hooks/useYouTubeCookieAlert.js` | Polling admin, upload e stato dell'avviso cookie YouTube, separati da `App.jsx`. |
 | `frontend/src/utils.js` | Helper React per classi CSS, sorgenti, ricerca, durate e YouTube embed. |
 | `frontend/src/styles/app.css` | Tema, layout e componenti principali della UI React. |
