@@ -772,6 +772,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `lib/auth-service.js` | SQLite utenti, password, token, ruoli. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione catalogo. |
 | `lib/youtube-cache-service.js` | Cache locale dei brani YouTube whitelist per rendere stabile il player Raspberry. |
+| `lib/ytdl-cookie-service.js` | Upload, validazione e diagnostica dei cookie YouTube usati da `yt-dlp`, senza esporre valori sensibili nei log o nella UI. |
 | `lib/ytdl-options.js` | Opzioni condivise `yt-dlp`/`mpv`: client YouTube, PO token, provider bgutil e escaping sicuro. |
 
 ### Frontend React
