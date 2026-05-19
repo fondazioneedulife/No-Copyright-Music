@@ -47,6 +47,7 @@ Moduli backend estratti:
 | `lib/audio-replacement-service.js` | Ricontrolla errori YouTube/login, avvia l'audit completo YouTube e mantiene la lista runtime delle tracce da sostituire. |
 | `lib/auth-service.js` | SQLite utenti, hash password, token sessione, ruoli admin/user e cambio password. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione server-side di `GET /api/tracks`. |
+| `lib/http-utils.js` | Utility HTTP condivise: errori con status, JSON response, lettura body, download testuali, CSV e nomi file sicuri. |
 | `lib/youtube-cache-service.js` | Cache locale dei brani YouTube whitelist: scarica audio con `yt-dlp`, salva in `uploads/audio/youtube-cache` e aggiorna `audioPath` nel catalogo. |
 | `lib/ytdl-cookie-service.js` | Gestisce cookies.txt YouTube: validazione Netscape, upload admin, stato diagnostico, probe account e opzioni comuni per `yt-dlp`. |
 | `lib/ytdl-options.js` | Costruisce opzioni `yt-dlp`/`mpv` condivise da backend e audit catalogo: PO token, bgutil, escaping `--ytdl-raw-options` e mascheramento segreti. |
@@ -110,7 +111,9 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | `frontend/src/main.jsx` | Monta React dentro `#root`. |
 | `frontend/src/App.jsx` | Stato globale React: auth, catalogo, utenti, filtri, coda, player Pi/PC, tema e routing interno. |
 | `frontend/src/api/client.js` | Wrapper unico per chiamate fetch: JSON, bearer token, player Raspberry e gestione errori. |
+| `frontend/src/hooks/useAdminActions.js` | Stato e azioni admin React: utenti, diagnostica, audit YouTube, backup, ripristino e report. |
 | `frontend/src/hooks/useCatalogPage.js` | Stato e fetch della pagina catalogo, separati da `App.jsx`. |
+| `frontend/src/hooks/useDiscoveryActions.js` | Stato e azioni di ricerca/import React: provider esterni, import lotto/link e playlist temporanea. |
 | `frontend/src/hooks/useDiscoveryProviders.js` | Caricamento provider discovery/import quando l'utente e' autenticato. |
 | `frontend/src/hooks/usePlayerRuntime.js` | Stato e comandi del player React: coda, Pi/browser, volume, seek, iframe YouTube e audio fallback. |
 | `frontend/src/hooks/useYouTubeCookieAlert.js` | Polling admin, upload e stato dell'avviso cookie YouTube, separati da `App.jsx`. |

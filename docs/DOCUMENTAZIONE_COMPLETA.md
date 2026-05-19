@@ -771,6 +771,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `lib/audio-replacement-service.js` | Ricontrollo errori YouTube/login, audit completo YouTube e lista tracce da sostituire. |
 | `lib/auth-service.js` | SQLite utenti, password, token, ruoli. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione catalogo. |
+| `lib/http-utils.js` | Utility HTTP condivise: errori, risposte JSON, body JSON, download testuali, CSV e nomi file sicuri. |
 | `lib/youtube-cache-service.js` | Cache locale dei brani YouTube whitelist per rendere stabile il player Raspberry. |
 | `lib/ytdl-cookie-service.js` | Upload, validazione e diagnostica dei cookie YouTube usati da `yt-dlp`, senza esporre valori sensibili nei log o nella UI. |
 | `lib/ytdl-options.js` | Opzioni condivise `yt-dlp`/`mpv`: client YouTube, PO token, provider bgutil e escaping sicuro. |
@@ -781,7 +782,9 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | --- | --- |
 | `frontend/src/App.jsx` | Stato globale e collegamento componenti/API. |
 | `frontend/src/api/client.js` | Wrapper fetch JSON/download. |
+| `frontend/src/hooks/useAdminActions.js` | Stato e azioni admin: utenti, diagnostica Raspberry, audit YouTube, backup, ripristino e report. |
 | `frontend/src/hooks/useCatalogPage.js` | Paginazione e fetch catalogo. |
+| `frontend/src/hooks/useDiscoveryActions.js` | Stato e azioni import React: ricerca provider, import singolo/lotto/link e playlist temporanea. |
 | `frontend/src/hooks/useDiscoveryProviders.js` | Caricamento provider discovery/import dopo login. |
 | `frontend/src/hooks/usePlayerRuntime.js` | Runtime player React: stato, coda, Pi/browser, seek, volume, YouTube embed e fallback audio. |
 | `frontend/src/hooks/useYouTubeCookieAlert.js` | Avviso periodico admin per cookie YouTube, upload `cookies.txt` e stato del pop-up. |

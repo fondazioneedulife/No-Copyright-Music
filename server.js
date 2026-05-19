@@ -9,6 +9,16 @@ const { createAutomaticAudioCheckService } = require("./lib/audio-check-service"
 const { createAudioReplacementService } = require("./lib/audio-replacement-service");
 const { createAuthService } = require("./lib/auth-service");
 const { catalogPageResponse } = require("./lib/catalog-page");
+const {
+  contentDisposition,
+  csvValue,
+  downloadText,
+  exportStamp,
+  httpError,
+  isPathInsideDirectory,
+  json,
+  readJsonBody,
+} = require("./lib/http-utils");
 const { createYouTubeAudioCacheService } = require("./lib/youtube-cache-service");
 const { createYtdlCookieService } = require("./lib/ytdl-cookie-service");
 const {
@@ -1023,12 +1033,6 @@ function publicDiscoveryProviders(rightsMode) {
   return buildDiscoveryProviders().filter((provider) => provider.rightsModes.includes(rightsMode));
 }
 
-function httpError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
-}
-
 function isArchivedLibraryTrack(track) {
   return Boolean(track?.hiddenFromCatalog) || firstString(track?.availabilityStatus).toLowerCase() === "unavailable";
 }
@@ -1138,14 +1142,6 @@ async function ensureAssetStorage() {
 async function findTrackById(trackId) {
   const tracks = await readLibrary();
   return tracks.find((track) => track.id === trackId) || null;
-}
-
-function json(res, statusCode, payload) {
-  res.writeHead(statusCode, {
-    "Cache-Control": "no-store",
-    "Content-Type": "application/json; charset=utf-8",
-  });
-  res.end(JSON.stringify(payload));
 }
 
 async function resolveJamendoCoverUrl(trackId) {
@@ -1944,37 +1940,6 @@ function normalizeDiscoveryItem(item) {
     rightsNotes: firstString(item.rightsNotes, item.licenseDetail),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  });
-}
-
-async function readJsonBody(req) {
-  return new Promise((resolve, reject) => {
-    const limit = 25 * 1024 * 1024;
-    const chunks = [];
-    let size = 0;
-
-    req.on("data", (chunk) => {
-      size += chunk.length;
-      if (size > limit) {
-        reject(httpError(413, "Payload troppo grande. Riduci dimensione dei file."));
-        req.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-
-    req.on("end", () => {
-      try {
-        const raw = Buffer.concat(chunks).toString("utf8") || "{}";
-        resolve(JSON.parse(raw));
-      } catch {
-        reject(httpError(400, "JSON non valido."));
-      }
-    });
-
-    req.on("error", (error) => {
-      reject(error);
-    });
   });
 }
 
@@ -4432,19 +4397,6 @@ async function serveReactApp(res, requestPath) {
   }
 }
 
-function isPathInsideDirectory(directory, targetPath) {
-  const relative = path.relative(directory, targetPath);
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
-}
-
-function contentDisposition(downloadName) {
-  const safeName = String(downloadName || "clearwave-track.wav")
-    .replace(/["\\]/g, "")
-    .replace(/[^a-zA-Z0-9._ -]/g, "-")
-    .slice(0, 140);
-  return `attachment; filename="${safeName || "clearwave-track.wav"}"`;
-}
-
 async function serveFileDownload(res, filePath, downloadName) {
   const content = await fs.readFile(filePath);
   res.writeHead(200, {
@@ -4453,24 +4405,6 @@ async function serveFileDownload(res, filePath, downloadName) {
     "Content-Type": contentTypeFor(filePath),
   });
   res.end(content);
-}
-
-function downloadText(res, downloadName, contentType, text) {
-  res.writeHead(200, {
-    "Cache-Control": "no-store",
-    "Content-Disposition": contentDisposition(downloadName),
-    "Content-Type": contentType,
-  });
-  res.end(text);
-}
-
-function csvValue(value) {
-  const text = Array.isArray(value) ? value.join("; ") : String(value ?? "");
-  return `"${text.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
-}
-
-function exportStamp() {
-  return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
 async function writeCatalogSafetyBackup(tracks, reason) {
