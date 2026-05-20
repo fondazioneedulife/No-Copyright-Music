@@ -271,6 +271,13 @@ export function fetchAdminDiagnostics(token) {
   return apiRequest("/api/admin/diagnostics", { token });
 }
 
+export function checkSourceHealth(token) {
+  return apiRequest("/api/admin/source-health", {
+    method: "POST",
+    token,
+  });
+}
+
 export function fetchYouTubeFullAuditStatus(token) {
   return apiRequest("/api/admin/audio-check/youtube-full-audit", { token });
 }

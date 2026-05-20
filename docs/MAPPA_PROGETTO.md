@@ -48,6 +48,7 @@ Moduli backend estratti:
 | `lib/auth-service.js` | SQLite utenti, hash password, token sessione, ruoli admin/user e cambio password. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione server-side di `GET /api/tracks`. |
 | `lib/http-utils.js` | Utility HTTP condivise: errori con status, JSON response, lettura body, download testuali, CSV e nomi file sicuri. |
+| `lib/source-health-service.js` | Test rapido sorgenti: prova YouTube con `yt-dlp` fino allo stream reale, Jamendo e file locali senza avviare l'audit completo. |
 | `lib/youtube-cache-service.js` | Cache locale dei brani YouTube whitelist: scarica audio con `yt-dlp`, salva in `uploads/audio/youtube-cache` e aggiorna `audioPath` nel catalogo. |
 | `lib/ytdl-cookie-service.js` | Gestisce cookies.txt YouTube: validazione Netscape, upload admin, stato diagnostico, probe account e opzioni comuni per `yt-dlp`. |
 | `lib/ytdl-options.js` | Costruisce opzioni `yt-dlp`/`mpv` condivise da backend e audit catalogo: PO token, bgutil, escaping `--ytdl-raw-options` e mascheramento segreti. |

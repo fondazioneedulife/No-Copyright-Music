@@ -72,6 +72,7 @@ export default function App() {
   const {
     adminStatus,
     adminStatusType,
+    handleCheckSourceHealth,
     handleCleanupBrokenAudioTracks,
     handleCreateUser,
     handleDeleteUser,
@@ -500,6 +501,7 @@ export default function App() {
                       onResetYouTubeImportState={handleResetYouTubeImportState}
                       onLoadDiagnostics={handleLoadAdminDiagnostics}
                       onLoadYouTubeAuditStatus={handleLoadYouTubeFullAuditStatus}
+                      onCheckSourceHealth={handleCheckSourceHealth}
                       onRecheckYouTubeLoginFailures={handleRecheckYouTubeLoginFailures}
                       onStartYouTubeFullAudit={handleStartYouTubeFullAudit}
                       onUploadYouTubeCookies={handleUploadYouTubeCookies}

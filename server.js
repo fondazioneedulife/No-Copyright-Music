@@ -9,6 +9,7 @@ const { createAutomaticAudioCheckService } = require("./lib/audio-check-service"
 const { createAudioReplacementService } = require("./lib/audio-replacement-service");
 const { createAuthService } = require("./lib/auth-service");
 const { catalogPageResponse } = require("./lib/catalog-page");
+const { createSourceHealthService } = require("./lib/source-health-service");
 const {
   contentDisposition,
   csvValue,
@@ -199,6 +200,16 @@ const ytdlCookieService = createYtdlCookieService({
     error: serverPlayer.lastError,
   }),
   youtubeWatchUrl,
+  ytDlpCommand,
+});
+const sourceHealthService = createSourceHealthService({
+  appendYtDlpCommonArgs,
+  canonicalYouTubePlaybackUrl,
+  readLibrary,
+  rootDir: ROOT_DIR,
+  runCommand: diagnosticCommandResult,
+  ytdlExtractorArgs: serverPlayerYtdlExtractorArgs,
+  ytdlFormat: serverPlayerYtdlFormat,
   ytDlpCommand,
 });
 const {
@@ -4934,6 +4945,7 @@ async function buildServerDiagnostics() {
     player: serverPlayerStatus(),
     audioCheck: automaticAudioCheck.status(),
     replacementList: await audioReplacementService.readList(),
+    sourceHealth: sourceHealthService.status(),
     youtubeAudit: audioReplacementService.auditStatus(),
     audioConfigs: audioConfigs.map((config) => ({
       label: config.label,
@@ -6425,6 +6437,13 @@ async function requestHandler(req, res) {
     if (req.method === "GET" && pathname === "/api/admin/diagnostics") {
       requireAdminRequest(req);
       json(res, 200, { diagnostics: await buildServerDiagnostics() });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/api/admin/source-health") {
+      requireAdminRequest(req);
+      const result = await sourceHealthService.run();
+      json(res, 200, { sourceHealth: result, diagnostics: await buildServerDiagnostics() });
       return;
     }
 

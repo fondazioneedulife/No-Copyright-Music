@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  checkSourceHealth,
   cleanupBrokenAudioTracks,
   createUser,
   deleteUser,
@@ -117,6 +118,19 @@ export function useAdminActions({ user, token, refreshTracks }) {
 
   async function handleLoadYouTubeFullAuditStatus() {
     return fetchYouTubeFullAuditStatus(token);
+  }
+
+  async function handleCheckSourceHealth() {
+    try {
+      const payload = await checkSourceHealth(token);
+      setAdminStatusType(payload.sourceHealth?.ok ? "success" : "error");
+      setAdminStatus(payload.sourceHealth?.summary || "Test sorgenti completato.");
+      return payload;
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Test sorgenti non riuscito.");
+      throw error;
+    }
   }
 
   async function handleRecheckYouTubeLoginFailures() {
@@ -256,6 +270,7 @@ export function useAdminActions({ user, token, refreshTracks }) {
     adminStatus,
     adminStatusType,
     handleCleanupBrokenAudioTracks,
+    handleCheckSourceHealth,
     handleCreateUser,
     handleDeleteUser,
     handleExportCatalogBackup,

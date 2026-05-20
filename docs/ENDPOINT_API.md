@@ -520,7 +520,34 @@ Solo admin. Restituisce diagnostica runtime per Raspberry/audio: versione Node, 
 Non espone valori segreti delle API: indica solo se le chiavi principali sono configurate.
 La risposta include anche gli ultimi eventi del player, utili per capire se una traccia e' partita, e' stata sostituita da un comando nuovo o e' terminata correttamente.
 Include anche `replacementList`, cioe' la lista runtime delle tracce da sostituire generata dai ricontrolli audio, e `youtubeAudit`, cioe' stato/progresso dell'eventuale verifica completa YouTube in background.
+Include `sourceHealth`, cioe' l'ultimo test rapido delle sorgenti: risoluzione YouTube con `yt-dlp`, apertura dello stream diretto, Jamendo e file locali.
 Per i cookie YouTube la diagnostica espone solo metadati sicuri: file letto, sorgente, numero righe, numero cookie YouTube/Google, numero nomi cookie sessione riconosciuti, stato `hasSessionCookies`, scadenza critica e messaggio `ytdlCookieWarning`. Non espone mai i valori dei cookie.
+
+### `POST /api/admin/source-health`
+
+Solo admin. Esegue un controllo rapido delle sorgenti principali senza avviare l'audit completo: prende un brano YouTube visibile, chiede a `yt-dlp` il link stream reale, prova ad aprirlo dal server, poi controlla una sorgente Jamendo e un file locale quando presenti.
+Serve per distinguere subito questi casi: cookie/account YouTube non validi, `yt-dlp` che risolve ma stream `googlevideo.com` bloccato da `403`, Jamendo non raggiungibile o file locale mancante.
+
+Risposta:
+
+```json
+{
+  "sourceHealth": {
+    "ok": false,
+    "summary": "Almeno una sorgente non risponde correttamente: apri il dettaglio sotto.",
+    "checks": [
+      {
+        "key": "youtube-stream",
+        "label": "YouTube stream",
+        "ok": false,
+        "reason": "youtube-stream-open-failed",
+        "statusCode": 403
+      }
+    ]
+  },
+  "diagnostics": {}
+}
+```
 
 ### `POST /api/admin/audio-check/youtube-login-recheck`
 

@@ -91,11 +91,12 @@ Dopo avere caricato cookie nuovi puoi usare `Riverifica archiviate`: ClearWave c
 Non sostituire migliaia di video a mano. Se l'audit mostra tantissimi KO YouTube:
 
 1. controlla prima `Cookie YouTube`, `yt-dlp` e `Deno/JS` nella diagnostica;
-2. usa `Test cookie YouTube`: fa una prova singola dal Raspberry con i cookie caricati;
-3. ricostruisci il container se manca Deno o compare `No supported JavaScript runtime`;
-4. abilita la cache locale YouTube se vuoi stabilizzare i brani whitelist che passano da `yt-dlp`;
-5. rilancia `Verifica tutto YouTube`;
-6. sostituisci in blocco solo i KO residui confermati dal report finale.
+2. usa `Test sorgenti`: controlla YouTube fino allo stream reale, Jamendo e file locali senza fare il giro completo;
+3. usa `Test cookie YouTube`: fa una prova singola dal Raspberry con i cookie caricati;
+4. ricostruisci il container se manca Deno o compare `No supported JavaScript runtime`;
+5. abilita la cache locale YouTube se vuoi stabilizzare i brani whitelist che passano da `yt-dlp`;
+6. rilancia `Verifica tutto YouTube`;
+7. sostituisci in blocco solo i KO residui confermati dal report finale.
 
 L'audit completo ha una protezione anti-report-sporco: se le prime tracce controllate sono tutte `youtube-age-or-login`, il backend ferma automaticamente il job. In quel caso il problema non sono migliaia di brani singoli, ma cookie YouTube non accettati o account bloccato da verifica anti-bot.
 Il controllo cookie distingue tre livelli: file presente, cookie di sessione dentro al file, e prova reale `yt-dlp` accettata da YouTube. Solo il terzo conferma che il Raspberry puo' riprodurre YouTube in quel momento.

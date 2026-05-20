@@ -206,6 +206,7 @@ export function diagnosticHealthChecks(diagnostics) {
   const youtubeCookiesConfigured = Boolean(diagnostics.config?.ytdlCookiesConfigured);
   const youtubeCookieSessionCount = Number(cookieAnalysis?.sessionCookieCount) || 0;
   const youtubeCookieSessionReady = Boolean(cookieAnalysis?.hasSessionCookies);
+  const sourceHealth = diagnostics.sourceHealth || null;
   return [
     {
       label: "Backend",
@@ -276,6 +277,11 @@ export function diagnosticHealthChecks(diagnostics) {
       label: "Audit YouTube",
       ok: !diagnostics.youtubeAudit?.lastError,
       detail: youtubeAuditSummary(diagnostics.youtubeAudit),
+    },
+    {
+      label: "Sorgenti",
+      ok: sourceHealth?.checkedAt ? Boolean(sourceHealth.ok) : true,
+      detail: sourceHealth?.summary || "Test rapido non ancora eseguito",
     },
   ];
 }

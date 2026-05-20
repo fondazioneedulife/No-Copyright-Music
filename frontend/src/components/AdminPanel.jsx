@@ -15,6 +15,7 @@ export function AdminPanel({
   onResetYouTubeImportState,
   onLoadDiagnostics,
   onLoadYouTubeAuditStatus,
+  onCheckSourceHealth,
   onRecheckYouTubeLoginFailures,
   onStartYouTubeFullAudit,
   onUploadYouTubeCookies,
@@ -40,6 +41,7 @@ export function AdminPanel({
   const [diagnosticsStatus, setDiagnosticsStatus] = useState("");
   const [diagnosticsStatusType, setDiagnosticsStatusType] = useState("success");
   const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
+  const [checkingSourceHealth, setCheckingSourceHealth] = useState(false);
   const [recheckingYouTubeLogin, setRecheckingYouTubeLogin] = useState(false);
   const [startingYouTubeFullAudit, setStartingYouTubeFullAudit] = useState(false);
   const [uploadingYouTubeCookies, setUploadingYouTubeCookies] = useState(false);
@@ -124,6 +126,29 @@ export function AdminPanel({
       setDiagnosticsStatus(error.message || "Diagnostica non riuscita.");
     } finally {
       setLoadingDiagnostics(false);
+    }
+  }
+
+  async function handleCheckSourceHealth() {
+    if (!onCheckSourceHealth) {
+      return;
+    }
+
+    setCheckingSourceHealth(true);
+    setDiagnosticsStatusType("success");
+    setDiagnosticsStatus("Test sorgenti YouTube/Jamendo in corso...");
+    try {
+      const payload = await onCheckSourceHealth();
+      if (payload.diagnostics) {
+        setDiagnostics(payload.diagnostics);
+      }
+      setDiagnosticsStatusType(payload.sourceHealth?.ok ? "success" : "error");
+      setDiagnosticsStatus(payload.sourceHealth?.summary || "Test sorgenti completato.");
+    } catch (error) {
+      setDiagnosticsStatusType("error");
+      setDiagnosticsStatus(error.message || "Test sorgenti non riuscito.");
+    } finally {
+      setCheckingSourceHealth(false);
     }
   }
 
@@ -516,6 +541,7 @@ export function AdminPanel({
           diagnosticsStatusType={diagnosticsStatusType}
           autoRefreshAt={autoRefreshAt}
           loadingDiagnostics={loadingDiagnostics}
+          checkingSourceHealth={checkingSourceHealth}
           probingYouTubeCookies={probingYouTubeCookies}
           recheckingYouTubeLogin={recheckingYouTubeLogin}
           recheckingArchivedTracks={recheckingArchivedTracks}
@@ -523,6 +549,7 @@ export function AdminPanel({
           uploadingYouTubeCookies={uploadingYouTubeCookies}
           cleaningBrokenTracks={cleaningBrokenTracks}
           onLoadDiagnostics={handleLoadDiagnostics}
+          onCheckSourceHealth={handleCheckSourceHealth}
           onProbeYouTubeCookies={handleProbeYouTubeCookies}
           onRecheckYouTubeLoginFailures={handleRecheckYouTubeLoginFailures}
           onRecheckArchivedAudioTracks={handleRecheckArchivedAudioTracks}

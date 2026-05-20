@@ -14,6 +14,7 @@ export function AdminDiagnosticsPanel({
   diagnosticsStatusType,
   autoRefreshAt,
   loadingDiagnostics,
+  checkingSourceHealth,
   probingYouTubeCookies,
   recheckingYouTubeLogin,
   recheckingArchivedTracks,
@@ -21,6 +22,7 @@ export function AdminDiagnosticsPanel({
   uploadingYouTubeCookies,
   cleaningBrokenTracks,
   onLoadDiagnostics,
+  onCheckSourceHealth,
   onProbeYouTubeCookies,
   onRecheckYouTubeLoginFailures,
   onRecheckArchivedAudioTracks,
@@ -47,6 +49,8 @@ export function AdminDiagnosticsPanel({
     hardBrokenReasons.has(String(item.reason || "").toLowerCase())
   );
   const youtubeAudit = diagnostics?.youtubeAudit || null;
+  const sourceHealth = diagnostics?.sourceHealth || null;
+  const sourceHealthChecks = Array.isArray(sourceHealth?.checks) ? sourceHealth.checks : [];
   const youtubeAuditLog = Array.isArray(youtubeAudit?.logTail) ? youtubeAudit.logTail.slice(-20) : [];
   const audioCheckLog = Array.isArray(diagnostics?.audioCheck?.logTail)
     ? diagnostics.audioCheck.logTail.slice(-20)
@@ -70,6 +74,14 @@ export function AdminDiagnosticsPanel({
         <div className="admin-tool-actions">
           <button type="button" onClick={onLoadDiagnostics} disabled={loadingDiagnostics}>
             {loadingDiagnostics ? "Controllo..." : "Aggiorna diagnostica"}
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={onCheckSourceHealth}
+            disabled={checkingSourceHealth}
+          >
+            {checkingSourceHealth ? "Test..." : "Test sorgenti"}
           </button>
           <button
             type="button"
@@ -242,6 +254,19 @@ export function AdminDiagnosticsPanel({
                   : "Avvialo dopo avere caricato i cookie"}
             </small>
           </div>
+          <div>
+            <span>Test sorgenti</span>
+            <strong>
+              {sourceHealth?.running
+                ? "In corso"
+                : sourceHealth?.checkedAt
+                  ? sourceHealth.ok
+                    ? "OK"
+                    : "Da controllare"
+                  : "Non eseguito"}
+            </strong>
+            <small>{sourceHealth?.summary || "Premi Test sorgenti per provare YouTube, Jamendo e file locali."}</small>
+          </div>
         </div>
       ) : null}
 
@@ -252,6 +277,28 @@ export function AdminDiagnosticsPanel({
             <div key={row.label}>
               <strong>{row.label}</strong>
               <span>{row.value}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {sourceHealthChecks.length > 0 ? (
+        <div className="diagnostic-events is-readable">
+          <p className="eyebrow">Test sorgenti</p>
+          <div>
+            <strong>{sourceHealth?.ok ? "Sorgenti OK" : "Sorgenti da verificare"}</strong>
+            <span>{sourceHealth?.summary || "Ultimo test sorgenti."}</span>
+            <small>{sourceHealth?.checkedAt || "In attesa del primo test"}</small>
+          </div>
+          {sourceHealthChecks.map((check) => (
+            <div key={check.key}>
+              <strong>{check.label}</strong>
+              <span>
+                {check.status || (check.ok ? "OK" : "KO")}
+                {check.reason ? ` | ${check.reason}` : ""}
+                {check.statusCode ? ` | HTTP ${check.statusCode}` : ""}
+              </span>
+              <small>{check.detail}</small>
             </div>
           ))}
         </div>
