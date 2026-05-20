@@ -307,6 +307,17 @@ Il controllo usa `mpv --ao=null`, quindi prova le sorgenti senza far uscire audi
 Per farlo partire da solo, imposta `CLEARWAVE_AUDIO_CHECK_ENABLED=1` nel `.env`: il backend lo esegue in background e la diagnostica admin mostra l'ultimo esito.
 Se il check catalogo o `Verifica tutto YouTube` sono in corso, la pagina Admin si aggiorna da sola. Il banner `Auto-refresh attivo` conferma che React sta rileggendo stato e log; premi `Aggiorna diagnostica` solo se vuoi forzare un refresh manuale fuori dai job lunghi.
 
+## Test sorgenti rapido
+
+Prima di lanciare un audit lungo, apri `Impostazioni -> Diagnostica audio/server` e premi `Test sorgenti`.
+
+Il test non controlla migliaia di brani: sceglie una traccia YouTube, una Jamendo e un file locale quando presenti. Per YouTube fa due passaggi distinti:
+
+1. `YouTube yt-dlp`: verifica se `yt-dlp` riesce a risolvere il video con cookie, Deno e PO token/bgutil;
+2. `YouTube stream`: prova ad aprire il link reale `googlevideo.com` dal server.
+
+Se `YouTube yt-dlp` e' KO, guarda cookie, account YouTube, Deno o `yt-dlp`. Se `YouTube yt-dlp` e' OK ma `YouTube stream` e' KO con `403`, YouTube ha firmato lo stream ma lo sta rifiutando al Raspberry: controlla provider PO token/bgutil, rete e cache locale.
+
 ## Cache locale YouTube per stabilita'
 
 Lo streaming live YouTube non puo' essere garantito al 100%: anche con cookie, Deno e PO token YouTube puo' rifiutare lo stream `googlevideo.com` con `403`. Per rendere stabile l'uso operativo, ClearWave puo' cacheare sul Raspberry i brani YouTube del catalogo whitelist.
@@ -383,8 +394,9 @@ Dopo cookie nuovi:
 
 1. apri Admin -> Diagnostica audio/server;
 2. usa `Test cookie YouTube`;
-3. se il test e' autorizzato, usa `Riverifica archiviate`;
-4. se serve una pulizia completa, lancia `Verifica tutto YouTube` e aspetta il report finale.
+3. usa `Test sorgenti` per verificare anche lo stream reale YouTube e Jamendo;
+4. se il test e' autorizzato, usa `Riverifica archiviate`;
+5. se serve una pulizia completa, lancia `Verifica tutto YouTube` e aspetta il report finale.
 
 Se durante il giro compaiono alcuni `timeout`, non archiviarli subito: su Raspberry possono dipendere da rete o carico. Segui il riepilogo finale e riprova con meno concorrenza se i timeout sono tanti.
 
@@ -398,6 +410,7 @@ Se durante il giro compaiono alcuni `timeout`, non archiviarli subito: su Raspbe
 | `Playback open error` / `Unknown error 524` | ALSA non apre quel device | Lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`, poi usa `aplay -l` |
 | `Requested format is not available` | Problema YouTube/formato, non device audio | Verifica `yt-dlp --version` e `CLEARWAVE_YTDL_FORMAT` |
 | `HTTP error 403` su `googlevideo.com` | YouTube rifiuta lo stream firmato dopo la risoluzione yt-dlp | Usa il container aggiornato: deve mostrare `yt-dlp` nightly, `bgutil=on/http://127.0.0.1:4416` e fallback `youtube/tv`/`youtube/web-safari-hls`/`youtube/web-embedded` quando `mweb` fallisce subito |
+| `Test sorgenti` con `YouTube yt-dlp` OK ma `YouTube stream` KO | yt-dlp trova lo stream, ma Google Video lo rifiuta quando viene aperto | Controlla PO token/bgutil, cookie/account, rete Raspberry e abilita cache locale YouTube per i brani whitelist |
 | `No supported JavaScript runtime could be found` | yt-dlp non trova Deno per i controlli JavaScript YouTube | Ricostruisci l'immagine aggiornata e controlla `deno --version` nel container |
 | `Sign in to confirm your age` / `not a bot` | YouTube richiede una sessione autenticata | Carica un `cookies.txt` Netscape dal pannello Admin oppure salvalo in `data/youtube-cookies.txt`; il container lo usa come `/app/data/youtube-cookies.txt`. |
 | Audit YouTube fermato dopo pochi KO | Le prime tracce chiedono tutte login/anti-bot | Rigenera `cookies.txt` da YouTube loggato, caricalo di nuovo e rilancia l'audit. |

@@ -174,6 +174,8 @@ Se YouTube risponde `quotaExceeded`, aspetta il reset quota e rilancia `Importa 
 
 La diagnostica admin serve per capire lo stato reale di Raspberry, `mpv`, `yt-dlp`, Deno, ALSA, cookie YouTube, player e check catalogo.
 
+Usa `Test sorgenti` quando vuoi una risposta veloce prima di un controllo lungo: il backend prova YouTube con `yt-dlp`, apre lo stream firmato, controlla Jamendo e verifica un file locale. Se fallisce solo `YouTube stream`, il problema e' diverso dai cookie: `yt-dlp` ha trovato il link, ma Google Video lo rifiuta al momento dell'apertura.
+
 Durante `Verifica tutto YouTube` o un check catalogo automatico:
 
 - la UI mostra `Auto-refresh attivo`;
@@ -184,6 +186,7 @@ Durante `Verifica tutto YouTube` o un check catalogo automatico:
 Quando il check finisce, leggi prima il report:
 
 - `youtube-age-or-login`: carica cookie nuovi e usa `Test cookie YouTube`;
+- `youtube-stream-open-failed`: usa `Test sorgenti` per separare errore `yt-dlp` da errore di apertura stream;
 - `timeout`: riprova con rete stabile o concorrenza piu' bassa;
 - `youtube-error` o `exit-1`: leggi il messaggio breve nella diagnostica o nel report JSON; e' il caso generico di `yt-dlp`/`mpv`;
 - `youtube-expired-url`: reimporta il video YouTube originale, perche' `googlevideo.com` e' solo uno stream temporaneo;

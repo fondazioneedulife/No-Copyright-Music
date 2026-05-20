@@ -84,10 +84,11 @@ All'inizio lascia vuoti `ALSA_CARD` e `CLEARWAVE_AUDIO_DEVICE`. Se la diagnostic
 9. Prova play/pausa, next, prev, shuffle e repeat.
 10. Cambia volume con slider e input numerico, per esempio `30`, `60`, `85`.
 11. Se usi YouTube, controlla `Cookie YouTube`: deve essere `OK / Attivi`; se serve carica un `cookies.txt` nuovo.
-12. Avvia `Verifica tutto YouTube` solo dopo il test cookie: mentre gira deve comparire `Auto-refresh attivo`.
-13. Importa un lotto da `120` tracce.
-14. Esporta `Backup catalogo`, `Report licenze` e `Report HTML`.
-15. Premi `Importa backup` solo se devi ripristinare: il backend salva prima una copia automatica del catalogo corrente.
+12. Premi `Test sorgenti`: YouTube, Jamendo e file locali devono dare un esito leggibile prima dell'audit lungo.
+13. Avvia `Verifica tutto YouTube` solo dopo il test cookie: mentre gira deve comparire `Auto-refresh attivo`.
+14. Importa un lotto da `120` tracce.
+15. Esporta `Backup catalogo`, `Report licenze` e `Report HTML`.
+16. Premi `Importa backup` solo se devi ripristinare: il backend salva prima una copia automatica del catalogo corrente.
 
 ## Import musica
 
@@ -129,6 +130,7 @@ Il report non sostituisce la verifica legale finale: serve a sapere da dove arri
 | `youtube-error` o `exit-1` | Errore generico di `yt-dlp`/`mpv`; nei nuovi report c'e' anche il messaggio breve | Leggi la riga nella diagnostica o apri il JSON in `data/reports`; spesso serve cookie nuovo, rete stabile o archiviazione del video. |
 | `youtube-expired-url` o URL `googlevideo.com` | E' stato salvato uno stream temporaneo invece del video YouTube originale | Reimporta dal link YouTube o aggiungi `youtubeVideoId`; lo stream diretto scade e non va usato come sorgente stabile. |
 | `youtube-stream-open-failed` | `yt-dlp` risolve YouTube ma `mpv` non apre lo stream firmato (`403`, `Failed to open`, `avformat_open_input`) | Controlla che la diagnostica mostri `PO token` attivo; poi rifai il check. Se resta KO in piu' report, sostituisci la traccia. |
+| `Test sorgenti` segnala YouTube stream KO | Il controllo rapido ha gia' confermato che lo stream reale viene rifiutato | Controlla cookie/account e PO token/bgutil prima di avviare `Verifica tutto YouTube`. |
 | `mpv precedente chiuso per cambio traccia/comando` | Un nuovo comando ha sostituito il vecchio mpv | Non e' un errore se la traccia successiva parte. |
 | `mpv ha completato ... codice 0` | Traccia terminata correttamente | Normale. |
 | Importa poche tracce | Molti duplicati o filtri durata/licenza | Usa lotto piu' grande o reset scan YouTube. |
@@ -141,9 +143,10 @@ Procedura piu' sicura:
 
 1. esporta o carica `cookies.txt` dal PC dove YouTube e' loggato;
 2. usa `Test cookie YouTube`;
-3. se leggi `Account YouTube autorizzato`, rilancia `Verifica tutto YouTube`;
-4. se il report finale contiene tracce definitive non disponibili, usa `Archivia non disponibili`;
-5. dopo cookie nuovi usa `Riverifica archiviate` per recuperare brani nascosti.
+3. usa `Test sorgenti` per sapere se lo stream reale YouTube viene aperto;
+4. se leggi `Account YouTube autorizzato`, rilancia `Verifica tutto YouTube`;
+5. se il report finale contiene tracce definitive non disponibili, usa `Archivia non disponibili`;
+6. dopo cookie nuovi usa `Riverifica archiviate` per recuperare brani nascosti.
 
 ## Comandi utili
 

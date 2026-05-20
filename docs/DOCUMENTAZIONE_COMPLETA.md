@@ -64,6 +64,7 @@ ClearWave non sostituisce una verifica legale finale. Il report licenze aiuta a 
 | Uscita audio | `PC` per browser locale, `Pi` per audio server-side su Raspberry. |
 | Admin | Utenti, reset password, elimina utente, reset scan YouTube. |
 | Diagnostica | Runtime, mpv, yt-dlp, ALSA, preflight audio, ultimo errore ed eventi player. |
+| Test sorgenti | Prova rapida YouTube/Jamendo/file locali senza avviare l'audit completo. |
 | Audit audio | Check catalogo automatico, verifica completa YouTube, lista sostituzioni e auto-refresh UI. |
 | Cache YouTube | Cache locale Raspberry dei brani YouTube whitelist per evitare stream `googlevideo.com` instabili. |
 | Backup | Export JSON del catalogo e ripristino con copia automatica preventiva. |
@@ -481,15 +482,29 @@ La diagnostica mostra:
 - stato check catalogo automatico;
 - stato cookie YouTube e numero cookie sessione;
 - stato verifica completa YouTube;
+- ultimo `Test sorgenti`, con esito YouTube `yt-dlp`, stream YouTube reale, Jamendo e file locali;
 - lista tracce candidate a sostituzione/archiviazione;
 - ultimi eventi player, per vedere start, stop, cambio traccia, errori mpv e completamenti codice `0`.
 
 Se `Verifica tutto YouTube` o il check catalogo automatico sono in corso, React mostra un banner `Auto-refresh attivo` e aggiorna da solo la diagnostica. Il progresso dell'audit YouTube viene riletto spesso; la diagnostica completa viene ricaricata piu' lentamente per non martellare il Raspberry con comandi `mpv`, `yt-dlp` e ALSA.
 
+### Test sorgenti
+
+Nel pannello `Diagnostica audio/server` il pulsante `Test sorgenti` fa una prova corta e leggibile:
+
+1. seleziona una traccia YouTube visibile;
+2. usa `yt-dlp` con cookie, Deno, extractor args e PO token/bgutil configurati;
+3. controlla che il link `googlevideo.com` firmato sia apribile dal server;
+4. prova una sorgente Jamendo remota;
+5. verifica un file locale in `uploads/`, se presente.
+
+Usalo prima di `Verifica tutto YouTube` quando vuoi capire velocemente se il problema e' globale, per esempio cookie non validi o `403` sugli stream YouTube, oppure limitato a poche tracce.
+
 Endpoint:
 
 ```text
 GET /api/admin/diagnostics
+POST /api/admin/source-health
 ```
 
 La diagnostica non mostra chiavi API reali. Indica solo se sono configurate.
@@ -542,6 +557,7 @@ Per il problema specifico dei video YouTube che chiedono login/conferma eta o ve
 Regola pratica:
 
 - se l'audit produce subito molti `youtube-age-or-login`, prima controlla cookie/account con `Test cookie YouTube`;
+- se vuoi sapere subito se YouTube/Jamendo/file locali rispondono, usa `Test sorgenti`;
 - se compaiono molti `timeout`, aspetta il report finale e riprova con concorrenza piu' bassa prima di archiviare;
 - se compare `youtube-expired-url`, reimporta il video YouTube originale: gli URL `googlevideo.com` sono stream temporanei e non fonti stabili;
 - se compare spesso `youtube-stream-open-failed`, `yt-dlp` ha trovato uno stream YouTube ma `mpv` non lo apre: controlla cookie/account, rete e carico Raspberry prima di archiviare;
@@ -750,6 +766,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `DELETE` | `/api/users/:username` | Elimina utente. |
 | `POST` | `/api/users/:username/reset-password` | Reset password. |
 | `GET` | `/api/admin/diagnostics` | Diagnostica Raspberry. |
+| `POST` | `/api/admin/source-health` | Test rapido sorgenti: YouTube con `yt-dlp`, apertura stream reale, Jamendo e file locali. |
 | `POST` | `/api/admin/audio-check/youtube-login-recheck` | Ricontrollo mirato errori YouTube/login e lista tracce da sostituire. |
 | `POST` | `/api/admin/audio-check/youtube-full-audit` | Avvia verifica completa YouTube in background. |
 | `GET` | `/api/admin/audio-check/youtube-full-audit` | Stato leggero della verifica completa YouTube. |
@@ -772,6 +789,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `lib/auth-service.js` | SQLite utenti, password, token, ruoli. |
 | `lib/catalog-page.js` | Filtri, facets e paginazione catalogo. |
 | `lib/http-utils.js` | Utility HTTP condivise: errori, risposte JSON, body JSON, download testuali, CSV e nomi file sicuri. |
+| `lib/source-health-service.js` | Test rapido sorgenti: YouTube `yt-dlp`, apertura stream firmato, Jamendo e file locali. |
 | `lib/youtube-cache-service.js` | Cache locale dei brani YouTube whitelist per rendere stabile il player Raspberry. |
 | `lib/ytdl-cookie-service.js` | Upload, validazione e diagnostica dei cookie YouTube usati da `yt-dlp`, senza esporre valori sensibili nei log o nella UI. |
 | `lib/ytdl-options.js` | Opzioni condivise `yt-dlp`/`mpv`: client YouTube, PO token, provider bgutil e escaping sicuro. |
@@ -789,7 +807,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `frontend/src/hooks/usePlayerRuntime.js` | Runtime player React: stato, coda, Pi/browser, seek, volume, YouTube embed e fallback audio. |
 | `frontend/src/hooks/useYouTubeCookieAlert.js` | Avviso periodico admin per cookie YouTube, upload `cookies.txt` e stato del pop-up. |
 | `frontend/src/components/AdminPanel.jsx` | Utenti, reset scan YouTube, backup, ripristino e report. |
-| `frontend/src/components/AdminDiagnosticsPanel.jsx` | UI diagnostica Raspberry/admin: salute backend, cookie YouTube, audit, check catalogo, preflight ALSA/mpv e lista tracce da sostituire. |
+| `frontend/src/components/AdminDiagnosticsPanel.jsx` | UI diagnostica Raspberry/admin: salute backend, test sorgenti, cookie YouTube, audit, check catalogo, preflight ALSA/mpv e lista tracce da sostituire. |
 | `frontend/src/components/adminDiagnostics.js` | Helper puri per diagnostica admin, errori YouTube, cookie e riassunti check/audio. |
 | `frontend/src/components/CookieAlertModal.jsx` | Modale admin per cookie YouTube in scadenza o incompleti. |
 | `frontend/src/components/DiscoveryPanel.jsx` | Import brani e playlist temporanea. |
