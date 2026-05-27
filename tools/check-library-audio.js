@@ -568,6 +568,12 @@ async function checkWithYtDlp(source, options) {
     "--skip-download",
     "--socket-timeout",
     String(Math.ceil(options.timeoutMs / 1000)),
+    "--sleep-requests",
+    "1",
+    "--min-sleep-interval",
+    "1",
+    "--max-sleep-interval",
+    "3",
     "--print",
     "%(id)s\t%(duration)s\t%(availability)s",
   ];
@@ -664,6 +670,9 @@ async function checkWithMpv(source, sourceKind, options) {
       if (cookiesFile) {
         rawOptions.push(mpvRawOptionPair("cookies", cookiesFile));
       }
+      rawOptions.push(mpvRawOptionPair("sleep-requests", "1"));
+      rawOptions.push(mpvRawOptionPair("min-sleep-interval", "1"));
+      rawOptions.push(mpvRawOptionPair("max-sleep-interval", "3"));
       if (rawOptions.length > 0) {
         args.push(`--ytdl-raw-options=${rawOptions.join(",")}`);
       }
