@@ -104,6 +104,7 @@ export function FullDiagnosticsPage({ token, refreshTracks }) {
           onStartYouTubeFullAudit={handleStartYouTubeFullAudit}
           onUploadYouTubeCookiesFile={handleUploadYouTubeCookiesFile}
           onRequestCleanupBroken={() => setPendingCleanupBroken(true)}
+          activeTab={activeTab}
         />
       </div>
 
