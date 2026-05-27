@@ -36,6 +36,7 @@ export function usePlayerRuntime({
   const playbackRequestRef = useRef(0);
   const serverRunIdRef = useRef(0);
   const serverVolumeTimerRef = useRef(null);
+  const lastLocalVolumeChangeRef = useRef(0);
   const [activeTrack, setActiveTrack] = useState(null);
   const [playerMode, setPlayerMode] = useState("idle");
   const [isPlaying, setIsPlaying] = useState(false);
@@ -62,6 +63,7 @@ export function usePlayerRuntime({
   );
 
   function setPlayerVolume(nextVolume) {
+    lastLocalVolumeChangeRef.current = Date.now();
     setVolume(clampVolumeLevel(nextVolume));
   }
 
@@ -639,7 +641,7 @@ export function usePlayerRuntime({
         const nextPosition = Math.max(0, Number(player.position) || 0);
         const serverVolume = Number(player.volume);
 
-        if (Number.isFinite(serverVolume)) {
+        if (Number.isFinite(serverVolume) && Date.now() - lastLocalVolumeChangeRef.current > 3000) {
           setVolume((currentVolume) => {
             const nextVolume = clampVolumeLevel(serverVolume / 100);
             return Math.abs(currentVolume - nextVolume) > 0.004 ? nextVolume : currentVolume;
