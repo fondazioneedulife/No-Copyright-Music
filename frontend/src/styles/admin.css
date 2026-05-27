@@ -485,3 +485,11 @@
 .settings-panel .admin-form {
   grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
 }
+
+/* Full Diagnostics Page Tabs */
+.diagnostics-full-page { padding: 2rem; }
+.page-tabs { display: flex; gap: 1rem; margin-top: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+.tab-button { background: none; border: none; color: var(--text-muted); font-size: 1rem; cursor: pointer; padding: 0.5rem 1rem; border-radius: var(--radius-sm); transition: all 0.2s; }
+.tab-button:hover { background: var(--surface-light); color: var(--text); }
+.tab-button.active { background: var(--accent); color: var(--bg); font-weight: bold; }
+

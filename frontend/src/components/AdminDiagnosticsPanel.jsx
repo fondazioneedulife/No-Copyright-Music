@@ -33,6 +33,7 @@ export function AdminDiagnosticsPanel({
   onStartYouTubeFullAudit,
   onUploadYouTubeCookiesFile,
   onRequestCleanupBroken,
+  activeTab = "stato",
 }) {
   // La diagnostica Raspberry e' volutamente isolata: contiene molte viste operative e log lunghi.
   const preflightResults = Array.isArray(diagnostics?.audioPreflight) ? diagnostics.audioPreflight : [];
@@ -109,7 +110,9 @@ export function AdminDiagnosticsPanel({
         </p>
       ) : null}
 
-      <section className="diagnostic-section diagnostic-controls-section">
+      {activeTab === "stato" && (
+        <>
+          <section className="diagnostic-section diagnostic-controls-section">
         <div className="diagnostic-section-title">
           <div>
             <p className="eyebrow">Check</p>
@@ -578,21 +581,24 @@ export function AdminDiagnosticsPanel({
           ))}
         </div>
       ) : null}
+      </>
+      )}
 
-      {diagnostics?.alsa?.cards ? <pre className="diagnostic-output">{diagnostics.alsa.cards}</pre> : null}
+      {activeTab === "log" && (
+        <>
+          {diagnostics?.alsa?.cards ? <section className="diagnostic-section"><p className="eyebrow">Output alsa</p><pre className="diagnostic-output">{diagnostics.alsa.cards}</pre></section> : null}
 
-      {playerEvents.length > 0 ? (
-        <div className="diagnostic-events diagnostic-section is-readable">
-          <p className="eyebrow">Ultimi eventi player</p>
-          {playerEvents.map((event) => (
-            <div key={event.id}>
-              <strong>{event.type}</strong>
-              <span>{event.message}</span>
-              <small>{event.at}</small>
-            </div>
-          ))}
-        </div>
-      ) : null}
+          {diagnosticTools.map(
+            ([name, output]) =>
+              output ? (
+                <section key={name} className="diagnostic-section">
+                  <p className="eyebrow">Output {name}</p>
+                  <pre className="diagnostic-output">{output}</pre>
+                </section>
+              ) : null
+          )}
+        </>
+      )}
     </article>
   );
 }

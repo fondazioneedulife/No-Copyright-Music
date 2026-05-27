@@ -13,7 +13,7 @@ import { AdminPanel } from "./components/AdminPanel.jsx";
 import { AuthGate } from "./components/AuthGate.jsx";
 import { Catalog } from "./components/Catalog.jsx";
 import { CookieAlertModal } from "./components/CookieAlertModal.jsx";
-import { DiagnosticsPage } from "./components/DiagnosticsPage.jsx";
+import { FullDiagnosticsPage } from "./components/FullDiagnosticsPage.jsx";
 import { DiscoveryPanel } from "./components/DiscoveryPanel.jsx";
 import { Hero } from "./components/Hero.jsx";
 import { PlayerDock } from "./components/PlayerDock.jsx";
@@ -351,19 +351,8 @@ export default function App() {
   }
 
   function navigateToSection(sectionId) {
-    const targetMap = {
-      catalog: "catalogo",
-      playlists: "playlists",
-      discovery: "discovery",
-      diagnostics: "diagnostica",
-      settings: "impostazioni",
-      studio: "studio",
-    };
     setActiveSection(sectionId);
-    window.requestAnimationFrame(() => {
-      const target = document.getElementById(targetMap[sectionId] || sectionId);
-      target?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleUploadTrack(payload) {
@@ -421,46 +410,65 @@ export default function App() {
             onLogout={handleLogout}
           />
           <div className="content-shell">
-            <Hero
-              tracksCount={catalogFacets.totalTracks || tracks.length}
-              queueCount={queuedTracks.length}
-              noAttributionCount={noAttributionCount}
-              useCaseCount={useCaseCount}
-              onNavigate={navigateToSection}
-              isAdmin={user.role === "admin"}
-            />
+            { (activeSection === "catalog" || activeSection === "playlist") && (
+              <Hero
+                tracksCount={catalogFacets.totalTracks || tracks.length}
+                queueCount={queuedTracks.length}
+                noAttributionCount={noAttributionCount}
+                useCaseCount={useCaseCount}
+                onNavigate={navigateToSection}
+                isAdmin={user.role === "admin"}
+              />
+            )}
 
             <div className="main-grid">
               <div className="feed-column">
-                <Catalog
-                  tracks={catalogTracks}
-                  genres={genres}
-                  genre={genre}
-                  setGenre={setGenre}
-                  source={source}
-                  setSource={setSource}
-                  page={catalogPagination.page || page}
-                  setPage={setPage}
-                  pagination={catalogPagination}
-                  isLoading={catalogLoading}
-                  queueIds={queueIds}
-                  activeTrack={activeTrack}
-                  isPlaying={isPlaying}
-                  onPlay={playTrack}
-                  onToggleQueue={toggleQueue}
-                  onNavigate={navigateToSection}
-                  isAdmin={user.role === "admin"}
-                />
+                {(activeSection === "catalog" || activeSection === "playlist") && (
+                  <>
+                    <Catalog
+                      tracks={catalogTracks}
+                      genres={genres}
+                      genre={genre}
+                      setGenre={setGenre}
+                      source={source}
+                      setSource={setSource}
+                      page={catalogPagination.page || page}
+                      setPage={setPage}
+                      pagination={catalogPagination}
+                      isLoading={catalogLoading}
+                      queueIds={queueIds}
+                      activeTrack={activeTrack}
+                      isPlaying={isPlaying}
+                      onPlay={playTrack}
+                      onToggleQueue={toggleQueue}
+                      onNavigate={navigateToSection}
+                      isAdmin={user.role === "admin"}
+                    />
+                    <PlaylistPanel
+                      tracks={tracks}
+                      queuedTracks={queuedTracks}
+                      activeGenre={genre}
+                      onPlay={playTrack}
+                      onSelectGenre={(nextGenre) => {
+                        setGenre(nextGenre);
+                        setPage(1);
+                        navigateToSection("catalog");
+                      }}
+                      onRemoveFromQueue={removeFromQueue}
+                      onClearQueue={() => setQueueIds([])}
+                    />
+                  </>
+                )}
 
-                {user.role === "admin" ? (
-                <DiscoveryPanel
-                  providers={discoveryProviders}
-                  results={discoveryResults}
-                  isAdmin={user.role === "admin"}
-                  sessionOwner={user.username}
-                  sessionTracks={sessionTracks}
-                  status={discoveryStatus}
-                  statusType={discoveryStatusType}
+                {activeSection === "discovery" && user.role === "admin" && (
+                  <DiscoveryPanel
+                    providers={discoveryProviders}
+                    results={discoveryResults}
+                    isAdmin={user.role === "admin"}
+                    sessionOwner={user.username}
+                    sessionTracks={sessionTracks}
+                    status={discoveryStatus}
+                    statusType={discoveryStatusType}
                     onSearch={handleDiscoverySearch}
                     onImportTrack={handleDiscoveryImport}
                     onBulkImport={handleBulkImport}
@@ -471,60 +479,49 @@ export default function App() {
                     onClearSessionTracks={clearSessionTracks}
                     onLogout={handleLogout}
                   />
-                ) : null}
+                )}
 
-                <PlaylistPanel
-                  tracks={tracks}
-                  queuedTracks={queuedTracks}
-                  activeGenre={genre}
-                  onPlay={playTrack}
-                  onSelectGenre={(nextGenre) => {
-                    setGenre(nextGenre);
-                    setPage(1);
-                    navigateToSection("catalog");
-                  }}
-                  onRemoveFromQueue={removeFromQueue}
-                  onClearQueue={() => setQueueIds([])}
-                />
+                {activeSection === "diagnostics" && user.role === "admin" && (
+                  <FullDiagnosticsPage token={token} refreshTracks={refreshTracks} />
+                )}
 
-                {user.role === "admin" ? (
-                  <DiagnosticsPage token={token} refreshTracks={refreshTracks} />
-                ) : null}
-
-                <section className="settings-stack" id="impostazioni">
-                  {user.role === "admin" ? (
-                    <AdminPanel
-                      users={users}
-                      currentUser={user}
-                      onCreateUser={handleCreateUser}
-                      onDeleteUser={handleDeleteUser}
-                      onResetUserPassword={handleResetUserPassword}
-                      onResetYouTubeImportState={handleResetYouTubeImportState}
-                      onExportCatalogBackup={handleExportCatalogBackup}
-                      onExportLicenseReport={handleExportLicenseReport}
-                      onExportLicenseReportHtml={handleExportLicenseReportHtml}
-                      onImportCatalogBackup={handleImportCatalogBackup}
-                      activeSection={activeSection}
-                      status={adminStatus}
-                      statusType={adminStatusType}
+                {activeSection === "settings" && (
+                  <section className="settings-stack" id="impostazioni">
+                    {user.role === "admin" && (
+                      <AdminPanel
+                        users={users}
+                        currentUser={user}
+                        onCreateUser={handleCreateUser}
+                        onDeleteUser={handleDeleteUser}
+                        onResetUserPassword={handleResetUserPassword}
+                        onResetYouTubeImportState={handleResetYouTubeImportState}
+                        onExportCatalogBackup={handleExportCatalogBackup}
+                        onExportLicenseReport={handleExportLicenseReport}
+                        onExportLicenseReportHtml={handleExportLicenseReportHtml}
+                        onImportCatalogBackup={handleImportCatalogBackup}
+                        activeSection={activeSection}
+                        status={adminStatus}
+                        statusType={adminStatusType}
+                      />
+                    )}
+                    <SettingsPanel
+                      user={user}
+                      onChangePassword={handleChangePassword}
+                      status={settingsStatus}
+                      statusType={settingsStatusType}
                     />
-                  ) : null}
+                  </section>
+                )}
 
-                  <SettingsPanel
-                    user={user}
-                    onChangePassword={handleChangePassword}
-                    status={settingsStatus}
-                    statusType={settingsStatusType}
+                {activeSection === "studio" && (
+                  <StudioPanel
+                    tracks={tracks}
+                    isAdmin={user.role === "admin"}
+                    uploadStatus={uploadStatus}
+                    uploadStatusType={uploadStatusType}
+                    onUploadTrack={handleUploadTrack}
                   />
-                </section>
-
-                <StudioPanel
-                  tracks={tracks}
-                  isAdmin={user.role === "admin"}
-                  uploadStatus={uploadStatus}
-                  uploadStatusType={uploadStatusType}
-                  onUploadTrack={handleUploadTrack}
-                />
+                )}
               </div>
             </div>
           </div>
