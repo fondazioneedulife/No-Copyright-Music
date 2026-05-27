@@ -344,7 +344,7 @@ export function AdminDiagnosticsPanel({
         </section>
       ) : null}
 
-      {diagnostics ? (
+      {activeTab === "youtube" && diagnostics ? (
         <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Dettaglio cookie YouTube</p>
           {cookieRows.map((row) => (
@@ -356,7 +356,7 @@ export function AdminDiagnosticsPanel({
         </div>
       ) : null}
 
-      {sourceHealthChecks.length > 0 ? (
+      {activeTab === "audit" && sourceHealthChecks.length > 0 ? (
         <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Test sorgenti</p>
           <div>
@@ -378,7 +378,7 @@ export function AdminDiagnosticsPanel({
         </div>
       ) : null}
 
-      {youtubeAudit ? (
+      {activeTab === "audit" && youtubeAudit ? (
         <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Verifica completa YouTube</p>
           <div>
@@ -409,6 +409,7 @@ export function AdminDiagnosticsPanel({
         </div>
       ) : null}
 
+      {activeTab === "audit" ? (
       <div className="diagnostic-events diagnostic-section is-readable">
         <p className="eyebrow">Esiti brani YouTube</p>
         <div>
@@ -472,8 +473,9 @@ export function AdminDiagnosticsPanel({
           </div>
         ) : null}
       </div>
+      ) : null}
 
-      {diagnostics ? (
+      {activeTab === "audit" && diagnostics ? (
         <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Legenda risultati check</p>
           <div>
@@ -497,7 +499,7 @@ export function AdminDiagnosticsPanel({
         </div>
       ) : null}
 
-      {audioCheckLog.length > 0 ? (
+      {activeTab === "log" && audioCheckLog.length > 0 ? (
         <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Log check catalogo</p>
           <div>
@@ -521,7 +523,7 @@ export function AdminDiagnosticsPanel({
         </div>
       ) : null}
 
-      {diagnosticTools.length > 0 ? (
+      {activeTab === "log" && diagnosticTools.length > 0 ? (
         <div className="diagnostic-list diagnostic-section">
           {diagnosticTools.map(([label, result]) => (
             <div key={label}>
@@ -533,7 +535,7 @@ export function AdminDiagnosticsPanel({
         </div>
       ) : null}
 
-      {preflightResults.length > 0 ? (
+      {activeTab === "log" && preflightResults.length > 0 ? (
         <div className="diagnostic-list diagnostic-section">
           {preflightResults.map((entry) => (
             <div key={entry.label}>
@@ -545,7 +547,7 @@ export function AdminDiagnosticsPanel({
         </div>
       ) : null}
 
-      {replacementList ? (
+      {activeTab === "audit" && replacementList ? (
         <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Tracce da sostituire</p>
           <div>
@@ -586,7 +588,7 @@ export function AdminDiagnosticsPanel({
 
       {activeTab === "log" && (
         <>
-          {diagnostics?.alsa?.cards ? <section className="diagnostic-section"><p className="eyebrow">Output alsa</p><pre className="diagnostic-output">{diagnostics.alsa.cards}</pre></section> : null}
+          {activeTab === "log" && diagnostics?.alsa?.cards ? <section className="diagnostic-section"><p className="eyebrow">Output alsa</p><pre className="diagnostic-output">{diagnostics.alsa.cards}</pre></section> : null}
 
           {diagnosticTools.map(
             ([name, output]) =>
