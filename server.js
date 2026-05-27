@@ -1065,8 +1065,13 @@ async function ensureStorage() {
   }
 
   const raw = await fs.readFile(LIBRARY_FILE, "utf8");
-  const parsed = JSON.parse(raw || "{}");
-  const existingTracks = Array.isArray(parsed.tracks) ? parsed.tracks : [];
+  let existingTracks = [];
+  try {
+    const parsed = JSON.parse(raw || "{}");
+    existingTracks = Array.isArray(parsed.tracks) ? parsed.tracks : [];
+  } catch (error) {
+    console.warn(`[backend] Attenzione: impossibile leggere ${LIBRARY_FILE} (file corrotto?). Verrà ripristinato o azzerato. Errore:`, error.message);
+  }
   if (process.env.CLEARWAVE_ENABLE_DEMOS === "1") {
     const byId = new Map(existingTracks.map((track) => [track.id, track]));
     seedTracks.forEach((seedTrack) => {
@@ -1088,8 +1093,13 @@ async function readLibrary() {
   // Catalogo musicale: JSON semplice per rendere import/export e debug piu' immediati.
   await ensureStorage();
   const raw = await fs.readFile(LIBRARY_FILE, "utf8");
-  const parsed = JSON.parse(raw);
-  return Array.isArray(parsed.tracks) ? parsed.tracks : [];
+  try {
+    const parsed = JSON.parse(raw || "{}");
+    return Array.isArray(parsed.tracks) ? parsed.tracks : [];
+  } catch (error) {
+    console.error(`[backend] Errore critico nel parsing di ${LIBRARY_FILE}:`, error.message);
+    return [];
+  }
 }
 
 async function writeLibrary(tracks) {

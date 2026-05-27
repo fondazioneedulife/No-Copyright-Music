@@ -130,13 +130,13 @@ La UI React e' la UI principale. In sviluppo gira su `http://localhost:5173`, do
 | Componente | Ruolo |
 | --- | --- |
 | `AuthGate.jsx` | Login iniziale. |
-| `Sidebar.jsx` | Navigazione tra Catalogo, Coda, Admin e Impostazioni. |
+| `Sidebar.jsx` | Navigazione tra Catalogo, Generi, Import, Diagnostica e Impostazioni. |
 | `Topbar.jsx` | Barra ricerca, tema e logout. |
 | `Hero.jsx` | Riepilogo alto con numero tracce e coda. |
 | `Catalog.jsx` | Griglia tracce, filtri, paginazione e play. |
 | `QueuePanel.jsx` | Visualizza e svuota la coda React. |
-| `AdminPanel.jsx` | Crea utenti, resetta password temporanea, elimina utenti, resetta stato YouTube, backup, ripristino e report licenze. |
-| `AdminDiagnosticsPanel.jsx` | Pannello diagnostica Raspberry: salute backend, cookie YouTube, audit completo, log check catalogo, preflight audio, tracce da sostituire e ultimi eventi player. |
+| `AdminPanel.jsx` | Centro controllo admin con viste separate per Diagnostica, Utenti e Manutenzione. |
+| `AdminDiagnosticsPanel.jsx` | Pagina diagnostica Raspberry: errori separati dagli OK, controlli manuali, cookie YouTube, audit completo, log check catalogo, preflight audio, tracce da sostituire e ultimi eventi player. |
 | `adminDiagnostics.js` | Helper diagnostici dell'admin: etichette errori, salute Raspberry, riassunti audit/check e righe cookie. |
 | `CookieAlertModal.jsx` | Pop-up admin che avvisa quando i cookie YouTube vanno aggiornati e permette di caricare `cookies.txt`. |
 | `SettingsPanel.jsx` | Cambio password dell'utente loggato. |

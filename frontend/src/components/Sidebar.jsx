@@ -4,10 +4,11 @@ export function Sidebar({ activeSection, onNavigate, user }) {
     ["catalog", "Catalogo"],
     ["playlists", "Generi"],
     ["discovery", "Import"],
+    ["diagnostics", "Diagnostica"],
     ["settings", "Impostazioni"],
   ].filter(([id]) => {
     // Import e impostazioni sono strumenti admin: gli utenti normali vedono solo ascolto e generi.
-    if (id === "discovery" || id === "settings") {
+    if (id === "discovery" || id === "diagnostics" || id === "settings") {
       return user?.role === "admin";
     }
     return true;

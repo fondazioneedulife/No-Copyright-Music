@@ -172,7 +172,14 @@ Se YouTube risponde `quotaExceeded`, aspetta il reset quota e rilancia `Importa 
 
 ## Diagnostica e controlli lunghi
 
-La diagnostica admin serve per capire lo stato reale di Raspberry, `mpv`, `yt-dlp`, Deno, ALSA, cookie YouTube, player e check catalogo.
+La voce laterale `Diagnostica` apre una pagina admin dedicata allo stato reale di Raspberry, `mpv`, `yt-dlp`, Deno, ALSA, cookie YouTube, player e check catalogo.
+
+La pagina e' organizzata in modo operativo:
+
+- `Avvisi e cose da sistemare`: mostra solo i controlli non OK;
+- `Componenti OK`: separa le parti funzionanti dagli errori;
+- `Controlli manuali`: contiene `Aggiorna diagnostica`, `Test sorgenti`, `Test cookie YouTube`, ricontrollo login, audit completo e upload `cookies.txt`;
+- `Esiti brani YouTube`: legge l'ultimo report e filtra brani `KO`, `OK` o tutti.
 
 Usa `Test sorgenti` quando vuoi una risposta veloce prima di un controllo lungo: il backend prova YouTube con `yt-dlp`, apre lo stream firmato, controlla Jamendo e verifica un file locale. Se fallisce solo `YouTube stream`, il problema e' diverso dai cookie: `yt-dlp` ha trovato il link, ma Google Video lo rifiuta al momento dell'apertura.
 

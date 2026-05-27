@@ -292,7 +292,8 @@ Sezioni principali:
 | Catalogo | Mostra brani disponibili, filtri, ricerca e paginazione. |
 | Coda | Mostra e gestisce brani in coda. |
 | Aggiungi brani | Import temporaneo, import permanente, ricerca provider e import lotti. |
-| Impostazioni | Admin utenti, diagnostica, reset scan, backup, report e cambio password. |
+| Diagnostica | Pagina admin dedicata a errori, componenti OK, check manuali, audit YouTube, cookie e log Raspberry. |
+| Impostazioni | Utenti, manutenzione, backup, report e cambio password. |
 | Studio | Upload manuale audio/licenze e strumenti avanzati. |
 
 Il player e' fisso in basso e include:
@@ -461,7 +462,9 @@ Questo evita errori tra slider `0-100` e valore interno `0-1`.
 
 ## 13. Diagnostica Raspberry
 
-Nel pannello admin usa `Aggiorna diagnostica`.
+La voce laterale `Diagnostica` apre una pagina admin dedicata. La pagina e' separata da utenti e manutenzione per leggere prima gli errori, poi le cose funzionanti e infine i controlli/log.
+
+Usa `Aggiorna diagnostica` per ricaricare lo stato Raspberry.
 
 La diagnostica mostra:
 
@@ -486,11 +489,20 @@ La diagnostica mostra:
 - lista tracce candidate a sostituzione/archiviazione;
 - ultimi eventi player, per vedere start, stop, cambio traccia, errori mpv e completamenti codice `0`.
 
+La pagina e' divisa in blocchi:
+
+- `Controlli manuali`: pulsanti per diagnostica, test sorgenti, test cookie, ricontrollo login, audit YouTube, upload `cookies.txt`;
+- `Avvisi e cose da sistemare`: solo elementi non OK, cosi' gli errori non si mischiano con il resto;
+- `Componenti OK`: backend, strumenti, API e controlli che risultano verdi;
+- `Runtime e player`: volume, output audio, stato cookie, stream YouTube, audit e test sorgenti;
+- `Esiti brani YouTube`: lista filtrabile `KO`, `OK` o `Tutte` dall'ultimo report senza rifare il check;
+- `Dettagli tecnici`: cookie, legenda errori, log check catalogo, preflight ALSA/mpv e ultimi eventi player.
+
 Se `Verifica tutto YouTube` o il check catalogo automatico sono in corso, React mostra un banner `Auto-refresh attivo` e aggiorna da solo la diagnostica. Il progresso dell'audit YouTube viene riletto spesso; la diagnostica completa viene ricaricata piu' lentamente per non martellare il Raspberry con comandi `mpv`, `yt-dlp` e ALSA.
 
 ### Test sorgenti
 
-Nel pannello `Diagnostica audio/server` il pulsante `Test sorgenti` fa una prova corta e leggibile:
+Nella pagina `Diagnostica` il pulsante `Test sorgenti` fa una prova corta e leggibile:
 
 1. seleziona una traccia YouTube visibile;
 2. usa `yt-dlp` con cookie, Deno, extractor args e PO token/bgutil configurati;
@@ -808,8 +820,8 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `frontend/src/hooks/useDiscoveryProviders.js` | Caricamento provider discovery/import dopo login. |
 | `frontend/src/hooks/usePlayerRuntime.js` | Runtime player React: stato, coda, Pi/browser, seek, volume, YouTube embed e fallback audio. |
 | `frontend/src/hooks/useYouTubeCookieAlert.js` | Avviso periodico admin per cookie YouTube, upload `cookies.txt` e stato del pop-up. |
-| `frontend/src/components/AdminPanel.jsx` | Utenti, reset scan YouTube, backup, ripristino e report. |
-| `frontend/src/components/AdminDiagnosticsPanel.jsx` | UI diagnostica Raspberry/admin: salute backend, test sorgenti, cookie YouTube, audit, check catalogo, preflight ALSA/mpv e lista tracce da sostituire. |
+| `frontend/src/components/AdminPanel.jsx` | Centro controllo admin con viste separate: Diagnostica, Utenti e Manutenzione. |
+| `frontend/src/components/AdminDiagnosticsPanel.jsx` | Pagina diagnostica Raspberry/admin: errori separati dagli OK, controlli manuali, test sorgenti, cookie YouTube, audit, check catalogo, preflight ALSA/mpv e lista tracce da sostituire. |
 | `frontend/src/components/adminDiagnostics.js` | Helper puri per diagnostica admin, errori YouTube, cookie e riassunti check/audio. |
 | `frontend/src/components/CookieAlertModal.jsx` | Modale admin per cookie YouTube in scadenza o incompleti. |
 | `frontend/src/components/DiscoveryPanel.jsx` | Import brani e playlist temporanea. |

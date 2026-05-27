@@ -7,17 +7,10 @@ import {
   exportCatalogBackup,
   exportLicenseReport,
   exportLicenseReportHtml,
-  fetchAdminDiagnostics,
   fetchUsers,
-  fetchYouTubeAudioResults,
-  fetchYouTubeFullAuditStatus,
   importCatalogBackup,
-  probeYouTubeCookies,
-  recheckArchivedAudioTracks,
-  recheckYouTubeLoginFailures,
   resetUserPassword,
   resetYouTubeImportState,
-  startYouTubeFullAudit,
 } from "../api/client.js";
 import { downloadBlob } from "../utils.js";
 
@@ -112,117 +105,6 @@ export function useAdminActions({ user, token, refreshTracks }) {
     }
   }
 
-  async function handleLoadAdminDiagnostics() {
-    const payload = await fetchAdminDiagnostics(token);
-    return payload.diagnostics || null;
-  }
-
-  async function handleLoadYouTubeFullAuditStatus() {
-    return fetchYouTubeFullAuditStatus(token);
-  }
-
-  async function handleLoadYouTubeAudioResults(options = {}) {
-    try {
-      return await fetchYouTubeAudioResults(token, options);
-    } catch (error) {
-      setAdminStatusType("error");
-      setAdminStatus(error.message || "Lettura esiti YouTube non riuscita.");
-      throw error;
-    }
-  }
-
-  async function handleCheckSourceHealth() {
-    try {
-      const payload = await checkSourceHealth(token);
-      setAdminStatusType(payload.sourceHealth?.ok ? "success" : "error");
-      setAdminStatus(payload.sourceHealth?.summary || "Test sorgenti completato.");
-      return payload;
-    } catch (error) {
-      setAdminStatusType("error");
-      setAdminStatus(error.message || "Test sorgenti non riuscito.");
-      throw error;
-    }
-  }
-
-  async function handleRecheckYouTubeLoginFailures() {
-    try {
-      const payload = await recheckYouTubeLoginFailures(token);
-      setAdminStatusType("success");
-      setAdminStatus(
-        `${payload.message || "Ricontrollo YouTube completato"}${
-          payload.reportJson ? ` Report: ${payload.reportJson}.` : ""
-        }`
-      );
-      return payload;
-    } catch (error) {
-      setAdminStatusType("error");
-      setAdminStatus(error.message || "Ricontrollo YouTube non riuscito.");
-      throw error;
-    }
-  }
-
-  async function handleStartYouTubeFullAudit() {
-    try {
-      const payload = await startYouTubeFullAudit(token, { mode: "metadata" });
-      setAdminStatusType("success");
-      setAdminStatus(payload.message || "Verifica completa YouTube avviata.");
-      return payload;
-    } catch (error) {
-      setAdminStatusType("error");
-      setAdminStatus(error.message || "Verifica completa YouTube non riuscita.");
-      throw error;
-    }
-  }
-
-  async function handleProbeYouTubeCookies() {
-    try {
-      const payload = await probeYouTubeCookies(token);
-      setAdminStatusType(payload.ok ? "success" : "error");
-      setAdminStatus(payload.message || "Test cookie YouTube completato.");
-      return payload;
-    } catch (error) {
-      setAdminStatusType("error");
-      setAdminStatus(error.message || "Test cookie YouTube non riuscito.");
-      throw error;
-    }
-  }
-
-  async function handleCleanupBrokenAudioTracks() {
-    try {
-      const payload = await cleanupBrokenAudioTracks(token);
-      await refreshTracks();
-      setAdminStatusType("success");
-      setAdminStatus(
-        `${payload.message || "Quarantena catalogo completata."}${
-          payload.backupFile ? ` Backup: ${payload.backupFile}.` : ""
-        }`
-      );
-      return payload;
-    } catch (error) {
-      setAdminStatusType("error");
-      setAdminStatus(error.message || "Quarantena catalogo non riuscita.");
-      throw error;
-    }
-  }
-
-  async function handleRecheckArchivedAudioTracks() {
-    try {
-      const payload = await recheckArchivedAudioTracks(token);
-      await refreshTracks();
-      setAdminStatusType("success");
-      setAdminStatus(
-        `${payload.message || "Riverifica archiviate completata."}${
-          payload.backupFile ? ` Backup: ${payload.backupFile}.` : ""
-        }`
-      );
-      return payload;
-    } catch (error) {
-      setAdminStatusType("error");
-      setAdminStatus(error.message || "Riverifica archiviate non riuscita.");
-      throw error;
-    }
-  }
-
   async function handleExportCatalogBackup() {
     try {
       const file = await exportCatalogBackup(token);
@@ -280,23 +162,14 @@ export function useAdminActions({ user, token, refreshTracks }) {
   return {
     adminStatus,
     adminStatusType,
-    handleCleanupBrokenAudioTracks,
-    handleCheckSourceHealth,
     handleCreateUser,
     handleDeleteUser,
     handleExportCatalogBackup,
     handleExportLicenseReport,
     handleExportLicenseReportHtml,
     handleImportCatalogBackup,
-    handleLoadAdminDiagnostics,
-    handleLoadYouTubeAudioResults,
-    handleLoadYouTubeFullAuditStatus,
-    handleProbeYouTubeCookies,
-    handleRecheckArchivedAudioTracks,
-    handleRecheckYouTubeLoginFailures,
     handleResetUserPassword,
     handleResetYouTubeImportState,
-    handleStartYouTubeFullAudit,
     refreshUsers,
     resetAdminStatus,
     setAdminStatus,

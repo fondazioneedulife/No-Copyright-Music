@@ -13,6 +13,7 @@ import { AdminPanel } from "./components/AdminPanel.jsx";
 import { AuthGate } from "./components/AuthGate.jsx";
 import { Catalog } from "./components/Catalog.jsx";
 import { CookieAlertModal } from "./components/CookieAlertModal.jsx";
+import { DiagnosticsPage } from "./components/DiagnosticsPage.jsx";
 import { DiscoveryPanel } from "./components/DiscoveryPanel.jsx";
 import { Hero } from "./components/Hero.jsx";
 import { PlayerDock } from "./components/PlayerDock.jsx";
@@ -72,23 +73,14 @@ export default function App() {
   const {
     adminStatus,
     adminStatusType,
-    handleCheckSourceHealth,
-    handleCleanupBrokenAudioTracks,
     handleCreateUser,
     handleDeleteUser,
     handleExportCatalogBackup,
     handleExportLicenseReport,
     handleExportLicenseReportHtml,
     handleImportCatalogBackup,
-    handleLoadAdminDiagnostics,
-    handleLoadYouTubeAudioResults,
-    handleLoadYouTubeFullAuditStatus,
-    handleProbeYouTubeCookies,
-    handleRecheckArchivedAudioTracks,
-    handleRecheckYouTubeLoginFailures,
     handleResetUserPassword,
     handleResetYouTubeImportState,
-    handleStartYouTubeFullAudit,
     resetAdminStatus,
     setAdminStatus,
     setAdminStatusType,
@@ -209,7 +201,10 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (user?.role !== "admin" && (activeSection === "admin" || activeSection === "discovery")) {
+    if (
+      user?.role !== "admin" &&
+      (activeSection === "admin" || activeSection === "discovery" || activeSection === "diagnostics")
+    ) {
       setActiveSection("catalog");
     }
   }, [user, activeSection]);
@@ -360,6 +355,7 @@ export default function App() {
       catalog: "catalogo",
       playlists: "playlists",
       discovery: "discovery",
+      diagnostics: "diagnostica",
       settings: "impostazioni",
       studio: "studio",
     };
@@ -491,6 +487,10 @@ export default function App() {
                   onClearQueue={() => setQueueIds([])}
                 />
 
+                {user.role === "admin" ? (
+                  <DiagnosticsPage token={token} refreshTracks={refreshTracks} />
+                ) : null}
+
                 <section className="settings-stack" id="impostazioni">
                   {user.role === "admin" ? (
                     <AdminPanel
@@ -500,20 +500,11 @@ export default function App() {
                       onDeleteUser={handleDeleteUser}
                       onResetUserPassword={handleResetUserPassword}
                       onResetYouTubeImportState={handleResetYouTubeImportState}
-                      onLoadDiagnostics={handleLoadAdminDiagnostics}
-                      onLoadYouTubeAudioResults={handleLoadYouTubeAudioResults}
-                      onLoadYouTubeAuditStatus={handleLoadYouTubeFullAuditStatus}
-                      onCheckSourceHealth={handleCheckSourceHealth}
-                      onRecheckYouTubeLoginFailures={handleRecheckYouTubeLoginFailures}
-                      onStartYouTubeFullAudit={handleStartYouTubeFullAudit}
-                      onUploadYouTubeCookies={handleUploadYouTubeCookies}
-                      onProbeYouTubeCookies={handleProbeYouTubeCookies}
-                      onCleanupBrokenAudioTracks={handleCleanupBrokenAudioTracks}
-                      onRecheckArchivedAudioTracks={handleRecheckArchivedAudioTracks}
                       onExportCatalogBackup={handleExportCatalogBackup}
                       onExportLicenseReport={handleExportLicenseReport}
                       onExportLicenseReportHtml={handleExportLicenseReportHtml}
                       onImportCatalogBackup={handleImportCatalogBackup}
+                      activeSection={activeSection}
                       status={adminStatus}
                       statusType={adminStatusType}
                     />

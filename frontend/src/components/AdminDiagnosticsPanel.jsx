@@ -60,6 +60,7 @@ export function AdminDiagnosticsPanel({
     ? diagnostics.audioCheck.logTail.slice(-20)
     : [];
   const warningHealthChecks = healthChecks.filter((entry) => !entry.ok);
+  const okHealthChecks = healthChecks.filter((entry) => entry.ok);
   const cookieRows = cookieDiagnosticRows(diagnostics);
   const checkReasonRows = diagnosticReasonRows(diagnostics, youtubeAudit);
   const youtubeResultItems = Array.isArray(youtubeResults?.items) ? youtubeResults.items : [];
@@ -69,14 +70,35 @@ export function AdminDiagnosticsPanel({
   const autoRefreshActive = Boolean(youtubeAudit?.running || diagnostics?.audioCheck?.running);
 
   return (
-    <article className="admin-tool-card diagnostic-card">
+    <article className="admin-tool-card diagnostic-card diagnostic-page">
       <div className="diagnostic-head">
         <div>
           <p className="eyebrow">Raspberry</p>
-          <h3>Diagnostica audio/server</h3>
-          <p>Controlla mpv, yt-dlp, ALSA, configurazione player e ultimo errore noto.</p>
+          <h3>Pagina diagnostica</h3>
+          <p>Prima gli errori, poi lo stato funzionante, i check manuali e i log tecnici.</p>
         </div>
-        <div className="admin-tool-actions">
+      </div>
+
+      {diagnosticsStatus ? (
+        <p className={`status-banner is-${diagnosticsStatusType}`}>{diagnosticsStatus}</p>
+      ) : null}
+
+      {autoRefreshActive ? (
+        <p className="status-banner is-info">
+          Auto-refresh attivo: aggiorno lo stato dei controlli ogni pochi secondi
+          {autoRefreshAt ? `, ultimo aggiornamento ${autoRefreshAt}.` : "."}
+        </p>
+      ) : null}
+
+      <section className="diagnostic-section diagnostic-controls-section">
+        <div className="diagnostic-section-title">
+          <div>
+            <p className="eyebrow">Check</p>
+            <h4>Controlli manuali</h4>
+          </div>
+          <small>Usali quando vuoi verificare Raspberry, sorgenti, cookie o catalogo YouTube.</small>
+        </div>
+        <div className="admin-tool-actions diagnostic-actions">
           <button type="button" onClick={onLoadDiagnostics} disabled={loadingDiagnostics}>
             {loadingDiagnostics ? "Controllo..." : "Aggiorna diagnostica"}
           </button>
@@ -134,34 +156,18 @@ export function AdminDiagnosticsPanel({
             />
           </label>
         </div>
-      </div>
-
-      {diagnosticsStatus ? (
-        <p className={`status-banner is-${diagnosticsStatusType}`}>{diagnosticsStatus}</p>
-      ) : null}
-
-      {autoRefreshActive ? (
-        <p className="status-banner is-info">
-          Auto-refresh attivo: aggiorno lo stato dei controlli ogni pochi secondi
-          {autoRefreshAt ? `, ultimo aggiornamento ${autoRefreshAt}.` : "."}
-        </p>
-      ) : null}
-
-      {healthChecks.length > 0 ? (
-        <div className="diagnostic-health">
-          {healthChecks.map((entry) => (
-            <div key={entry.label} className={entry.ok ? "is-ok" : "is-warn"} title={entry.detail}>
-              <strong>{entry.label}</strong>
-              <span>{entry.ok ? "OK" : "ATTENZIONE"}</span>
-              <small>{entry.detail}</small>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      </section>
 
       {warningHealthChecks.length > 0 ? (
-        <div className="diagnostic-events is-readable">
-          <p className="eyebrow">Avvisi diagnostica</p>
+        <section className="diagnostic-section diagnostic-problem-section">
+          <div className="diagnostic-section-title">
+            <div>
+              <p className="eyebrow">Errori</p>
+              <h4>Avvisi e cose da sistemare</h4>
+            </div>
+            <small>{warningHealthChecks.length} controllo/i richiedono attenzione.</small>
+          </div>
+          <div className="diagnostic-events is-readable diagnostic-problems">
           {warningHealthChecks.map((entry) => (
             <div key={`warning-${entry.label}`}>
               <strong>{entry.label}</strong>
@@ -173,11 +179,51 @@ export function AdminDiagnosticsPanel({
               </small>
             </div>
           ))}
-        </div>
+          </div>
+        </section>
+      ) : diagnostics ? (
+        <section className="diagnostic-section diagnostic-problem-section">
+          <div className="diagnostic-section-title">
+            <div>
+              <p className="eyebrow">Errori</p>
+              <h4>Nessun avviso attivo</h4>
+            </div>
+            <small>La diagnostica non sta segnalando problemi principali.</small>
+          </div>
+        </section>
+      ) : null}
+
+      {okHealthChecks.length > 0 ? (
+        <section className="diagnostic-section">
+          <div className="diagnostic-section-title">
+            <div>
+              <p className="eyebrow">Funzionanti</p>
+              <h4>Componenti OK</h4>
+            </div>
+            <small>{okHealthChecks.length} controlli principali risultano verdi.</small>
+          </div>
+          <div className="diagnostic-health">
+            {okHealthChecks.map((entry) => (
+              <div key={entry.label} className="is-ok" title={entry.detail}>
+                <strong>{entry.label}</strong>
+                <span>OK</span>
+                <small>{entry.detail}</small>
+              </div>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       {diagnostics ? (
-        <div className="diagnostic-grid">
+        <section className="diagnostic-section">
+          <div className="diagnostic-section-title">
+            <div>
+              <p className="eyebrow">Stato</p>
+              <h4>Runtime e player</h4>
+            </div>
+            <small>Dati rapidi su server, volume, stream YouTube e audit.</small>
+          </div>
+          <div className="diagnostic-grid">
           <div>
             <span>Runtime</span>
             <strong>{diagnostics.runtime?.revision || "n/d"}</strong>
@@ -272,11 +318,12 @@ export function AdminDiagnosticsPanel({
             </strong>
             <small>{sourceHealth?.summary || "Premi Test sorgenti per provare YouTube, Jamendo e file locali."}</small>
           </div>
-        </div>
+          </div>
+        </section>
       ) : null}
 
       {diagnostics ? (
-        <div className="diagnostic-events is-readable">
+        <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Dettaglio cookie YouTube</p>
           {cookieRows.map((row) => (
             <div key={row.label}>
@@ -288,7 +335,7 @@ export function AdminDiagnosticsPanel({
       ) : null}
 
       {sourceHealthChecks.length > 0 ? (
-        <div className="diagnostic-events is-readable">
+        <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Test sorgenti</p>
           <div>
             <strong>{sourceHealth?.ok ? "Sorgenti OK" : "Sorgenti da verificare"}</strong>
@@ -310,7 +357,7 @@ export function AdminDiagnosticsPanel({
       ) : null}
 
       {youtubeAudit ? (
-        <div className="diagnostic-events is-readable">
+        <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Verifica completa YouTube</p>
           <div>
             <strong>{youtubeAuditSummary(youtubeAudit)}</strong>
@@ -339,7 +386,7 @@ export function AdminDiagnosticsPanel({
         </div>
       ) : null}
 
-      <div className="diagnostic-events is-readable">
+      <div className="diagnostic-events diagnostic-section is-readable">
         <p className="eyebrow">Esiti brani YouTube</p>
         <div>
           <strong>
@@ -404,7 +451,7 @@ export function AdminDiagnosticsPanel({
       </div>
 
       {diagnostics ? (
-        <div className="diagnostic-events is-readable">
+        <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Legenda risultati check</p>
           <div>
             <strong>Concorrenza audit</strong>
@@ -428,7 +475,7 @@ export function AdminDiagnosticsPanel({
       ) : null}
 
       {audioCheckLog.length > 0 ? (
-        <div className="diagnostic-events is-readable">
+        <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Log check catalogo</p>
           <div>
             <strong>{audioCheckSummary(diagnostics.audioCheck)}</strong>
@@ -452,7 +499,7 @@ export function AdminDiagnosticsPanel({
       ) : null}
 
       {diagnosticTools.length > 0 ? (
-        <div className="diagnostic-list">
+        <div className="diagnostic-list diagnostic-section">
           {diagnosticTools.map(([label, result]) => (
             <div key={label}>
               <span className={result?.ok ? "is-ok" : "is-error"}>{result?.ok ? "OK" : "WARN"}</span>
@@ -464,7 +511,7 @@ export function AdminDiagnosticsPanel({
       ) : null}
 
       {preflightResults.length > 0 ? (
-        <div className="diagnostic-list">
+        <div className="diagnostic-list diagnostic-section">
           {preflightResults.map((entry) => (
             <div key={entry.label}>
               <span className={entry.ok ? "is-ok" : "is-error"}>{entry.ok ? "OK" : "NO"}</span>
@@ -476,7 +523,7 @@ export function AdminDiagnosticsPanel({
       ) : null}
 
       {replacementList ? (
-        <div className="diagnostic-events is-readable">
+        <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Tracce da sostituire</p>
           <div>
             <strong>{replacementList.summary?.replaceCount ?? replacementItems.length} candidate</strong>
@@ -515,7 +562,7 @@ export function AdminDiagnosticsPanel({
       {diagnostics?.alsa?.cards ? <pre className="diagnostic-output">{diagnostics.alsa.cards}</pre> : null}
 
       {playerEvents.length > 0 ? (
-        <div className="diagnostic-events is-readable">
+        <div className="diagnostic-events diagnostic-section is-readable">
           <p className="eyebrow">Ultimi eventi player</p>
           {playerEvents.map((event) => (
             <div key={event.id}>
