@@ -2,7 +2,7 @@ export function Sidebar({ activeSection, onNavigate, user }) {
   // La sidebar e' un pannello persistente: il CSS la tiene fissa mentre il contenuto centrale scorre.
   const items = [
     ["catalog", "Catalogo"],
-    ["playlists", "Generi"],
+    ["playlist", "Generi"],
     ["discovery", "Import"],
     ["diagnostics", "Diagnostica"],
     ["settings", "Impostazioni"],
