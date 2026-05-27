@@ -5023,9 +5023,14 @@ async function serverPlayerSourceForTrack(track) {
   const youtubeUrl = canonicalYouTubePlaybackUrl(normalized);
   if ((normalized.youtubeVideoId || isYouTubeWatchUrl(normalized.sourceUrl)) && youtubeUrl) {
     try {
-      const cached = await youtubeAudioCache.ensureCachedForTrack(normalized);
-      if (cached?.localPath && fsSync.existsSync(cached.localPath)) {
-        return cached.localPath;
+      const cachePaths = youtubeAudioCache.cachePathsForTrack(normalized);
+      if (cachePaths && fsSync.existsSync(cachePaths.localPath)) {
+        return cachePaths.localPath;
+      }
+
+      // Avvia il download della cache in background (senza 'await') per non bloccare il player
+      if (audioConfig.cache.enabled && audioConfig.cache.onPlay) {
+        youtubeAudioCache.ensureCachedForTrack(normalized).catch(console.error);
       }
     } catch (error) {
       // Se YouTube rifiuta anche il download, non blocchiamo subito: il vecchio fallback live puo' ancora provare.
@@ -6149,14 +6154,8 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     });
 
     try {
-      await Promise.race([waitForServerPlayerReady(processRef, socketPath), launchFailurePromise]);
-      await Promise.race([
-        waitForServerPlayerStable(
-          processRef,
-          serverPlayerNeedsYtdl(source) ? serverPlayerYoutubeStartStableMs : undefined
-        ),
-        launchFailurePromise,
-      ]);
+      // Bypasso totale dell'attesa del socket e dello stable timeout per rendere l'API istantanea.
+      // Se mpv fallirà in background, il listener on("exit") gestirà l'auto-skip.
       rejectLaunchFailure = null;
       if (isServerPlayerPlaySuperseded(playToken)) {
         stopServerPlayerProcess();
