@@ -37,6 +37,17 @@ export function usePlayerRuntime({
   const serverRunIdRef = useRef(0);
   const serverVolumeTimerRef = useRef(null);
   const lastLocalVolumeChangeRef = useRef(0);
+  const serverActionsInFlightRef = useRef(0);
+
+  async function withServerActionTracker(promise) {
+    serverActionsInFlightRef.current++;
+    try {
+      return await promise;
+    } finally {
+      serverActionsInFlightRef.current--;
+    }
+  }
+
   const [activeTrack, setActiveTrack] = useState(null);
   const [playerMode, setPlayerMode] = useState("idle");
   const [isPlaying, setIsPlaying] = useState(false);
@@ -159,7 +170,7 @@ export function usePlayerRuntime({
       embedClockRef.current = { baseTime: pausedAt, startedAt: 0 };
       updateClock(pausedAt);
       if (token) {
-        void pauseServerTrack(token, true).catch((error) => {
+        void withServerActionTracker(pauseServerTrack(token, true)).catch((error) => {
           if (playbackRequestRef.current === requestId) {
             setPlayerNotice(playerConnectionMessage(error, "Pausa Raspberry non riuscita."));
           }
@@ -207,7 +218,7 @@ export function usePlayerRuntime({
 
       if (sameTrack && playerMode === "server" && !isPlaying && !options.forceRestart) {
         // Resume vero: se il brano e' gia' caricato in mpv, togliamo solo la pausa invece di riaprirlo.
-        void pauseServerTrack(token, false)
+        void withServerActionTracker(pauseServerTrack(token, false))
           .then((payload) => {
             if (playbackRequestRef.current !== requestId) {
               return;
@@ -236,7 +247,7 @@ export function usePlayerRuntime({
         return;
       }
 
-      void playServerTrack(token, { track, startAt, volume, serverContext: serverPlaybackContextFor(track) })
+      void withServerActionTracker(playServerTrack(token, { track, startAt, volume, serverContext: serverPlaybackContextFor(track) }))
         .then((payload) => {
           if (playbackRequestRef.current !== requestId) {
             return;
@@ -263,7 +274,7 @@ export function usePlayerRuntime({
     }
 
     if (playerMode === "server" && token) {
-      void stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current }).catch(() => {});
+      void withServerActionTracker(stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current })).catch(() => {});
     }
 
     if (isYouTubeTrack(track)) {
@@ -366,7 +377,7 @@ export function usePlayerRuntime({
       setActiveTrack(null);
       stopEmbedPlayback(0);
       if (playerMode === "server" && token) {
-        void stopServerTrack(token, { trackId, runId: serverRunIdRef.current }).catch(() => {});
+        void withServerActionTracker(stopServerTrack(token, { trackId, runId: serverRunIdRef.current })).catch(() => {});
       }
       setPlayerMode("idle");
       updateClock(0, 0);
@@ -382,7 +393,7 @@ export function usePlayerRuntime({
       setActiveTrack(null);
       stopEmbedPlayback(0);
       if (playerMode === "server" && token) {
-        void stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current }).catch(() => {});
+        void withServerActionTracker(stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current })).catch(() => {});
       }
       setPlayerMode("idle");
       updateClock(0, 0);
@@ -500,7 +511,7 @@ export function usePlayerRuntime({
       updateClock(nextTime, duration);
       embedClockRef.current = { baseTime: nextTime, startedAt: isPlaying ? performance.now() : 0 };
       if (token) {
-        void seekServerTrack(token, nextTime).catch((error) => {
+        void withServerActionTracker(seekServerTrack(token, nextTime)).catch((error) => {
           setPlayerNotice(playerConnectionMessage(error, "Seek Raspberry non riuscito."));
         });
       }
@@ -515,7 +526,7 @@ export function usePlayerRuntime({
     // Cambio uscita: Browser resta utile in sviluppo, Raspberry e' l'uscita reale in produzione.
     const nextTarget = playbackTarget === "server" ? "browser" : "server";
     if (playbackTarget === "server" && playerMode === "server" && token) {
-      void stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current }).catch(() => {});
+      void withServerActionTracker(stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current })).catch(() => {});
       setIsPlaying(false);
       embedClockRef.current = { baseTime: currentTime, startedAt: 0 };
     }
@@ -550,7 +561,7 @@ export function usePlayerRuntime({
     if (!moved) {
       setIsPlaying(false);
       if (endedOnServer && token) {
-        void stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current }).catch(() => {});
+        void withServerActionTracker(stopServerTrack(token, { trackId: activeTrack?.id, runId: serverRunIdRef.current })).catch(() => {});
       }
     }
   }
@@ -565,7 +576,7 @@ export function usePlayerRuntime({
     const audio = audioRef.current;
     if (token) {
       try {
-        await stopServerTrack(token);
+        await withServerActionTracker(stopServerTrack(token));
       } catch {
         // Se il player Raspberry non e' attivo, il logout deve comunque proseguire.
       }
@@ -613,7 +624,7 @@ export function usePlayerRuntime({
     window.clearTimeout(serverVolumeTimerRef.current);
     serverVolumeTimerRef.current = window.setTimeout(() => {
       // Lo slider resta immediato, ma il Raspberry riceve meno comandi IPC e non si intasa.
-      void setServerTrackVolume(token, safeVolume).catch((error) => {
+      void withServerActionTracker(setServerTrackVolume(token, safeVolume)).catch((error) => {
         setPlayerNotice(playerConnectionMessage(error, "Volume Raspberry non raggiungibile."));
       });
     }, 160);
@@ -629,9 +640,12 @@ export function usePlayerRuntime({
 
     let cancelled = false;
     async function syncServerPlayer() {
+      if (serverActionsInFlightRef.current > 0) {
+        return;
+      }
       try {
         const payload = await fetchServerPlayerStatus(token);
-        if (cancelled) {
+        if (cancelled || serverActionsInFlightRef.current > 0) {
           return;
         }
 
@@ -700,9 +714,9 @@ export function usePlayerRuntime({
     }
 
     const timeoutId = window.setTimeout(() => {
-      void setServerTrackContext(token, {
+      void withServerActionTracker(setServerTrackContext(token, {
         serverContext: serverPlaybackContextFor(activeTrack),
-      }).catch((error) => {
+      })).catch((error) => {
         setPlayerNotice(playerConnectionMessage(error, "Contesto Raspberry non aggiornato."));
       });
     }, 220);
