@@ -6487,6 +6487,19 @@ async function requestHandler(req, res) {
       return;
     }
 
+    if (req.method === "GET" && pathname === "/api/admin/audio-check/youtube-results") {
+      requireAdminRequest(req);
+      json(res, 200, {
+        results: await audioReplacementService.youtubeResults({
+          limit: url.searchParams.get("limit"),
+          offset: url.searchParams.get("offset"),
+          reason: url.searchParams.get("reason"),
+          status: url.searchParams.get("status"),
+        }),
+      });
+      return;
+    }
+
     if (req.method === "POST" && pathname === "/api/admin/youtube-cookies") {
       requireAdminRequest(req);
       const payload = await readJsonBody(req);

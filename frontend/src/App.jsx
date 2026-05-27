@@ -81,6 +81,7 @@ export default function App() {
     handleExportLicenseReportHtml,
     handleImportCatalogBackup,
     handleLoadAdminDiagnostics,
+    handleLoadYouTubeAudioResults,
     handleLoadYouTubeFullAuditStatus,
     handleProbeYouTubeCookies,
     handleRecheckArchivedAudioTracks,
@@ -500,6 +501,7 @@ export default function App() {
                       onResetUserPassword={handleResetUserPassword}
                       onResetYouTubeImportState={handleResetYouTubeImportState}
                       onLoadDiagnostics={handleLoadAdminDiagnostics}
+                      onLoadYouTubeAudioResults={handleLoadYouTubeAudioResults}
                       onLoadYouTubeAuditStatus={handleLoadYouTubeFullAuditStatus}
                       onCheckSourceHealth={handleCheckSourceHealth}
                       onRecheckYouTubeLoginFailures={handleRecheckYouTubeLoginFailures}

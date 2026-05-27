@@ -87,6 +87,7 @@ Alla fine aggiorna `data/audio-replacement-list.json` con le tracce da sostituir
 Il progresso puo' restare basso per qualche minuto all'inizio perche' il backend sta preparando il catalogo, caricando cookie e aprendo le prime richieste `yt-dlp`. Durante il giro puoi vedere righe `OK` e `KO`: non prendere ogni `KO timeout` come definitivo finche' il report finale non e' scritto. Su Raspberry i timeout possono dipendere da rete, quota, carico CPU o risposte lente di YouTube.
 Quando il report conferma tracce `youtube-unavailable` o altri errori definitivi, il pannello Admin mostra `Archivia non disponibili`: il backend crea prima un backup del catalogo, poi marca quelle tracce come `availabilityStatus: "unavailable"` e le nasconde dalla libreria attiva senza cancellarle.
 Dopo avere caricato cookie nuovi puoi usare `Riverifica archiviate`: ClearWave controlla solo le tracce YouTube nascoste e riattiva automaticamente quelle che `yt-dlp` riesce di nuovo a leggere.
+Nel pannello `Esiti brani YouTube` puoi leggere l'ultimo report direttamente nell'app: usa i pulsanti `KO`, `OK` e `Tutte` per vedere quali tracce funzionano e quali no senza rilanciare il controllo.
 
 Non sostituire migliaia di video a mano. Se l'audit mostra tantissimi KO YouTube:
 

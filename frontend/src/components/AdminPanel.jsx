@@ -14,6 +14,7 @@ export function AdminPanel({
   onResetUserPassword,
   onResetYouTubeImportState,
   onLoadDiagnostics,
+  onLoadYouTubeAudioResults,
   onLoadYouTubeAuditStatus,
   onCheckSourceHealth,
   onRecheckYouTubeLoginFailures,
@@ -40,7 +41,10 @@ export function AdminPanel({
   const [diagnostics, setDiagnostics] = useState(null);
   const [diagnosticsStatus, setDiagnosticsStatus] = useState("");
   const [diagnosticsStatusType, setDiagnosticsStatusType] = useState("success");
+  const [youtubeResults, setYoutubeResults] = useState(null);
+  const [youtubeResultsFilter, setYoutubeResultsFilter] = useState("failed");
   const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
+  const [loadingYouTubeResults, setLoadingYouTubeResults] = useState(false);
   const [checkingSourceHealth, setCheckingSourceHealth] = useState(false);
   const [recheckingYouTubeLogin, setRecheckingYouTubeLogin] = useState(false);
   const [startingYouTubeFullAudit, setStartingYouTubeFullAudit] = useState(false);
@@ -126,6 +130,32 @@ export function AdminPanel({
       setDiagnosticsStatus(error.message || "Diagnostica non riuscita.");
     } finally {
       setLoadingDiagnostics(false);
+    }
+  }
+
+  async function handleLoadYouTubeResults(nextFilter = youtubeResultsFilter) {
+    if (!onLoadYouTubeAudioResults) {
+      return;
+    }
+
+    setYoutubeResultsFilter(nextFilter);
+    setLoadingYouTubeResults(true);
+    setDiagnosticsStatusType("success");
+    setDiagnosticsStatus("Carico esiti ultimo report YouTube...");
+    try {
+      const payload = await onLoadYouTubeAudioResults({ status: nextFilter, limit: 80 });
+      setYoutubeResults(payload.results || null);
+      setDiagnosticsStatusType("success");
+      setDiagnosticsStatus(
+        payload.results?.ok
+          ? `Esiti YouTube caricati: ${payload.results.totalFiltered || 0} tracce.`
+          : "Nessun report YouTube trovato: avvia prima Verifica tutto YouTube."
+      );
+    } catch (error) {
+      setDiagnosticsStatusType("error");
+      setDiagnosticsStatus(error.message || "Esiti YouTube non disponibili.");
+    } finally {
+      setLoadingYouTubeResults(false);
     }
   }
 
@@ -541,6 +571,7 @@ export function AdminPanel({
           diagnosticsStatusType={diagnosticsStatusType}
           autoRefreshAt={autoRefreshAt}
           loadingDiagnostics={loadingDiagnostics}
+          loadingYouTubeResults={loadingYouTubeResults}
           checkingSourceHealth={checkingSourceHealth}
           probingYouTubeCookies={probingYouTubeCookies}
           recheckingYouTubeLogin={recheckingYouTubeLogin}
@@ -548,7 +579,10 @@ export function AdminPanel({
           startingYouTubeFullAudit={startingYouTubeFullAudit}
           uploadingYouTubeCookies={uploadingYouTubeCookies}
           cleaningBrokenTracks={cleaningBrokenTracks}
+          youtubeResults={youtubeResults}
+          youtubeResultsFilter={youtubeResultsFilter}
           onLoadDiagnostics={handleLoadDiagnostics}
+          onLoadYouTubeResults={handleLoadYouTubeResults}
           onCheckSourceHealth={handleCheckSourceHealth}
           onProbeYouTubeCookies={handleProbeYouTubeCookies}
           onRecheckYouTubeLoginFailures={handleRecheckYouTubeLoginFailures}

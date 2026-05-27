@@ -553,6 +553,7 @@ Per il problema specifico dei video YouTube che chiedono login/conferma eta o ve
 - `Ricontrolla login YouTube` e' rapido e controlla solo le tracce gia' finite in report con errore `youtube-age-or-login`;
 - `Verifica tutto YouTube` e' completo e passa su tutte le tracce YouTube del catalogo, usando i cookie caricati in `data/youtube-cookies.txt`;
 - il progresso si vede nella diagnostica admin e il report finale aggiorna `data/audio-replacement-list.json`.
+- `Esiti brani YouTube` legge l'ultimo report e mostra dentro l'app quali tracce sono `OK`, quali sono `KO` e il motivo tecnico, senza rifare il controllo.
 
 Regola pratica:
 
@@ -770,6 +771,7 @@ Le chiavi reali non vanno mai scritte nel codice o committate.
 | `POST` | `/api/admin/audio-check/youtube-login-recheck` | Ricontrollo mirato errori YouTube/login e lista tracce da sostituire. |
 | `POST` | `/api/admin/audio-check/youtube-full-audit` | Avvia verifica completa YouTube in background. |
 | `GET` | `/api/admin/audio-check/youtube-full-audit` | Stato leggero della verifica completa YouTube. |
+| `GET` | `/api/admin/audio-check/youtube-results` | Lista filtrabile degli ultimi esiti YouTube `OK`/`KO` letti dal report piu' recente. |
 | `POST` | `/api/admin/youtube-cookies` | Upload admin di `cookies.txt` Netscape in `data/youtube-cookies.txt`, senza restituire il contenuto del file. |
 | `POST` | `/api/admin/youtube-import-state/reset` | Reset cursori YouTube. |
 | `GET` | `/api/admin/export/catalog.json` | Backup catalogo JSON. |

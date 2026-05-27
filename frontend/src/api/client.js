@@ -282,6 +282,17 @@ export function fetchYouTubeFullAuditStatus(token) {
   return apiRequest("/api/admin/audio-check/youtube-full-audit", { token });
 }
 
+export function fetchYouTubeAudioResults(token, options = {}) {
+  const params = new URLSearchParams();
+  params.set("status", options.status || "failed");
+  params.set("limit", String(options.limit || 80));
+  params.set("offset", String(options.offset || 0));
+  if (options.reason) {
+    params.set("reason", options.reason);
+  }
+  return apiRequest(`/api/admin/audio-check/youtube-results?${params.toString()}`, { token });
+}
+
 export function recheckYouTubeLoginFailures(token) {
   return apiRequest("/api/admin/audio-check/youtube-login-recheck", {
     method: "POST",

@@ -9,6 +9,7 @@ import {
   exportLicenseReportHtml,
   fetchAdminDiagnostics,
   fetchUsers,
+  fetchYouTubeAudioResults,
   fetchYouTubeFullAuditStatus,
   importCatalogBackup,
   probeYouTubeCookies,
@@ -118,6 +119,16 @@ export function useAdminActions({ user, token, refreshTracks }) {
 
   async function handleLoadYouTubeFullAuditStatus() {
     return fetchYouTubeFullAuditStatus(token);
+  }
+
+  async function handleLoadYouTubeAudioResults(options = {}) {
+    try {
+      return await fetchYouTubeAudioResults(token, options);
+    } catch (error) {
+      setAdminStatusType("error");
+      setAdminStatus(error.message || "Lettura esiti YouTube non riuscita.");
+      throw error;
+    }
   }
 
   async function handleCheckSourceHealth() {
@@ -278,6 +289,7 @@ export function useAdminActions({ user, token, refreshTracks }) {
     handleExportLicenseReportHtml,
     handleImportCatalogBackup,
     handleLoadAdminDiagnostics,
+    handleLoadYouTubeAudioResults,
     handleLoadYouTubeFullAuditStatus,
     handleProbeYouTubeCookies,
     handleRecheckArchivedAudioTracks,

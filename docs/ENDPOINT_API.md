@@ -615,6 +615,41 @@ Quando termina, `diagnostics.youtubeAudit.summary` espone `ok`, `failed`, `repla
 Solo admin. Restituisce solo stato del job `Verifica tutto YouTube` e `replacementList`, senza rieseguire la diagnostica completa Raspberry.
 La UI lo usa per aggiornare il progresso ogni pochi secondi senza rilanciare i preflight ALSA.
 
+### `GET /api/admin/audio-check/youtube-results`
+
+Solo admin. Legge l'ultimo report `library-audio-check-*.json` che contiene risultati YouTube e restituisce una lista filtrabile dentro l'app, senza rilanciare il controllo.
+
+Query:
+
+| Parametro | Default | Uso |
+| --- | --- | --- |
+| `status` | `failed` | `failed`, `ok` oppure `all`. |
+| `limit` | `80` | Numero massimo di righe da mostrare, massimo `200`. |
+| `offset` | `0` | Spostamento per leggere pagine successive. |
+| `reason` | vuoto | Filtra un motivo specifico, per esempio `youtube-stream-open-failed`. |
+
+Risposta:
+
+```json
+{
+  "results": {
+    "ok": true,
+    "reportJson": "library-audio-check-2026-05-27T10-00-00-000Z.json",
+    "status": "failed",
+    "totalYoutube": 3700,
+    "totalFiltered": 42,
+    "items": [
+      {
+        "title": "Brano YouTube",
+        "status": "failed",
+        "reason": "youtube-stream-open-failed",
+        "message": "HTTP error 403 Forbidden"
+      }
+    ]
+  }
+}
+```
+
 ### `POST /api/admin/audio-check/cleanup-broken`
 
 Solo admin. Legge `data/audio-replacement-list.json`, crea un backup del catalogo in `data/library-before-audio-cleanup-*.json` e archivia le tracce confermate non riproducibili, per esempio `youtube-unavailable`, `youtube-format`, `stream-not-playable`, `missing-source` e `missing-file`. Le tracce non vengono cancellate: restano in `library.json` con `availabilityStatus: "unavailable"` e `hiddenFromCatalog: true`.

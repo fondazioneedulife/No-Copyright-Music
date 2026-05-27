@@ -14,6 +14,7 @@ export function AdminDiagnosticsPanel({
   diagnosticsStatusType,
   autoRefreshAt,
   loadingDiagnostics,
+  loadingYouTubeResults,
   checkingSourceHealth,
   probingYouTubeCookies,
   recheckingYouTubeLogin,
@@ -21,7 +22,10 @@ export function AdminDiagnosticsPanel({
   startingYouTubeFullAudit,
   uploadingYouTubeCookies,
   cleaningBrokenTracks,
+  youtubeResults,
+  youtubeResultsFilter,
   onLoadDiagnostics,
+  onLoadYouTubeResults,
   onCheckSourceHealth,
   onProbeYouTubeCookies,
   onRecheckYouTubeLoginFailures,
@@ -58,6 +62,7 @@ export function AdminDiagnosticsPanel({
   const warningHealthChecks = healthChecks.filter((entry) => !entry.ok);
   const cookieRows = cookieDiagnosticRows(diagnostics);
   const checkReasonRows = diagnosticReasonRows(diagnostics, youtubeAudit);
+  const youtubeResultItems = Array.isArray(youtubeResults?.items) ? youtubeResults.items : [];
   const cookieReady = Boolean(
     diagnostics?.config?.ytdlCookiesAvailable && diagnostics?.config?.ytdlCookieAnalysis?.hasSessionCookies
   );
@@ -333,6 +338,70 @@ export function AdminDiagnosticsPanel({
           ))}
         </div>
       ) : null}
+
+      <div className="diagnostic-events is-readable">
+        <p className="eyebrow">Esiti brani YouTube</p>
+        <div>
+          <strong>
+            {youtubeResults?.ok
+              ? `${youtubeResults.totalFiltered || 0} ${
+                  youtubeResultsFilter === "ok"
+                    ? "funzionanti"
+                    : youtubeResultsFilter === "failed"
+                      ? "non funzionanti"
+                      : "controllati"
+                }`
+              : "Ultimo report non caricato"}
+          </strong>
+          <span>
+            {youtubeResults?.ok
+              ? `Report ${youtubeResults.reportJson || "n/d"} | YouTube totali ${youtubeResults.totalYoutube || 0}`
+              : "Premi un filtro dopo avere eseguito Verifica tutto YouTube."}
+          </span>
+          <small>
+            {youtubeResults?.createdAt || "Mostra le canzoni YouTube dell'ultimo report, senza rifare il check."}
+          </small>
+          <div className="admin-tool-actions">
+            {[
+              ["failed", "KO"],
+              ["ok", "OK"],
+              ["all", "Tutte"],
+            ].map(([filter, label]) => (
+              <button
+                key={filter}
+                type="button"
+                className={youtubeResultsFilter === filter ? "" : "secondary-button"}
+                disabled={loadingYouTubeResults}
+                onClick={() => onLoadYouTubeResults(filter)}
+              >
+                {loadingYouTubeResults && youtubeResultsFilter === filter ? "Carico..." : label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {youtubeResultItems.map((item) => (
+          <div key={`${item.id}-${item.status}-${item.reason}`}>
+            <strong>{item.title}</strong>
+            <span>
+              {item.status === "ok" ? "OK" : "KO"} | {item.reason}
+            </span>
+            <small>{item.message || item.source || "Nessun dettaglio salvato nel report."}</small>
+          </div>
+        ))}
+        {youtubeResults?.ok && youtubeResultItems.length === 0 ? (
+          <div>
+            <strong>Nessun brano in questo filtro</strong>
+            <span>Cambia filtro oppure rilancia Verifica tutto YouTube.</span>
+          </div>
+        ) : null}
+        {youtubeResults?.hasMore ? (
+          <div>
+            <strong>Lista parziale</strong>
+            <span>Mostro le prime {youtubeResults.limit || 80} tracce del filtro selezionato.</span>
+            <small>Il report completo resta in data/reports sul Raspberry.</small>
+          </div>
+        ) : null}
+      </div>
 
       {diagnostics ? (
         <div className="diagnostic-events is-readable">
