@@ -69,6 +69,25 @@ export function AdminDiagnosticsPanel({
   );
   const autoRefreshActive = Boolean(youtubeAudit?.running || diagnostics?.audioCheck?.running);
 
+  let youtubeAuditEtaText = "";
+  if (youtubeAudit?.running && youtubeAudit.startedAt && youtubeAudit.checked > 0 && youtubeAudit.total > 0) {
+    const elapsedMs = Date.now() - new Date(youtubeAudit.startedAt).getTime();
+    if (elapsedMs > 5000) {
+      const msPerTrack = elapsedMs / youtubeAudit.checked;
+      const remainingTracks = Math.max(0, youtubeAudit.total - youtubeAudit.checked);
+      const remainingMs = remainingTracks * msPerTrack;
+      if (remainingMs > 0) {
+        const remainingMinutes = Math.ceil(remainingMs / 60000);
+        youtubeAuditEtaText = `Circa ${remainingMinutes} min. rimanenti`;
+        if (remainingMinutes > 60) {
+          const hours = Math.floor(remainingMinutes / 60);
+          const mins = remainingMinutes % 60;
+          youtubeAuditEtaText = `Circa ${hours}h ${mins}m rimanenti`;
+        }
+      }
+    }
+  }
+
   return (
     <article className="admin-tool-card diagnostic-card diagnostic-page">
       <div className="diagnostic-head">
@@ -370,6 +389,7 @@ export function AdminDiagnosticsPanel({
               {youtubeAudit.earlyAbort
                 ? "Fermato automaticamente: cookie YouTube non validi o account bloccato da anti-bot."
                 : youtubeAudit.lastError || youtubeAudit.reportJson || "In attesa del report finale"}
+              {youtubeAuditEtaText ? ` | ${youtubeAuditEtaText}` : ""}
             </small>
             {youtubeAudit.running ? (
               <div className="diagnostic-progress" aria-label="Avanzamento verifica YouTube">
