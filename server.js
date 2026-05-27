@@ -90,10 +90,7 @@ const serverPlayerYtdlExtractorArgs = buildYtdlExtractorArgs(
   }
 );
 const serverPlayerYtdlFallbackProfiles = process.env.CLEARWAVE_YTDL_FALLBACK_PROFILES !== "0";
-const serverPlayerYoutubeStartStableMs = Math.max(
-  150,
-  Number(process.env.CLEARWAVE_YOUTUBE_START_STABLE_MS || 150) || 150
-);
+const serverPlayerYoutubeStartStableMs = 150;
 const serverPlayerYtdlCookiesFileFromEnv = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
 const serverPlayerYtdlCookiesFile = serverPlayerYtdlCookiesFileFromEnv || DEFAULT_YTDL_COOKIES_FILE;
 const serverPlayerYtdlCookieProbeUrl = String(
