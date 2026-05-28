@@ -328,8 +328,33 @@ export function usePlayerRuntime({
   }
 
   function playAdjacent(direction, options = {}) {
-    // Se stai ascoltando la playlist temporanea, prev/next restano in quella sessione.
-    let list = playbackListForTrack(activeTrack);
+    // Auto-consume: la coda funziona come un jukebox — il brano suonato esce automaticamente.
+    const consumeFromQueue = direction > 0 && activeTrack && queueIds.includes(activeTrack.id);
+    if (consumeFromQueue) {
+      setQueueIds((current) => current.filter((id) => id !== activeTrack.id));
+      const remainingQueued = queuedTracks.filter((track) => track.id !== activeTrack.id);
+
+      if (remainingQueued.length > 0) {
+        const nextTrack = shuffleEnabled && remainingQueued.length > 1
+          ? remainingQueued[Math.floor(Math.random() * remainingQueued.length)]
+          : remainingQueued[0];
+        playTrack(nextTrack, { forceRestart: true, startAt: 0 });
+        return true;
+      }
+
+      // Coda esaurita: continua col catalogo.
+      const catalogList = filteredTracks.length > 0 ? filteredTracks : catalogTracks;
+      if (catalogList.length > 0) {
+        playTrack(catalogList[0], { forceRestart: true, startAt: 0 });
+        return true;
+      }
+
+      setIsPlaying(false);
+      return false;
+    }
+
+    // Flusso normale (catalogo o session, senza coda).
+    const list = playbackListForTrack(activeTrack);
     if (list.length === 0) {
       return false;
     }
@@ -344,25 +369,11 @@ export function usePlayerRuntime({
     }
 
     if (nextIndex >= list.length) {
-      // Se la coda e' finita, svuotala e passa al catalogo invece di ripetere la stessa traccia.
-      if (queuedTracks.length > 0) {
-        setQueueIds([]);
-        const catalogList = filteredTracks.length > 0 ? filteredTracks : catalogTracks;
-        if (catalogList.length > 0) {
-          list = catalogList;
-          nextIndex = 0;
-        } else if (repeatMode !== "all" && options.fromEnded) {
-          setIsPlaying(false);
-          return false;
-        } else {
-          nextIndex = 0;
-        }
-      } else if (repeatMode !== "all" && options.fromEnded) {
+      if (repeatMode !== "all" && options.fromEnded) {
         setIsPlaying(false);
         return false;
-      } else {
-        nextIndex = 0;
       }
+      nextIndex = 0;
     }
 
     if (nextIndex < 0) {
