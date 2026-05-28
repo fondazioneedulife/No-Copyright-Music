@@ -110,9 +110,7 @@ export function AdminDiagnosticsPanel({
         </p>
       ) : null}
 
-      {activeTab === "stato" && (
-        <>
-          <section className="diagnostic-section diagnostic-controls-section">
+      <section className="diagnostic-section diagnostic-controls-section">
         <div className="diagnostic-section-title">
           <div>
             <p className="eyebrow">Check</p>
@@ -180,7 +178,7 @@ export function AdminDiagnosticsPanel({
         </div>
       </section>
 
-      {warningHealthChecks.length > 0 ? (
+      {activeTab === "stato" && warningHealthChecks.length > 0 ? (
         <section className="diagnostic-section diagnostic-problem-section">
           <div className="diagnostic-section-title">
             <div>
@@ -215,7 +213,7 @@ export function AdminDiagnosticsPanel({
         </section>
       ) : null}
 
-      {okHealthChecks.length > 0 ? (
+      {activeTab === "stato" && okHealthChecks.length > 0 ? (
         <section className="diagnostic-section">
           <div className="diagnostic-section-title">
             <div>
@@ -236,7 +234,7 @@ export function AdminDiagnosticsPanel({
         </section>
       ) : null}
 
-      {diagnostics ? (
+      {activeTab === "stato" && diagnostics ? (
         <section className="diagnostic-section">
           <div className="diagnostic-section-title">
             <div>
@@ -583,8 +581,6 @@ export function AdminDiagnosticsPanel({
           ))}
         </div>
       ) : null}
-      </>
-      )}
 
       {activeTab === "log" && (
         <>
