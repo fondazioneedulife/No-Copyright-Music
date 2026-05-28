@@ -5290,7 +5290,7 @@ function serverPlayerYtdlConfig(source, overrides = {}) {
     args.push(`--script-opts=ytdl_hook-ytdl_path=${serverPlayerYtdlPath}`);
   }
 
-  const cookiesFile = ytdlCookiesFileIfAvailable();
+  const cookiesFile = !overrides.omitCookies ? ytdlCookiesFileIfAvailable() : null;
   const rawOptions = [];
   if (serverPlayerYtdlJsRuntime) {
     rawOptions.push(mpvRawOptionPair("js-runtimes", serverPlayerYtdlJsRuntime));
@@ -5321,6 +5321,13 @@ function serverPlayerYtdlPlaybackProfiles(source) {
   ];
 
   if (serverPlayerYtdlFallbackProfiles) {
+    if (ytdlCookiesFileIfAvailable()) {
+      profiles.push({
+        label: "youtube/no-cookies",
+        args: serverPlayerYtdlConfig(source, { omitCookies: true }),
+      });
+    }
+
     profiles.push(
       {
         label: "youtube/tv",
