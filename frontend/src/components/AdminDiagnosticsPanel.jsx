@@ -163,10 +163,10 @@ export function AdminDiagnosticsPanel({
             disabled={startingYouTubeFullAudit || youtubeAudit?.running}
           >
             {youtubeAudit?.running
-              ? `YouTube ${youtubeAudit.progress || 0}%`
+              ? `Verifica ${youtubeAudit.progress || 0}%`
               : startingYouTubeFullAudit
                 ? "Avvio..."
-                : "Verifica tutto YouTube"}
+                : "Verifica intero catalogo"}
           </button>
           <label className={`file-button ${uploadingYouTubeCookies ? "is-disabled" : ""}`}>
             {uploadingYouTubeCookies ? "Carico..." : "Carica cookies.txt"}
