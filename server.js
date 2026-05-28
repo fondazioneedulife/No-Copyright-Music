@@ -3429,6 +3429,10 @@ async function installYtdlCookies(payload = {}) {
   return ytdlCookieService.installCookies(payload);
 }
 
+async function removeYtdlCookies() {
+  return ytdlCookieService.removeCookies();
+}
+
 function appendYtDlpCommonArgs(args) {
   return ytdlCookieService.appendYtDlpCommonArgs(args);
 }
@@ -6526,6 +6530,13 @@ async function requestHandler(req, res) {
       requireAdminRequest(req);
       const payload = await readJsonBody(req);
       const result = await installYtdlCookies(payload);
+      json(res, 200, { ...result, diagnostics: await buildServerDiagnostics() });
+      return;
+    }
+
+    if (req.method === "DELETE" && pathname === "/api/admin/youtube-cookies") {
+      requireAdminRequest(req);
+      const result = await removeYtdlCookies();
       json(res, 200, { ...result, diagnostics: await buildServerDiagnostics() });
       return;
     }

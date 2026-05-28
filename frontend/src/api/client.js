@@ -332,6 +332,13 @@ export function uploadYouTubeCookies(token, cookiesText) {
   });
 }
 
+export function removeYouTubeCookies(token) {
+  return apiRequest("/api/admin/youtube-cookies", {
+    method: "DELETE",
+    token,
+  });
+}
+
 export function fetchYouTubeCookieStatus(token) {
   return apiRequest("/api/admin/youtube-cookies/status", { token });
 }

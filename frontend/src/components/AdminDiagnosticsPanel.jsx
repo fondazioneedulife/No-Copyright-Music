@@ -21,6 +21,7 @@ export function AdminDiagnosticsPanel({
   recheckingArchivedTracks,
   startingYouTubeFullAudit,
   uploadingYouTubeCookies,
+  removingYouTubeCookies,
   cleaningBrokenTracks,
   youtubeResults,
   youtubeResultsFilter,
@@ -32,6 +33,7 @@ export function AdminDiagnosticsPanel({
   onRecheckArchivedAudioTracks,
   onStartYouTubeFullAudit,
   onUploadYouTubeCookiesFile,
+  onRemoveYouTubeCookies,
   onRequestCleanupBroken,
   activeTab = "stato",
 }) {
@@ -175,6 +177,14 @@ export function AdminDiagnosticsPanel({
               onChange={onUploadYouTubeCookiesFile}
             />
           </label>
+          <button
+            type="button"
+            className="danger-button"
+            onClick={onRemoveYouTubeCookies}
+            disabled={removingYouTubeCookies}
+          >
+            {removingYouTubeCookies ? "Rimuovo..." : "Rimuovi vecchi cookie"}
+          </button>
         </div>
       </section>
 

@@ -10,6 +10,7 @@ import {
   recheckYouTubeLoginFailures,
   startYouTubeFullAudit,
   uploadYouTubeCookies,
+  removeYouTubeCookies,
 } from "../api/client.js";
 import {
   auditRefreshMs,
@@ -31,6 +32,7 @@ export function useDiagnosticsActions({ token, refreshTracks }) {
   const [recheckingYouTubeLogin, setRecheckingYouTubeLogin] = useState(false);
   const [startingYouTubeFullAudit, setStartingYouTubeFullAudit] = useState(false);
   const [uploadingYouTubeCookies, setUploadingYouTubeCookies] = useState(false);
+  const [removingYouTubeCookies, setRemovingYouTubeCookies] = useState(false);
   const [probingYouTubeCookies, setProbingYouTubeCookies] = useState(false);
   const [cleaningBrokenTracks, setCleaningBrokenTracks] = useState(false);
   const [recheckingArchivedTracks, setRecheckingArchivedTracks] = useState(false);
@@ -253,6 +255,26 @@ export function useDiagnosticsActions({ token, refreshTracks }) {
     }
   }
 
+  async function handleRemoveYouTubeCookies() {
+    setRemovingYouTubeCookies(true);
+    setDiagnosticsStatusType("success");
+    setDiagnosticsStatus("Rimozione cookie YouTube in corso...");
+    try {
+      const payload = await removeYouTubeCookies(token);
+      if (payload.diagnostics) {
+        setDiagnostics(payload.diagnostics);
+      }
+
+      setDiagnosticsStatusType("success");
+      setDiagnosticsStatus(payload.message || "Cookie YouTube rimossi.");
+    } catch (error) {
+      setDiagnosticsStatusType("error");
+      setDiagnosticsStatus(error.message || "Impossibile rimuovere i cookie YouTube.");
+    } finally {
+      setRemovingYouTubeCookies(false);
+    }
+  }
+
   async function handleCleanupBrokenAudioTracks() {
     setCleaningBrokenTracks(true);
     setDiagnosticsStatusType("success");
@@ -372,6 +394,7 @@ export function useDiagnosticsActions({ token, refreshTracks }) {
     handleRecheckYouTubeLoginFailures,
     handleStartYouTubeFullAudit,
     handleUploadYouTubeCookiesFile,
+    handleRemoveYouTubeCookies,
     loadingDiagnostics,
     loadingYouTubeResults,
     probingYouTubeCookies,
@@ -379,6 +402,7 @@ export function useDiagnosticsActions({ token, refreshTracks }) {
     recheckingYouTubeLogin,
     startingYouTubeFullAudit,
     uploadingYouTubeCookies,
+    removingYouTubeCookies,
     youtubeResults,
     youtubeResultsFilter,
   };

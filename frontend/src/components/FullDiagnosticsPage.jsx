@@ -23,6 +23,7 @@ export function FullDiagnosticsPage({ token, refreshTracks }) {
     handleRecheckYouTubeLoginFailures,
     handleStartYouTubeFullAudit,
     handleUploadYouTubeCookiesFile,
+    handleRemoveYouTubeCookies,
     loadingDiagnostics,
     loadingYouTubeResults,
     probingYouTubeCookies,
@@ -30,6 +31,7 @@ export function FullDiagnosticsPage({ token, refreshTracks }) {
     recheckingYouTubeLogin,
     startingYouTubeFullAudit,
     uploadingYouTubeCookies,
+    removingYouTubeCookies,
     youtubeResults,
     youtubeResultsFilter,
   } = useDiagnosticsActions({ token, refreshTracks });
@@ -92,6 +94,7 @@ export function FullDiagnosticsPage({ token, refreshTracks }) {
           recheckingArchivedTracks={recheckingArchivedTracks}
           startingYouTubeFullAudit={startingYouTubeFullAudit}
           uploadingYouTubeCookies={uploadingYouTubeCookies}
+          removingYouTubeCookies={removingYouTubeCookies}
           cleaningBrokenTracks={cleaningBrokenTracks}
           youtubeResults={youtubeResults}
           youtubeResultsFilter={youtubeResultsFilter}
@@ -103,6 +106,7 @@ export function FullDiagnosticsPage({ token, refreshTracks }) {
           onRecheckArchivedAudioTracks={handleRecheckArchivedAudioTracks}
           onStartYouTubeFullAudit={handleStartYouTubeFullAudit}
           onUploadYouTubeCookiesFile={handleUploadYouTubeCookiesFile}
+          onRemoveYouTubeCookies={handleRemoveYouTubeCookies}
           onRequestCleanupBroken={() => setPendingCleanupBroken(true)}
           activeTab={activeTab}
         />
