@@ -329,7 +329,7 @@ export function usePlayerRuntime({
 
   function playAdjacent(direction, options = {}) {
     // Se stai ascoltando la playlist temporanea, prev/next restano in quella sessione.
-    const list = playbackListForTrack(activeTrack);
+    let list = playbackListForTrack(activeTrack);
     if (list.length === 0) {
       return false;
     }
@@ -344,11 +344,25 @@ export function usePlayerRuntime({
     }
 
     if (nextIndex >= list.length) {
-      if (repeatMode !== "all" && options.fromEnded) {
+      // Se la coda e' finita, svuotala e passa al catalogo invece di ripetere la stessa traccia.
+      if (queuedTracks.length > 0) {
+        setQueueIds([]);
+        const catalogList = filteredTracks.length > 0 ? filteredTracks : catalogTracks;
+        if (catalogList.length > 0) {
+          list = catalogList;
+          nextIndex = 0;
+        } else if (repeatMode !== "all" && options.fromEnded) {
+          setIsPlaying(false);
+          return false;
+        } else {
+          nextIndex = 0;
+        }
+      } else if (repeatMode !== "all" && options.fromEnded) {
         setIsPlaying(false);
         return false;
+      } else {
+        nextIndex = 0;
       }
-      nextIndex = 0;
     }
 
     if (nextIndex < 0) {
