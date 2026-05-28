@@ -5037,7 +5037,8 @@ async function serverPlayerSourceForTrack(track) {
       }
 
       // Avvia il download della cache in background (senza 'await') per non bloccare il player
-      if (audioConfig.cache.enabled && audioConfig.cache.onPlay) {
+      const cacheStatus = youtubeAudioCache.status();
+      if (cacheStatus.enabled && cacheStatus.onPlay) {
         youtubeAudioCache.ensureCachedForTrack(normalized).catch(console.error);
       }
     } catch (error) {
