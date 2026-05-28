@@ -1086,13 +1086,20 @@ async function ensureStorage() {
   }
 }
 
+let libraryCache = null;
+
 async function readLibrary() {
   // Catalogo musicale: JSON semplice per rendere import/export e debug piu' immediati.
+  if (libraryCache) {
+    return libraryCache;
+  }
+
   await ensureStorage();
   const raw = await fs.readFile(LIBRARY_FILE, "utf8");
   try {
     const parsed = JSON.parse(raw || "{}");
-    return Array.isArray(parsed.tracks) ? parsed.tracks : [];
+    libraryCache = Array.isArray(parsed.tracks) ? parsed.tracks : [];
+    return libraryCache;
   } catch (error) {
     console.error(`[backend] Errore critico nel parsing di ${LIBRARY_FILE}:`, error.message);
     return [];
@@ -1102,6 +1109,7 @@ async function readLibrary() {
 async function writeLibrary(tracks) {
   await ensureStorage();
   await fs.writeFile(LIBRARY_FILE, JSON.stringify({ tracks }, null, 2), "utf8");
+  libraryCache = tracks;
 }
 
 async function readYouTubeImportState() {
