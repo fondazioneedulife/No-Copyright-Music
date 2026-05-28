@@ -5353,6 +5353,20 @@ function serverPlayerYtdlPlaybackProfiles(source) {
           extractorArgs: "youtube:player_client=web_embedded",
           format: "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best",
         }),
+      },
+      {
+        label: "youtube/android",
+        args: serverPlayerYtdlConfig(source, {
+          extractorArgs: "youtube:player_client=android",
+          format: "bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best",
+        }),
+      },
+      {
+        label: "youtube/ios",
+        args: serverPlayerYtdlConfig(source, {
+          extractorArgs: "youtube:player_client=ios",
+          format: "bestaudio[protocol^=m3u8]/best[protocol^=m3u8]/bestaudio/best",
+        }),
       }
     );
   }
