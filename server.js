@@ -4881,39 +4881,51 @@ async function readDiagnosticTextFile(filePath) {
     return error.code === "ENOENT" ? "" : `Errore lettura ${path.basename(filePath)}: ${error.message}`;
   }
 }
+let cachedExpensiveDiagnostics = null;
+let lastExpensiveDiagnosticsTime = 0;
 
 async function buildServerDiagnostics() {
   const audioConfigs = serverPlayerAudioConfigs();
-  const preflightResults = [];
   const cookies = ytdlCookieStatus();
-  const ytdlJsRuntimeCommand = ytdlJsRuntimeExecutable();
   const youtubeCache = youtubeAudioCache.status();
 
-  for (const config of audioConfigs) {
-    const result = await runServerPlayerAudioPreflight(config);
-    preflightResults.push({
-      label: config.label,
-      ok: result.ok,
-      message: result.message,
-      args: config.args,
-    });
+  if (!cachedExpensiveDiagnostics || Date.now() - lastExpensiveDiagnosticsTime > 15000) {
+    const preflightResults = [];
+    const ytdlJsRuntimeCommand = ytdlJsRuntimeExecutable();
+
+    for (const config of audioConfigs) {
+      const result = await runServerPlayerAudioPreflight(config);
+      preflightResults.push({
+        label: config.label,
+        ok: result.ok,
+        message: result.message,
+        args: config.args,
+      });
+    }
+
+    const [mpv, ytdlp, ytdlJsRuntime, bgutilProvider, aplayList, aplayNames, asoundCards] = await Promise.all([
+      diagnosticCommandResult(serverPlayerCommand, ["--version"], 3500),
+      diagnosticCommandResult(serverPlayerYtdlPath, ["--version"], 5000),
+      ytdlJsRuntimeCommand
+        ? diagnosticCommandResult(ytdlJsRuntimeCommand, ["--version"], 5000)
+        : Promise.resolve({ ok: false, command: "", args: [], error: "Runtime JavaScript yt-dlp non configurato." }),
+      bgutilProviderDiagnostic(),
+      process.platform === "linux"
+        ? diagnosticCommandResult("aplay", ["-l"], 3500)
+        : Promise.resolve({ ok: false, command: "aplay", args: ["-l"], error: "Disponibile solo su Linux." }),
+      process.platform === "linux"
+        ? diagnosticCommandResult("aplay", ["-L"], 3500)
+        : Promise.resolve({ ok: false, command: "aplay", args: ["-L"], error: "Disponibile solo su Linux." }),
+      process.platform === "linux" ? readDiagnosticTextFile("/proc/asound/cards") : Promise.resolve(""),
+    ]);
+
+    cachedExpensiveDiagnostics = {
+      preflightResults, mpv, ytdlp, ytdlJsRuntime, bgutilProvider, aplayList, aplayNames, asoundCards
+    };
+    lastExpensiveDiagnosticsTime = Date.now();
   }
 
-  const [mpv, ytdlp, ytdlJsRuntime, bgutilProvider, aplayList, aplayNames, asoundCards] = await Promise.all([
-    diagnosticCommandResult(serverPlayerCommand, ["--version"], 3500),
-    diagnosticCommandResult(serverPlayerYtdlPath, ["--version"], 5000),
-    ytdlJsRuntimeCommand
-      ? diagnosticCommandResult(ytdlJsRuntimeCommand, ["--version"], 5000)
-      : Promise.resolve({ ok: false, command: "", args: [], error: "Runtime JavaScript yt-dlp non configurato." }),
-    bgutilProviderDiagnostic(),
-    process.platform === "linux"
-      ? diagnosticCommandResult("aplay", ["-l"], 3500)
-      : Promise.resolve({ ok: false, command: "aplay", args: ["-l"], error: "Disponibile solo su Linux." }),
-    process.platform === "linux"
-      ? diagnosticCommandResult("aplay", ["-L"], 3500)
-      : Promise.resolve({ ok: false, command: "aplay", args: ["-L"], error: "Disponibile solo su Linux." }),
-    process.platform === "linux" ? readDiagnosticTextFile("/proc/asound/cards") : Promise.resolve(""),
-  ]);
+  const { preflightResults, mpv, ytdlp, ytdlJsRuntime, bgutilProvider, aplayList, aplayNames, asoundCards } = cachedExpensiveDiagnostics;
 
   return {
     runtime: {
