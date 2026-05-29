@@ -13,10 +13,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function handleSync(serverUrl, adminPassword) {
-  // 1. Leggiamo i cookie di YouTube e Google (yt-dlp ha bisogno dei cookie di google.com per l'autenticazione)
-  const ytCookies = await new Promise((resolve) => chrome.cookies.getAll({ domain: "youtube.com" }, resolve));
-  const googleCookies = await new Promise((resolve) => chrome.cookies.getAll({ domain: "google.com" }, resolve));
-  const cookies = [...ytCookies, ...googleCookies];
+  // 1. Leggiamo i cookie di YouTube e Google
+  const allCookies = await new Promise((resolve) => chrome.cookies.getAll({}, resolve));
+  const cookies = allCookies.filter(c => 
+    c.domain.includes("youtube.com") || 
+    c.domain.includes("google.com") || 
+    c.domain.includes("google.it")
+  );
 
   if (!cookies || cookies.length === 0) {
     throw new Error("Nessun cookie trovato. Assicurati di fare il login su youtube.com nel tuo browser.");
@@ -55,7 +58,7 @@ async function handleSync(serverUrl, adminPassword) {
 
   if (!uploadRes.ok) {
     const errData = await uploadRes.json().catch(() => ({}));
-    throw new Error(errData.message || "Errore durante l'invio dei cookie al server.");
+    throw new Error(errData.error || errData.message || "Errore sconosciuto durante l'invio dei cookie.");
   }
 
   const uploadData = await uploadRes.json();
