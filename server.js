@@ -5948,6 +5948,7 @@ async function playOnServerPlayer(req, payload, playToken = 0) {
     `--msg-level=${serverPlayerMpvMsgLevel}`,
     `--volume-max=${serverPlayerVolumeMax}`,
     `--volume=${mpvVolume}`,
+    `--af=dynaudnorm`,
   ];
 
   if (startAt > 0) {
