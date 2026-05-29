@@ -13,13 +13,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function handleSync(serverUrl, adminPassword) {
-  // 1. Leggiamo i cookie di YouTube
-  const cookies = await new Promise((resolve) => {
-    chrome.cookies.getAll({ domain: "youtube.com" }, resolve);
-  });
+  // 1. Leggiamo i cookie di YouTube e Google (yt-dlp ha bisogno dei cookie di google.com per l'autenticazione)
+  const ytCookies = await new Promise((resolve) => chrome.cookies.getAll({ domain: "youtube.com" }, resolve));
+  const googleCookies = await new Promise((resolve) => chrome.cookies.getAll({ domain: "google.com" }, resolve));
+  const cookies = [...ytCookies, ...googleCookies];
 
   if (!cookies || cookies.length === 0) {
-    throw new Error("Nessun cookie trovato per YouTube. Assicurati di fare il login su youtube.com nel tuo browser.");
+    throw new Error("Nessun cookie trovato. Assicurati di fare il login su youtube.com nel tuo browser.");
   }
 
   // 2. Li formattiamo nel formato Netscape
