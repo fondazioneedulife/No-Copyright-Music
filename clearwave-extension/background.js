@@ -29,7 +29,7 @@ async function handleSync(serverUrl, adminPassword) {
   const loginRes = await fetch(`${serverUrl}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: adminPassword })
+    body: JSON.stringify({ username: "admin", password: adminPassword })
   });
 
   if (!loginRes.ok) {
