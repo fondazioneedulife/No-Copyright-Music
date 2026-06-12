@@ -13,12 +13,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function handleSync(serverUrl, adminPassword) {
-  // 1. Leggiamo i cookie di YouTube e Google
+  // 1. Leggiamo i cookie di YouTube (rimossi i cookie Google su richiesta)
   const allCookies = await new Promise((resolve) => chrome.cookies.getAll({}, resolve));
   const cookies = allCookies.filter(c => 
-    c.domain.includes("youtube.com") || 
-    c.domain.includes("google.com") || 
-    c.domain.includes("google.it")
+    c.domain.includes("youtube.com")
   );
 
   if (!cookies || cookies.length === 0) {
