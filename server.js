@@ -90,6 +90,7 @@ const serverPlayerYtdlExtractorArgs = buildYtdlExtractorArgs(
   }
 );
 const serverPlayerYtdlFallbackProfiles = process.env.CLEARWAVE_YTDL_FALLBACK_PROFILES !== "0";
+const serverPlayerYtdlProxy = String(process.env.CLEARWAVE_YTDL_PROXY || "").trim();
 const serverPlayerYoutubeStartStableMs = 150;
 const serverPlayerYtdlCookiesFileFromEnv = String(process.env.CLEARWAVE_YTDL_COOKIES_FILE || "").trim();
 const serverPlayerYtdlCookiesFile = serverPlayerYtdlCookiesFileFromEnv || DEFAULT_YTDL_COOKIES_FILE;
@@ -3448,7 +3449,11 @@ function ytDlpPlaylistUrl(playlistId) {
 function runYtDlpJson(args, timeoutMs = 65000) {
   return new Promise((resolve, reject) => {
     const command = ytDlpCommand();
-    const processRef = spawn(command, args, {
+    const finalArgs = [...args];
+    if (serverPlayerYtdlProxy) {
+      finalArgs.unshift("--proxy", serverPlayerYtdlProxy);
+    }
+    const processRef = spawn(command, finalArgs, {
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
@@ -3851,6 +3856,31 @@ async function importPlayableDiscoveryItems(items, options = {}) {
     skipped,
     skippedSummary: summarizeSkippedReasons(skipped),
   };
+}
+async function importExternalYtdlpTrack(url) {
+  if (!url) {
+    throw httpError(400, "URL mancante.");
+  }
+  const payload = await runYtDlpJson(["--dump-json", "--no-playlist", url]);
+  
+  const track = {
+    id: `ext_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    title: payload.title || "Traccia Esterna",
+    artist: payload.uploader || payload.artist || payload.creator || "Sconosciuto",
+    duration: Math.round(payload.duration || 0),
+    image: payload.thumbnail || "",
+    source: payload.webpage_url || url,
+    provider: "external",
+    youtubeVideoId: payload.extractor === "youtube" ? payload.id : undefined,
+    addedAt: new Date().toISOString(),
+    isNew: true,
+  };
+  
+  const existingTracks = await readLibrary();
+  existingTracks.unshift(track); // Add at the beginning
+  await writeLibrary(existingTracks);
+  
+  return { imported: 1, track };
 }
 
 async function importDiscoveryLink(payload = {}) {
@@ -5278,7 +5308,7 @@ function runServerPlayerAudioPreflight(audioConfig) {
 }
 
 function serverPlayerNeedsYtdl(source) {
-  return /(?:youtube\.com|youtu\.be)/i.test(String(source || ""));
+  return /(?:youtube\.com|youtu\.be|soundcloud\.com|bandcamp\.com)/i.test(String(source || ""));
 }
 
 function serverPlayerYtdlConfig(source, overrides = {}) {
@@ -5316,6 +5346,9 @@ function serverPlayerYtdlConfig(source, overrides = {}) {
   }
   if (cookiesFile) {
     rawOptions.push(mpvRawOptionPair("cookies", cookiesFile));
+  }
+  if (serverPlayerYtdlProxy) {
+    rawOptions.push(mpvRawOptionPair("proxy", serverPlayerYtdlProxy));
   }
   if (rawOptions.length > 0) {
     args.push(`--ytdl-raw-options=${rawOptions.join(",")}`);
@@ -6761,6 +6794,14 @@ async function requestHandler(req, res) {
         requireAdminRequest(req);
         const payload = await readJsonBody(req);
         const result = await importDiscoveryLink(payload);
+        json(res, 201, result);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/api/admin/external-track") {
+        requireAdminRequest(req);
+        const payload = await readJsonBody(req);
+        const result = await importExternalYtdlpTrack(payload.url);
         json(res, 201, result);
         return;
       }

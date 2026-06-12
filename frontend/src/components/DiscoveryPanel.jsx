@@ -21,6 +21,7 @@ export function DiscoveryPanel({
   onImportTrack,
   onBulkImport,
   onImportLink,
+  onImportExternalLink,
   onAddSessionLink,
   onPlaySessionTrack,
   onRemoveSessionTrack,
@@ -136,14 +137,25 @@ export function DiscoveryPanel({
             {busyAction === "temporary" ? "Aggiungo..." : "Aggiungi temporanea"}
           </button>
           {isAdmin ? (
-            <button
-              type="button"
-              className="primary-button"
-              disabled={busyAction === "link" || !link.trim()}
-              onClick={() => runAction("link", () => onImportLink(link.trim()))}
-            >
-              {busyAction === "link" ? "Salvo..." : "Salva nel catalogo"}
-            </button>
+            <>
+              <button
+                type="button"
+                className="primary-button"
+                disabled={busyAction === "link" || !link.trim()}
+                onClick={() => runAction("link", () => onImportLink(link.trim()))}
+              >
+                {busyAction === "link" ? "Salvo..." : "Importa Playlist/Canale"}
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                disabled={busyAction === "external" || !link.trim()}
+                onClick={() => runAction("external", () => onImportExternalLink(link.trim()))}
+                title="Supporta SoundCloud, Bandcamp, o singoli video YouTube"
+              >
+                {busyAction === "external" ? "Salvo..." : "Importa Singolo (SoundCloud/YT)"}
+              </button>
+            </>
           ) : null}
           {isAdmin ? (
             <button

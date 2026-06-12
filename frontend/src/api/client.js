@@ -187,12 +187,17 @@ export function bulkImportDiscovery(token, options = {}) {
 
 export function importDiscoveryLink(token, url) {
   return apiRequest("/api/discovery/import-link", {
-    method: "POST",
     token,
-    body: {
-      url,
-      maxTracks: 5000,
-    },
+    method: "POST",
+    body: { url, maxTracks: 5000 },
+  });
+}
+
+export function importExternalLink(token, url) {
+  return apiRequest("/api/admin/external-track", {
+    token,
+    method: "POST",
+    body: { url },
   });
 }
 

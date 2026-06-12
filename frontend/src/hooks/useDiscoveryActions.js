@@ -1,8 +1,9 @@
 import { useState } from "react";
 import {
   bulkImportDiscovery,
-  importDiscoveryLink,
   importDiscoveryTrack,
+  importDiscoveryLink,
+  importExternalLink,
   importSessionLink,
   searchDiscovery,
 } from "../api/client.js";
@@ -136,6 +137,23 @@ export function useDiscoveryActions({ user, token, refreshTracks }) {
     }
   }
 
+  async function handleImportExternalLink(url) {
+    if (rejectNonAdmin("Solo l'amministratore puo' importare tracce esterne.")) {
+      return;
+    }
+
+    try {
+      setDiscoveryStatus("Importazione traccia esterna (SoundCloud/YT)...");
+      const payload = await importExternalLink(token, url);
+      await refreshTracks();
+      setDiscoveryStatusType("success");
+      setDiscoveryStatus(`Import completato: ${payload.track?.title || "Traccia importata con successo"}.`);
+    } catch (error) {
+      setDiscoveryStatusType("error");
+      setDiscoveryStatus(error.message || "Import traccia esterna non riuscito.");
+    }
+  }
+
   async function handleAddSessionLink(url) {
     if (rejectNonAdmin("Solo l'amministratore puo' usare la playlist temporanea.")) {
       return false;
@@ -212,6 +230,7 @@ export function useDiscoveryActions({ user, token, refreshTracks }) {
     handleDiscoveryImport,
     handleDiscoverySearch,
     handleImportLink,
+    handleImportExternalLink,
     resetDiscoveryState,
     sessionTracks,
     setDiscoveryStatus,

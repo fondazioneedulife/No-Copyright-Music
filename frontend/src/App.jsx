@@ -114,6 +114,7 @@ export default function App() {
     handleDiscoveryImport,
     handleDiscoverySearch,
     handleImportLink,
+    handleImportExternalLink,
     resetDiscoveryState,
     sessionTracks,
     setDiscoveryStatus,
@@ -473,6 +474,7 @@ export default function App() {
                     onImportTrack={handleDiscoveryImport}
                     onBulkImport={handleBulkImport}
                     onImportLink={handleImportLink}
+                    onImportExternalLink={handleImportExternalLink}
                     onAddSessionLink={handleAddSessionLink}
                     onPlaySessionTrack={playTrack}
                     onRemoveSessionTrack={removeSessionTrack}
