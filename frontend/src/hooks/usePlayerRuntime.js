@@ -113,7 +113,26 @@ export function usePlayerRuntime({
     // Questa lista viene inviata anche al backend: cosi' il Raspberry continua se il browser si chiude.
     const catalogPlaybackList = filteredTracks.length > 0 ? filteredTracks : catalogTracks;
     const trackInSession = sessionTracks.some((sessionTrack) => sessionTrack.id === track?.id);
-    return queuedTracks.length > 0 ? queuedTracks : trackInSession ? sessionTracks : catalogPlaybackList;
+    const baseList = trackInSession ? sessionTracks : catalogPlaybackList;
+
+    if (queuedTracks.length === 0) {
+      return baseList;
+    }
+
+    let finalList = [...baseList];
+    
+    // Rimuove i brani accodati dalla lista base per evitare che suonino due volte
+    finalList = finalList.filter((t) => !queueIds.includes(t.id));
+    
+    const insertIndex = track ? finalList.findIndex((t) => t?.id === track?.id) : -1;
+    
+    if (insertIndex >= 0) {
+      finalList.splice(insertIndex + 1, 0, ...queuedTracks);
+    } else {
+      finalList = [...queuedTracks, ...finalList];
+    }
+    
+    return finalList;
   }
 
   function serverPlaybackContextFor(track = activeTrack) {
@@ -328,32 +347,7 @@ export function usePlayerRuntime({
   }
 
   function playAdjacent(direction, options = {}) {
-    // Auto-consume: la coda funziona come un jukebox — il brano suonato esce automaticamente.
-    const consumeFromQueue = direction > 0 && activeTrack && queueIds.includes(activeTrack.id);
-    if (consumeFromQueue) {
-      setQueueIds((current) => current.filter((id) => id !== activeTrack.id));
-      const remainingQueued = queuedTracks.filter((track) => track.id !== activeTrack.id);
-
-      if (remainingQueued.length > 0) {
-        const nextTrack = shuffleEnabled && remainingQueued.length > 1
-          ? remainingQueued[Math.floor(Math.random() * remainingQueued.length)]
-          : remainingQueued[0];
-        playTrack(nextTrack, { forceRestart: true, startAt: 0 });
-        return true;
-      }
-
-      // Coda esaurita: continua col catalogo.
-      const catalogList = filteredTracks.length > 0 ? filteredTracks : catalogTracks;
-      if (catalogList.length > 0) {
-        playTrack(catalogList[0], { forceRestart: true, startAt: 0 });
-        return true;
-      }
-
-      setIsPlaying(false);
-      return false;
-    }
-
-    // Flusso normale (catalogo o session, senza coda).
+    // Flusso normale (catalogo o session, arricchito automaticamente con la coda).
     const list = playbackListForTrack(activeTrack);
     if (list.length === 0) {
       return false;
@@ -775,6 +769,12 @@ export function usePlayerRuntime({
 
     return () => window.clearInterval(timerId);
   }, [playerMode, isPlaying, duration, activeTrack, repeatMode, queueIds, shuffleEnabled, sessionTracks]);
+
+  useEffect(() => {
+    if (activeTrack && queueIds.includes(activeTrack.id)) {
+      setQueueIds((current) => current.filter((id) => id !== activeTrack.id));
+    }
+  }, [activeTrack, queueIds]);
 
   return {
     activeTrack,

@@ -2464,7 +2464,7 @@ function mapYouTubeSessionVideo(item) {
   const originalCoverPath = youtubeThumbnailUrl(item, videoId);
 
   return normalizeTrack({
-    id: `youtube-session-${videoId}`,
+    id: `youtube-session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${videoId}`,
     title,
     subtitle: `${channelTitle} / playlist utente temporanea`,
     mood,
@@ -3519,7 +3519,7 @@ function mapYtDlpSessionEntry(entry = {}) {
   const originalCoverPath = ytDlpThumbnailForEntry(entry) || youtubeThumbnailUrl(null, videoId);
 
   return normalizeTrack({
-    id: `youtube-session-${videoId}`,
+    id: `youtube-session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${videoId}`,
     title,
     subtitle: `${channelTitle} / playlist utente temporanea`,
     mood: inferMoodFromText([title, channelTitle].join(" ")),

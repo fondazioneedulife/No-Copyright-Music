@@ -22,6 +22,7 @@ const DEFAULT_YTDL_FORMAT =
   process.env.CLEARWAVE_YTDL_FORMAT ||
   "bestaudio[protocol^=m3u8]/bestaudio[acodec!=none]/bestaudio/best[acodec!=none]/best";
 const DEFAULT_YTDL_COOKIES_FILE = process.env.CLEARWAVE_YTDL_COOKIES_FILE || "";
+const DEFAULT_YTDL_PROXY = String(process.env.CLEARWAVE_YTDL_PROXY || "").trim();
 const DEFAULT_YTDL_JS_RUNTIME = process.env.CLEARWAVE_YTDL_JS_RUNTIME || "";
 const DEFAULT_YTDL_PO_TOKEN = process.env.CLEARWAVE_YTDL_PO_TOKEN || "";
 const DEFAULT_YTDL_PO_TOKEN_CLIENT = process.env.CLEARWAVE_YTDL_PO_TOKEN_CLIENT || "mweb.gvs";
@@ -76,6 +77,7 @@ function parseArgs(argv) {
     ytdlPath: DEFAULT_YTDL_PATH,
     ytdlFormat: DEFAULT_YTDL_FORMAT,
     ytdlCookiesFile: DEFAULT_YTDL_COOKIES_FILE,
+    ytdlProxy: DEFAULT_YTDL_PROXY,
     ytdlJsRuntime: DEFAULT_YTDL_JS_RUNTIME,
     ytdlExtractorArgs: DEFAULT_YTDL_EXTRACTOR_ARGS,
     ytdlPoToken: DEFAULT_YTDL_PO_TOKEN,
@@ -648,10 +650,16 @@ async function checkWithMpv(source, sourceKind, options) {
         args.push(`--ytdl-format=${profile.format}`);
       }
       if (options.ytdlPath) {
-        args.push(`--script-opts=ytdl_hook-ytdl_path=${options.ytdlPath}`);
+        if (options.ytdlProxy) {
+          args.push(`--script-opts=ytdl_hook-ytdl_path=${options.ytdlPath}`, `--ytdl-raw-options=proxy=${options.ytdlProxy}`);
+        } else {
+          args.push(`--script-opts=ytdl_hook-ytdl_path=${options.ytdlPath}`);
+        }
       }
+      
       const cookiesFile = ytdlCookiesFileIfAvailable(options);
       const rawOptions = [];
+      
       if (options.ytdlJsRuntime) {
         rawOptions.push(mpvRawOptionPair("js-runtimes", options.ytdlJsRuntime));
       }
